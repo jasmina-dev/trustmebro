@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { sendChatMessage } from '../api/client'
 import './Chatbot.css'
 
@@ -72,7 +73,13 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
             <span className="chat-role">{m.role === 'user' ? 'You' : 'Assistant'}</span>
-            <div className="chat-content">{m.content}</div>
+            <div className="chat-content">
+              {m.role === 'assistant' ? (
+                <ReactMarkdown>{m.content}</ReactMarkdown>
+              ) : (
+                m.content
+              )}
+            </div>
           </div>
         ))}
         {loading && (
