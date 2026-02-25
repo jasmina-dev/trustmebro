@@ -20,6 +20,83 @@ export async function fetchMarkets(limit = 50): Promise<PolymarketMarket[]> {
   return res.json();
 }
 
+export interface TradesTimeBucket {
+  bucketStart: string;
+  bucketEnd: string;
+  volume: number;
+  tradeCount: number;
+}
+
+export interface WhaleTrader {
+  address: string;
+  volume: number;
+  tradeCount: number;
+  shareOfTotalVolume: number;
+}
+
+export interface PreDeadlineWindow {
+  windowHours: number;
+  windowStart: string;
+  windowEnd: string;
+  volume: number;
+  tradeCount: number;
+  shareOfTotalVolume: number;
+}
+
+export interface TradesAnalytics {
+  totalTrades: number;
+  totalVolume: number;
+  uniqueTraders: number;
+  uniqueMarkets: number;
+  timeRange: {
+    earliest: string;
+    latest: string;
+  };
+  byTime: TradesTimeBucket[];
+  perMarket: {
+    conditionId: string;
+    volume: number;
+    tradeCount: number;
+  }[];
+  whaleTraders: WhaleTrader[];
+  preDeadlineWindow: PreDeadlineWindow;
+}
+
+export interface TradesAnalyticsResponse {
+  analytics: TradesAnalytics;
+  count: number;
+}
+
+export interface TradesAnalyticsParams {
+  market?: string;
+  eventId?: string;
+  user?: string;
+  side?: 'BUY' | 'SELL';
+  windowHours?: number;
+}
+
+export async function fetchTradesAnalytics(
+  params: TradesAnalyticsParams = {}
+): Promise<TradesAnalyticsResponse> {
+  const search = new URLSearchParams();
+  if (params.market) search.set('market', params.market);
+  if (params.eventId) search.set('eventId', params.eventId);
+  if (params.user) search.set('user', params.user);
+  if (params.side) search.set('side', params.side);
+  if (params.windowHours != null) {
+    search.set('windowHours', String(params.windowHours));
+  }
+  // Use a relatively high default limit so we have enough data
+  if (!search.has('limit')) search.set('limit', '1000');
+
+  const res = await fetch(`${API_BASE}/markets/trades-analytics?${search.toString()}`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error ?? 'Failed to fetch trades analytics');
+  }
+  return data as TradesAnalyticsResponse;
+}
+
 export async function sendChatMessage(
   message: string,
   context?: string

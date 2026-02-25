@@ -43,6 +43,7 @@ App runs at **http://localhost:5173** and proxies `/api` to the backend.
 | Variable | Description |
 |----------|-------------|
 | `POLYMARKET_GAMMA_URL` | Gamma API base (default: https://gamma-api.polymarket.com) |
+| `POLYMARKET_DATA_URL` | Data API base for trades analytics (default: https://data-api.polymarket.com) |
 | `KALSHI_API_URL` | Kalshi API base |
 | `KALSHI_API_KEY` | Required for Kalshi endpoints |
 | `ANTHROPIC_API_KEY` | Required for chatbot |
