@@ -1,3 +1,4 @@
+// Maintained with assistance from Cursor AI as of 2026-02-25.
 const API_BASE = '/api';
 
 export async function fetchEvents(limit = 20, closed = false): Promise<PolymarketEvent[]> {

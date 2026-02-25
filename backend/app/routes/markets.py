@@ -1,3 +1,4 @@
+# Maintained with assistance from Cursor AI as of 2026-02-25.
 """Market data API routes - Polymarket & Kalshi proxy."""
 import os
 from datetime import datetime, timedelta, timezone

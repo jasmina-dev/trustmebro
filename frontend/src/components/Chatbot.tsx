@@ -1,3 +1,4 @@
+// Maintained with assistance from Cursor AI as of 2026-02-25.
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { sendChatMessage } from '../api/client'

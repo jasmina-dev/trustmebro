@@ -1,3 +1,4 @@
+# Maintained with assistance from Cursor AI as of 2026-02-25.
 """Run the TrustMeBro Analytics Flask API."""
 import os
 from dotenv import load_dotenv

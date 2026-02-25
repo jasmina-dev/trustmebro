@@ -1,3 +1,4 @@
+// Maintained with assistance from Cursor AI as of 2026-02-25.
 import type { PolymarketEvent } from '../api/client'
 import './MarketList.css'
 

@@ -1,3 +1,4 @@
+# Maintained with assistance from Cursor AI as of 2026-02-25.
 """AI chatbot route - Claude-based, data-aware responses."""
 import os
 from flask import current_app, jsonify, request

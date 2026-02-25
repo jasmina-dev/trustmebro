@@ -1,3 +1,4 @@
+// Maintained with assistance from Cursor AI as of 2026-02-25.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
