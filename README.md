@@ -1,10 +1,10 @@
 # TrustMeBro Analytics
 
-**Betting Markets Dashboard and Chatbot** — A data-driven dashboard and AI assistant for Polymarket and Kalshi prediction markets. Built for the Lafayette College Policy Studies Department (client: Christo Maheras).
+**Betting Markets Dashboard and Chatbot** — A data-driven dashboard and AI assistant for the Polymarket and Kalshi prediction markets. Built for the Lafayette College Policy Studies Department (client: Christo Maheras).
 
 ## Overview
 
-- **Dashboard**: Live and historical views of top Polymarket events/markets, with category filters (Politics, Economy, Entertainment, etc.) and volume charts.
+- **Dashboard**: Live and historical views of the top Polymarket events/markets, with category filters (Politics, Economy, Entertainment, etc.) and volume charts.
 - **AI Chatbot**: Integrated assistant (Claude) that explains trends and possible inefficiencies. Educational only — no financial advice or bet placement.
 - **Stack**: React + TypeScript (Vite) frontend, Flask backend, Polymarket Gamma API, optional Kalshi and Anthropic Claude.
 
