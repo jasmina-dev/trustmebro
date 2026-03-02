@@ -1,9 +1,12 @@
 // Maintained with assistance from Cursor AI as of 2026-02-25.
-const API_BASE = '/api';
+const API_BASE = "/api";
 
-export async function fetchEvents(limit = 20, closed = false): Promise<PolymarketEvent[]> {
+export async function fetchEvents(
+  limit = 20,
+  closed = false,
+): Promise<PolymarketEvent[]> {
   const res = await fetch(
-    `${API_BASE}/markets/events?limit=${limit}&closed=${closed}`
+    `${API_BASE}/markets/events?limit=${limit}&closed=${closed}`,
   );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -72,43 +75,46 @@ export interface TradesAnalyticsParams {
   market?: string;
   eventId?: string;
   user?: string;
-  side?: 'BUY' | 'SELL';
+  side?: "BUY" | "SELL";
   windowHours?: number;
 }
 
 export async function fetchTradesAnalytics(
-  params: TradesAnalyticsParams = {}
+  params: TradesAnalyticsParams = {},
 ): Promise<TradesAnalyticsResponse> {
   const search = new URLSearchParams();
-  if (params.market) search.set('market', params.market);
-  if (params.eventId) search.set('eventId', params.eventId);
-  if (params.user) search.set('user', params.user);
-  if (params.side) search.set('side', params.side);
+  if (params.market) search.set("market", params.market);
+  if (params.eventId) search.set("eventId", params.eventId);
+  if (params.user) search.set("user", params.user);
+  if (params.side) search.set("side", params.side);
   if (params.windowHours != null) {
-    search.set('windowHours', String(params.windowHours));
+    search.set("windowHours", String(params.windowHours));
   }
   // Use a relatively high default limit so we have enough data
-  if (!search.has('limit')) search.set('limit', '1000');
+  if (!search.has("limit")) search.set("limit", "1000");
 
-  const res = await fetch(`${API_BASE}/markets/trades-analytics?${search.toString()}`);
+  const res = await fetch(
+    `${API_BASE}/markets/trades-analytics?${search.toString()}`,
+  );
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error ?? 'Failed to fetch trades analytics');
+    throw new Error(data.error ?? "Failed to fetch trades analytics");
   }
   return data as TradesAnalyticsResponse;
 }
 
 export async function sendChatMessage(
   message: string,
-  context?: string
+  context?: string,
+  history?: Array<{ role: "user" | "assistant"; content: string }>,
 ): Promise<{ reply: string }> {
   const res = await fetch(`${API_BASE}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, context }),
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, context, history }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? 'Chat request failed');
+  if (!res.ok) throw new Error(data.error ?? "Chat request failed");
   return data;
 }
 

@@ -1,58 +1,65 @@
 // Maintained with assistance from Cursor AI as of 2026-02-25.
-import { useState, useRef, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-import { sendChatMessage } from '../api/client'
-import './Chatbot.css'
+// Also utilize GitHub Copilot for code generation. March 2, 2026.
+import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import { sendChatMessage } from "../api/client";
+import "./Chatbot.css";
 
 interface ChatbotProps {
-  onClose: () => void
-  dashboardContext: string | null
+  onClose: () => void;
+  dashboardContext: string | null;
 }
 
 interface Message {
-  role: 'user' | 'assistant'
-  content: string
+  role: "user" | "assistant";
+  content: string;
 }
 
 export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      role: 'assistant',
+      role: "assistant",
       content:
         "Hi! I'm the TrustMeBro assistant. I can help you understand prediction market data, trends, and possible inefficiencies. I don't give financial advice or tell you to place bets—just education and data context. What would you like to know?",
     },
-  ])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const text = input.trim()
-    if (!text || loading) return
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || loading) return;
 
-    setInput('')
-    setMessages((prev) => [...prev, { role: 'user', content: text }])
-    setLoading(true)
-    setError(null)
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setLoading(true);
+    setError(null);
 
     try {
-      const { reply } = await sendChatMessage(text, dashboardContext ?? undefined)
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      const { reply } = await sendChatMessage(
+        text,
+        dashboardContext ?? undefined,
+        history,
+      );
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong.'
-      setError(msg)
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `Sorry, I couldn't respond: ${msg}` },
-      ])
+        { role: "assistant", content: `Sorry, I couldn't respond: ${msg}` },
+      ]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -73,9 +80,11 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
       <div className="chatbot-messages">
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
-            <span className="chat-role">{m.role === 'user' ? 'You' : 'Assistant'}</span>
+            <span className="chat-role">
+              {m.role === "user" ? "You" : "Assistant"}
+            </span>
             <div className="chat-content">
-              {m.role === 'assistant' ? (
+              {m.role === "assistant" ? (
                 <ReactMarkdown>{m.content}</ReactMarkdown>
               ) : (
                 m.content
@@ -112,5 +121,5 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         </button>
       </form>
     </div>
-  )
+  );
 }
