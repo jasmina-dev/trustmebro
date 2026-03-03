@@ -45,6 +45,7 @@ frontend/yarn-error.log*
 frontend/pnpm-debug.log*
 frontend/.pnpm-debug.log*
 frontend/.eslintcache
+frontend/tsconfig.tsbuildinfo
 
 # IDE / Editor
 .vscode/
