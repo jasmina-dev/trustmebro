@@ -67,18 +67,20 @@ def chat():
         user_content = f"[Current dashboard context]\n{context}\n\n[User question]\n{message}"
 
     messages = []
+    history_offset = max(len(raw_history) - MAX_HISTORY_TURNS, 0)
     for index, turn in enumerate(raw_history[-MAX_HISTORY_TURNS:]):
+        real_index = history_offset + index
         if not isinstance(turn, dict):
-            return jsonify({"error": f"history[{index}] must be an object"}), 400
+            return jsonify({"error": f"history[{real_index}] must be an object"}), 400
 
         role = turn.get("role")
         content = (turn.get("content") or "").strip()
         if role not in {"user", "assistant"}:
             return jsonify(
-                {"error": f"history[{index}].role must be 'user' or 'assistant'"}
+                {"error": f"history[{real_index}].role must be 'user' or 'assistant'"}
             ), 400
         if not content:
-            return jsonify({"error": f"history[{index}].content is required"}), 400
+            return jsonify({"error": f"history[{real_index}].content is required"}), 400
 
         messages.append({"role": role, "content": content})
 
