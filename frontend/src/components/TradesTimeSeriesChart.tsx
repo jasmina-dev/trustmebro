@@ -12,9 +12,17 @@ import type { TradesTimeBucket } from '../api/client'
 
 interface TradesTimeSeriesChartProps {
   data: TradesTimeBucket[]
+  /**
+   * Optional height in pixels for the chart area.
+   * Defaults to 280 to preserve existing behavior.
+   */
+  height?: number
 }
 
-export function TradesTimeSeriesChart({ data }: TradesTimeSeriesChartProps) {
+export function TradesTimeSeriesChart({
+  data,
+  height = 280,
+}: TradesTimeSeriesChartProps) {
   if (!data.length) {
     return (
       <div className="trend-chart empty">
@@ -35,7 +43,7 @@ export function TradesTimeSeriesChart({ data }: TradesTimeSeriesChartProps) {
 
   return (
     <div className="trend-chart">
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis

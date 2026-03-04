@@ -15,11 +15,16 @@ interface ChartPoint {
 
 interface TrendChartProps {
   data: ChartPoint[]
+  /**
+   * Optional height in pixels for the chart area.
+   * Defaults to 280 to preserve existing behavior.
+   */
+  height?: number
 }
 
 const COLORS = ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a']
 
-export function TrendChart({ data }: TrendChartProps) {
+export function TrendChart({ data, height = 280 }: TrendChartProps) {
   if (!data.length) {
     return (
       <div className="trend-chart empty">
@@ -30,7 +35,7 @@ export function TrendChart({ data }: TrendChartProps) {
 
   return (
     <div className="trend-chart">
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={height}>
         <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
           <XAxis
             dataKey="name"
