@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-# Maintained with assistance from Cursor AI as of 2026-02-25.
-# Also utilize GitHub Copilot for code generation. March 2, 2026.
-=======
->>>>>>> parent of 8852aa9 (attribution added)
 """AI chatbot route - Claude-based, data-aware responses."""
 import os
 
