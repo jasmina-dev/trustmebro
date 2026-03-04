@@ -1,4 +1,3 @@
-// Maintained with assistance from Cursor AI as of 2026-02-25.
 import { useEffect, useState, useMemo } from 'react'
 import {
   fetchEvents,

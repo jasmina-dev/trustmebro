@@ -1,4 +1,3 @@
-# Maintained with assistance from Cursor AI as of 2026-02-25.
 """TrustMeBro Analytics - Flask application factory."""
 import os
 from flask import Flask

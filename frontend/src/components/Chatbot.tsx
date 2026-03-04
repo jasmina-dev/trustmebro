@@ -1,9 +1,16 @@
+<<<<<<< HEAD
 // Maintained with assistance from Cursor AI as of 2026-02-25.
 // Also utilize GitHub Copilot for code generation. March 2, 2026.
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { sendChatMessage } from "../api/client";
 import "./Chatbot.css";
+=======
+import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { sendChatMessage } from '../api/client'
+import './Chatbot.css'
+>>>>>>> parent of 8852aa9 (attribution added)
 
 interface ChatbotProps {
   onClose: () => void;

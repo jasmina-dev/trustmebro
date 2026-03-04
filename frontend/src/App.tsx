@@ -1,4 +1,3 @@
-// Maintained with assistance from Cursor AI as of 2026-02-25.
 import { useState } from 'react'
 import { Dashboard } from './components/Dashboard'
 import { Chatbot } from './components/Chatbot'
