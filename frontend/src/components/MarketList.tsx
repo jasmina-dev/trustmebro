@@ -33,10 +33,21 @@ export function MarketList({ events }: MarketListProps) {
           ? (parseFloat(String(prices).split(',')[0]) * 100).toFixed(0)
           : '—'
 
+        const tags = event.tmCategories ?? ['Other']
+
         return (
           <li key={event.id} className="market-card">
             <div className="market-card-main">
-              <h3 className="market-title">{event.title}</h3>
+              <div className="market-card-header">
+                <h3 className="market-title">{event.title}</h3>
+                <div className="market-tags">
+                  {tags.map((tag) => (
+                    <span key={tag} className="market-tag">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
               {event.description && (
                 <p className="market-desc">
                   {event.description.slice(0, 120)}
