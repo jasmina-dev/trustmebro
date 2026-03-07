@@ -81,12 +81,15 @@ export function Dashboard({ category }: DashboardProps) {
 
   const filtered = useMemo(() => {
     if (category === 'all') return events
+    const target = category.toLowerCase()
     return events.filter((e) => {
-      const cat = (e.category ?? e.groupItemTitle ?? '').toLowerCase()
-      const slug = (e.slug ?? '').toLowerCase()
-      const title = (e.title ?? '').toLowerCase()
-      const combined = `${cat} ${slug} ${title}`
-      return combined.includes(category)
+      const eventCats = e.tmCategories ?? []
+      if (eventCats.some((c) => c.toLowerCase() === target)) return true
+      for (const m of e.markets ?? []) {
+        const marketCats = m.tmCategories ?? []
+        if (marketCats.some((c) => c.toLowerCase() === target)) return true
+      }
+      return false
     })
   }, [events, category])
 
