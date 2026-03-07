@@ -129,8 +129,6 @@ export interface PolymarketEvent {
   markets?: PolymarketMarket[];
   groupItemTitle?: string;
   category?: string;
-  /** TrustMeBro categories: Politics, Economy, Entertainment, etc. "Other" when none match. */
-  tmCategories?: string[];
 }
 
 export interface PolymarketMarket {
@@ -147,6 +145,4 @@ export interface PolymarketMarket {
   marketSlug?: string;
   groupItemTitle?: string;
   category?: string;
-  /** TrustMeBro categories: Politics, Economy, Entertainment, etc. "Other" when none match. */
-  tmCategories?: string[];
 }
