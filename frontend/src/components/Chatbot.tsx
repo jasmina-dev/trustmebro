@@ -30,6 +30,12 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -55,8 +61,8 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     setLoading(true);
     setError(null);
 
-    abortControllerRef.current?.abort();
     const controller = new AbortController();
+    abortControllerRef.current?.abort();
     abortControllerRef.current = controller;
 
     try {
@@ -78,18 +84,20 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         controller.signal,
       );
     } catch (err) {
-      if (!(err instanceof Error && err.name === "AbortError")) {
-        const msg = err instanceof Error ? err.message : "Something went wrong.";
-        setError(msg);
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            content: `Sorry, I couldn't respond: ${msg}`,
-          };
-          return updated;
-        });
+      if (err instanceof Error && err.name === "AbortError") {
+        setLoading(false);
+        return;
       }
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: `Sorry, I couldn't respond: ${msg}`,
+        };
+        return updated;
+      });
     } finally {
       if (abortControllerRef.current === controller) {
         setLoading(false);
@@ -104,7 +112,10 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         <button
           type="button"
           className="chatbot-close"
-          onClick={onClose}
+          onClick={() => {
+            abortControllerRef.current?.abort();
+            onClose();
+          }}
           aria-label="Close chat"
         >
           ✕
