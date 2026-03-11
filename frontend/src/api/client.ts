@@ -123,7 +123,12 @@ export async function streamChatMessage(
       (data as { error?: string }).error ?? "Chat request failed",
     );
   }
-  const reader = res.body!.getReader();
+  if (!res.body) {
+    throw new Error(
+      "Streaming is not supported: response body is null",
+    );
+  }
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   while (true) {

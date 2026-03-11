@@ -39,6 +39,12 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
@@ -93,7 +99,9 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         return updated;
       });
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   }
 
