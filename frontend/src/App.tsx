@@ -8,10 +8,7 @@ const CATEGORIES = [
   { id: 'politics', label: 'Politics' },
   { id: 'economy', label: 'Economy' },
   { id: 'entertainment', label: 'Entertainment' },
-  { id: 'technology', label: 'Technology' },
-  { id: 'crypto', label: 'Crypto' },
-  { id: 'climate', label: 'Climate' },
-  { id: 'other', label: 'Other' },
+  { id: 'science', label: 'Science' },
 ] as const
 
 export default function App() {
