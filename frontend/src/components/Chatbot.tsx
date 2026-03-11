@@ -1,3 +1,5 @@
+// utilized github copilot
+
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { streamChatMessage } from "../api/client";

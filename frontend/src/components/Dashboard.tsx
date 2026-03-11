@@ -1,3 +1,5 @@
+// utilized github copilot
+
 import { useEffect, useState, useMemo } from "react";
 import {
   fetchEvents,

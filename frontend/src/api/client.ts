@@ -1,3 +1,5 @@
+// utilized github copilot
+
 const API_BASE = "/api";
 
 export async function fetchEvents(
