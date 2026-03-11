@@ -1,8 +1,8 @@
 # utilized github copilot
 """AI chatbot route - Claude-based, data-aware responses."""
-import os
-
 import json
+import os
+import sys
 
 from flask import Response, current_app, jsonify, request, stream_with_context
 
@@ -89,20 +89,31 @@ def chat():
 
     model = os.environ.get("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-6")
 
+    # Initiate the stream before committing to a streaming response so that
+    # connection-level failures (e.g. auth errors, network issues) can be
+    # surfaced as a proper HTTP 502 rather than an HTTP 200 with an SSE error.
+    stream_ctx = client.messages.stream(
+        model=model,
+        max_tokens=2048,
+        system=SYSTEM_PROMPT,
+        messages=messages,
+    )
+    try:
+        active_stream = stream_ctx.__enter__()
+    except Exception as e:
+        current_app.logger.exception("Chatbot stream error: %s", e)
+        return jsonify({"error": "Chatbot request failed"}), 502
+
     def generate():
         try:
-            with client.messages.stream(
-                model=model,
-                max_tokens=2048,
-                system=SYSTEM_PROMPT,
-                messages=messages,
-            ) as stream:
-                for text_chunk in stream.text_stream:
-                    yield f"data: {json.dumps({'delta': text_chunk})}\n\n"
+            for text_chunk in active_stream.text_stream:
+                yield f"data: {json.dumps({'delta': text_chunk})}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
             current_app.logger.exception("Chatbot stream error: %s", e)
             yield f"data: {json.dumps({'error': 'Chatbot request failed'})}\n\n"
+        finally:
+            stream_ctx.__exit__(*sys.exc_info())
 
     return Response(
         stream_with_context(generate()),
