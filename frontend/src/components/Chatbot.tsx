@@ -27,10 +27,17 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +55,10 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     setLoading(true);
     setError(null);
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       await streamChatMessage(
         text,
@@ -64,20 +75,25 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         },
         dashboardContext ?? undefined,
         history,
+        controller.signal,
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong.";
-      setError(msg);
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          ...updated[updated.length - 1],
-          content: `Sorry, I couldn't respond: ${msg}`,
-        };
-        return updated;
-      });
+      if (!(err instanceof Error && err.name === "AbortError")) {
+        const msg = err instanceof Error ? err.message : "Something went wrong.";
+        setError(msg);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: `Sorry, I couldn't respond: ${msg}`,
+          };
+          return updated;
+        });
+      }
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   }
 
