@@ -27,6 +27,13 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,6 +55,10 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     setLoading(true);
     setError(null);
 
+    const controller = new AbortController();
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = controller;
+
     try {
       await streamChatMessage(
         text,
@@ -64,8 +75,13 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         },
         dashboardContext ?? undefined,
         history,
+        controller.signal,
       );
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setLoading(false);
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setError(msg);
       setMessages((prev) => {
@@ -88,7 +104,10 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         <button
           type="button"
           className="chatbot-close"
-          onClick={onClose}
+          onClick={() => {
+            abortControllerRef.current?.abort();
+            onClose();
+          }}
           aria-label="Close chat"
         >
           ✕

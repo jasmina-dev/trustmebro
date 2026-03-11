@@ -109,11 +109,13 @@ export async function streamChatMessage(
   onChunk: (chunk: string) => void,
   context?: string,
   history?: Array<{ role: "user" | "assistant"; content: string }>,
+  signal?: AbortSignal,
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, context, history }),
+    signal,
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
