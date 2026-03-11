@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 export async function fetchEvents(
   limit = 20,
@@ -102,19 +102,46 @@ export async function fetchTradesAnalytics(
   return data as TradesAnalyticsResponse;
 }
 
-export async function sendChatMessage(
+export async function streamChatMessage(
   message: string,
+  onChunk: (chunk: string) => void,
   context?: string,
   history?: Array<{ role: "user" | "assistant"; content: string }>,
-): Promise<{ reply: string }> {
+): Promise<void> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, context, history }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "Chat request failed");
-  return data;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { error?: string }).error ?? "Chat request failed",
+    );
+  }
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (raw === "[DONE]") return;
+      let parsed: { delta?: string; error?: string };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      if (parsed.error) throw new Error(parsed.error);
+      if (parsed.delta) onChunk(parsed.delta);
+    }
+  }
 }
 
 export interface PolymarketEvent {

@@ -1,7 +1,9 @@
 """AI chatbot route - Claude-based, data-aware responses."""
 import os
 
-from flask import current_app, jsonify, request
+import json
+
+from flask import Response, current_app, jsonify, request, stream_with_context
 
 from . import bp
 
@@ -84,19 +86,25 @@ def chat():
 
     messages.append({"role": "user", "content": user_content})
 
-    try:
-        model = os.environ.get("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-6")
-        response = client.messages.create(
-            model=model,
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=messages,
-        )
-        text = ""
-        for block in response.content:
-            if hasattr(block, "text"):
-                text += block.text
-        return jsonify({"reply": text.strip()})
-    except Exception as e:
-        current_app.logger.exception("Chatbot error: %s", e)
-        return jsonify({"error": "Chatbot request failed", "reply": ""}), 502
+    model = os.environ.get("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-6")
+
+    def generate():
+        try:
+            with client.messages.stream(
+                model=model,
+                max_tokens=2048,
+                system=SYSTEM_PROMPT,
+                messages=messages,
+            ) as stream:
+                for text_chunk in stream.text_stream:
+                    yield f"data: {json.dumps({'delta': text_chunk})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            current_app.logger.exception("Chatbot stream error: %s", e)
+            yield f"data: {json.dumps({'error': 'Chatbot request failed'})}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )
