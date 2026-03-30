@@ -29,6 +29,36 @@
   font-weight: 600;
 }
 
+.chatbot-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chatbot-clear {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+.chatbot-clear:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.chatbot-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chatbot-clear:disabled:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
 .chatbot-close {
   padding: 0.35rem 0.5rem;
   border: none;
