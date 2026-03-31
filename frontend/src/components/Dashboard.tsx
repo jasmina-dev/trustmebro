@@ -560,6 +560,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
 
         <section className="dashboard-section dashboard-section-full accordion-section">
           <button
+            id="events-markets-accordion-trigger"
             type="button"
             className="accordion-trigger"
             onClick={() => setMarketsAccordionOpen((open) => !open)}
@@ -582,7 +583,11 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
           </button>
           <div
             id="events-markets-accordion"
+            role="region"
+            aria-labelledby="events-markets-accordion-trigger"
             className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
+            aria-hidden={!marketsAccordionOpen}
+            {...(!marketsAccordionOpen ? { inert: "" } : {})}
           >
             <MarketList events={filtered} />
           </div>
