@@ -566,7 +566,13 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
             aria-expanded={marketsAccordionOpen}
             aria-controls="events-markets-accordion"
           >
-            <h2>Events & markets</h2>
+            <span
+              className="accordion-title"
+              role="heading"
+              aria-level={2}
+            >
+              Events & markets
+            </span>
             <span
               className={`accordion-chevron ${marketsAccordionOpen ? "open" : ""}`}
               aria-hidden="true"
