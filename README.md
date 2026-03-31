@@ -49,6 +49,49 @@ App runs at **http://localhost:5173** and proxies `/api` to the backend.
 | `ANTHROPIC_API_KEY` | Required for chatbot |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Optional, for future storage |
 
+## Running tests
+
+### Frontend (Vitest)
+
+From the `frontend` directory:
+
+```bash
+cd frontend
+npm run test
+```
+
+`npm run test` runs Vitest in watch mode (re-runs when files change). For a single non-interactive run (e.g. CI):
+
+```bash
+npm run test:run
+```
+
+### Backend (pytest)
+
+From the `backend` directory, with dependencies installed:
+
+```bash
+cd backend
+pip install -r requirements.txt
+python -m pytest
+```
+
+Quiet summary only:
+
+```bash
+python -m pytest -q
+```
+
+Using the same virtual environment as in [Quick Start](#quick-start):
+
+```bash
+cd backend
+.venv\Scripts\activate   # Windows
+# source .venv/bin/activate  # macOS/Linux
+pip install -r requirements.txt
+python -m pytest
+```
+
 ## Project Structure
 
 ```

@@ -51,14 +51,6 @@ def chat():
     if not isinstance(raw_history, list):
         return jsonify({"error": "history must be an array"}), 400
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return jsonify({"error": "Chatbot not configured (missing ANTHROPIC_API_KEY)"}), 503
-
-    client = _get_claude_client()
-    if not client:
-        return jsonify({"error": "Chatbot dependency not available"}), 503
-
     context = data.get("context") or ""
     user_content = message
     if context:
@@ -81,6 +73,14 @@ def chat():
             return jsonify({"error": f"history[{real_index}].content is required"}), 400
 
         messages.append({"role": role, "content": content})
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "Chatbot not configured (missing ANTHROPIC_API_KEY)"}), 503
+
+    client = _get_claude_client()
+    if not client:
+        return jsonify({"error": "Chatbot dependency not available"}), 503
 
     messages.append({"role": "user", "content": user_content})
 
