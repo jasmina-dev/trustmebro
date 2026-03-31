@@ -36,10 +36,13 @@ export function TradesTimeSeriesChart({
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
+      minute: '2-digit',
     }),
     volume: bucket.volume,
     trades: bucket.tradeCount,
   }))
+
+  const denseAxis = chartData.length > 36
 
   return (
     <div className="trend-chart">
@@ -50,6 +53,10 @@ export function TradesTimeSeriesChart({
             dataKey="time"
             tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
             tickLine={false}
+            minTickGap={denseAxis ? 28 : undefined}
+            angle={denseAxis ? -32 : 0}
+            textAnchor={denseAxis ? 'end' : 'middle'}
+            height={denseAxis ? 52 : undefined}
           />
           <YAxis
             yAxisId="left"

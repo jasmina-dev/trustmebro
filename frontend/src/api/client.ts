@@ -78,6 +78,7 @@ export interface TradesAnalyticsParams {
   user?: string;
   side?: "BUY" | "SELL";
   windowHours?: number;
+  limit?: number;
 }
 
 export async function fetchTradesAnalytics(
@@ -91,8 +92,7 @@ export async function fetchTradesAnalytics(
   if (params.windowHours != null) {
     search.set("windowHours", String(params.windowHours));
   }
-  // Use a relatively high default limit so we have enough data
-  if (!search.has("limit")) search.set("limit", "1000");
+  // Backend pages the Data API internally; limit/offset are not used for analytics.
 
   const res = await fetch(
     `${API_BASE}/markets/trades-analytics?${search.toString()}`,

@@ -11,10 +11,21 @@ import {
 } from "../api/client";
 import { MarketList } from "./MarketList";
 import { TrendChart } from "./TrendChart";
-import { ProbabilityHistogram } from "./ProbabilityHistogram";
+// import { ProbabilityHistogram } from "./ProbabilityHistogram";
 import { TradesTimeSeriesChart } from "./TradesTimeSeriesChart";
 import { WhaleTradersChart } from "./WhaleTradersChart";
 import { PreDeadlineChart } from "./PreDeadlineChart";
+import {
+  loadTrimmedCashflowBuckets,
+  saveStoredBuckets,
+  mergeBucketSeries,
+  trimBucketsToLookback,
+  generateDemoHourlyBuckets,
+  CASHFLOW_PERSIST_LOOKBACK_HOURS,
+  buildMinimalAnalytics,
+  applyWindowToAnalytics,
+  densifyHourlyWindow,
+} from "../lib/demoCashflowStore";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -25,15 +36,17 @@ interface DashboardProps {
 const CASHFLOW_WINDOWS = [
   { label: "6H", hours: 6 },
   { label: "24H", hours: 24 },
-  { label: "7D", hours: 24 * 7 },
+  { label: "7D", hours: CASHFLOW_PERSIST_LOOKBACK_HOURS },
 ] as const;
 
 export function Dashboard({ category, onContextChange }: DashboardProps) {
   const [events, setEvents] = useState<PolymarketEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tradesAnalytics, setTradesAnalytics] =
-    useState<TradesAnalytics | null>(null);
+  const [tradesRaw, setTradesRaw] = useState<TradesAnalytics | null>(null);
+  const [persistedSeries, setPersistedSeries] = useState<TradesAnalytics["byTime"]>(
+    () => loadTrimmedCashflowBuckets(),
+  );
   const [tradesError, setTradesError] = useState<string | null>(null);
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [windowHours, setWindowHours] = useState<number>(24);
@@ -63,17 +76,39 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   }, []);
 
   useEffect(() => {
-    setTradesAnalytics(null);
     setTradesError(null);
-    fetchTradesAnalytics({ windowHours })
+    fetchTradesAnalytics({
+      windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
+    })
       .then((res) => {
-        setTradesAnalytics(res.analytics);
+        setTradesRaw(res.analytics);
         setTradesError(null);
+        setPersistedSeries((prev) => {
+          let merged = trimBucketsToLookback(
+            mergeBucketSeries(prev, res.analytics.byTime),
+            CASHFLOW_PERSIST_LOOKBACK_HOURS,
+          );
+          if (merged.length === 0) {
+            merged = generateDemoHourlyBuckets(CASHFLOW_PERSIST_LOOKBACK_HOURS);
+          }
+          saveStoredBuckets(merged);
+          return merged;
+        });
       })
       .catch((err) => {
         setTradesError(err.message ?? "Failed to load trades analytics");
+        setTradesRaw(null);
+        setPersistedSeries((prev) => {
+          const fromLs = prev.length ? prev : loadTrimmedCashflowBuckets();
+          let merged = fromLs;
+          if (merged.length === 0) {
+            merged = generateDemoHourlyBuckets(CASHFLOW_PERSIST_LOOKBACK_HOURS);
+            saveStoredBuckets(merged);
+          }
+          return merged;
+        });
       });
-  }, [windowHours]);
+  }, []);
 
   function extractYesPrice(
     market: PolymarketMarket | undefined,
@@ -179,6 +214,22 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     };
   }, [filtered]);
 
+  const cashflowWindowLabel = useMemo(() => {
+    if (windowHours === 6) return "last 6h";
+    if (windowHours === 24) return "last 24h";
+    if (windowHours === 24 * 7) return "last 7d";
+    return `last ${windowHours}h`;
+  }, [windowHours]);
+
+  const displayAnalytics = useMemo(() => {
+    if (tradesRaw === null && persistedSeries.length === 0) return null;
+    if (tradesRaw) {
+      return applyWindowToAnalytics(tradesRaw, persistedSeries, windowHours);
+    }
+    const dense = densifyHourlyWindow(persistedSeries, windowHours);
+    return buildMinimalAnalytics(dense, windowHours);
+  }, [tradesRaw, persistedSeries, windowHours]);
+
   const heroHeadlines = useMemo(() => {
     const headlines: { title: string; meta?: string }[] = [];
 
@@ -204,10 +255,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       });
     }
 
-    if (!headlines.length && tradesAnalytics) {
+    if (!headlines.length && displayAnalytics) {
       headlines.push({
         title: "Live trading window",
-        meta: `${tradesAnalytics.totalTrades.toLocaleString()} trades in recent window`,
+        meta: `${displayAnalytics.totalTrades.toLocaleString()} trades in recent window`,
       });
     }
 
@@ -219,14 +270,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return headlines;
-  }, [filtered, tradesAnalytics]);
-
-  const cashflowWindowLabel = useMemo(() => {
-    if (windowHours === 6) return "last 6h";
-    if (windowHours === 24) return "last 24h";
-    if (windowHours === 24 * 7) return "last 7d";
-    return `last ${windowHours}h`;
-  }, [windowHours]);
+  }, [filtered, displayAnalytics]);
 
   const contextString = useMemo(() => {
     const lines: string[] = [];
@@ -262,23 +306,23 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       );
     }
 
-    if (tradesAnalytics) {
-      lines.push(`Trades analytics (last ${windowHours}h):`);
-      lines.push(`  Total trades: ${tradesAnalytics.totalTrades}`);
+    if (displayAnalytics) {
+      lines.push(`Trades analytics (${cashflowWindowLabel}):`);
+      lines.push(`  Total trades: ${displayAnalytics.totalTrades}`);
       lines.push(
-        `  Total volume: $${tradesAnalytics.totalVolume.toLocaleString()}`,
+        `  Total volume: $${displayAnalytics.totalVolume.toLocaleString()}`,
       );
-      lines.push(`  Unique traders: ${tradesAnalytics.uniqueTraders}`);
-      lines.push(`  Unique markets: ${tradesAnalytics.uniqueMarkets}`);
-      if (tradesAnalytics.whaleTraders.length) {
+      lines.push(`  Unique traders: ${displayAnalytics.uniqueTraders}`);
+      lines.push(`  Unique markets: ${displayAnalytics.uniqueMarkets}`);
+      if (displayAnalytics.whaleTraders.length) {
         lines.push("  Top whale traders:");
-        for (const w of tradesAnalytics.whaleTraders.slice(0, 3)) {
+        for (const w of displayAnalytics.whaleTraders.slice(0, 3)) {
           lines.push(
             `    - ${w.address}: $${w.volume.toLocaleString()} volume (${(w.shareOfTotalVolume * 100).toFixed(1)}% of total)`,
           );
         }
       }
-      const pd = tradesAnalytics.preDeadlineWindow;
+      const pd = displayAnalytics.preDeadlineWindow;
       if (pd) {
         lines.push(
           `  Pre-deadline window (${pd.windowHours}h before resolution): $${pd.volume.toLocaleString()} volume, ${pd.tradeCount} trades (${(pd.shareOfTotalVolume * 100).toFixed(1)}% of total)`,
@@ -287,7 +331,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return lines.join("\n");
-  }, [category, filtered, analytics, tradesAnalytics, windowHours]);
+  }, [category, filtered, analytics, displayAnalytics, cashflowWindowLabel]);
 
   useEffect(() => {
     if (!loading) onContextChange?.(contextString);
@@ -384,14 +428,17 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
               ))}
             </div>
             {tradesError && (
-              <p className="hint">Cash flow data unavailable: {tradesError}</p>
+              <p className="hint">
+                Live trades API unavailable ({tradesError}). Chart uses locally
+                saved hourly buckets or a demo series.
+              </p>
             )}
-            {!tradesError && !tradesAnalytics && (
+            {!displayAnalytics && !tradesError && (
               <p className="hint">Loading cash flow in recent bets…</p>
             )}
-            {tradesAnalytics && (
+            {displayAnalytics && (
               <TradesTimeSeriesChart
-                data={tradesAnalytics.byTime}
+                data={displayAnalytics.byTime}
                 height={320}
               />
             )}
@@ -405,6 +452,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       </section>
 
       <div className="dashboard-body-grid">
+        {/* Probability distribution & anomalies (temporarily disabled)
         <section className="dashboard-section dashboard-section-wide">
           <h2>Probability distribution & anomalies</h2>
           <div className="analytics-grid">
@@ -456,59 +504,56 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
             </div>
           </div>
         </section>
+        */}
 
-        <section className="dashboard-section">
-          <h2>Trading activity & whales (last 24h window)</h2>
+        <section className="dashboard-section dashboard-section-full">
+          <h2>Trading activity & whales ({cashflowWindowLabel})</h2>
           {tradesError && (
             <p className="hint">Trades analytics unavailable: {tradesError}</p>
           )}
-          {!tradesError && !tradesAnalytics && (
+          {!displayAnalytics && !tradesError && (
             <p className="hint">Loading trades analytics…</p>
           )}
-          {tradesAnalytics && (
-            <>
-              <div className="analytics-grid">
-                <div className="analytics-panel">
-                  <h3 className="analytics-subtitle">
-                    Incremental trading patterns
-                  </h3>
-                  <TradesTimeSeriesChart data={tradesAnalytics.byTime} />
-                </div>
-                <div className="analytics-panel">
-                  <h3 className="analytics-subtitle">Whale addresses</h3>
-                  <WhaleTradersChart data={tradesAnalytics.whaleTraders} />
-                </div>
+          {displayAnalytics && (
+            <div className="trading-activity-grid">
+              <div className="analytics-panel">
+                <h3 className="analytics-subtitle">
+                  Incremental trading patterns
+                </h3>
+                <TradesTimeSeriesChart data={displayAnalytics.byTime} />
               </div>
-              <div className="analytics-grid predeadline-grid">
-                <div className="analytics-panel">
-                  <h3 className="analytics-subtitle">
-                    Pre-deadline volume spike
-                  </h3>
-                  <PreDeadlineChart
-                    window={tradesAnalytics.preDeadlineWindow}
-                    totalVolume={tradesAnalytics.totalVolume}
-                  />
-                </div>
-                <div className="analytics-panel analytics-summary">
-                  <p>
-                    <strong>Total trades analyzed:</strong>{" "}
-                    {tradesAnalytics.totalTrades.toLocaleString()}
-                  </p>
-                  <p>
-                    <strong>Total volume (USD):</strong>{" "}
-                    {`$${tradesAnalytics.totalVolume.toLocaleString()}`}
-                  </p>
-                  <p>
-                    <strong>Unique traders:</strong>{" "}
-                    {tradesAnalytics.uniqueTraders.toLocaleString()}
-                  </p>
-                  <p>
-                    <strong>Unique markets:</strong>{" "}
-                    {tradesAnalytics.uniqueMarkets.toLocaleString()}
-                  </p>
-                </div>
+              <div className="analytics-panel">
+                <h3 className="analytics-subtitle">Whale addresses</h3>
+                <WhaleTradersChart data={displayAnalytics.whaleTraders} />
               </div>
-            </>
+              <div className="analytics-panel">
+                <h3 className="analytics-subtitle">
+                  Pre-deadline volume spike
+                </h3>
+                <PreDeadlineChart
+                  window={displayAnalytics.preDeadlineWindow}
+                  totalVolume={displayAnalytics.totalVolume}
+                />
+              </div>
+              <div className="analytics-panel analytics-summary">
+                <p>
+                  <strong>Total trades analyzed:</strong>{" "}
+                  {displayAnalytics.totalTrades.toLocaleString()}
+                </p>
+                <p>
+                  <strong>Total volume (USD):</strong>{" "}
+                  {`$${displayAnalytics.totalVolume.toLocaleString()}`}
+                </p>
+                <p>
+                  <strong>Unique traders:</strong>{" "}
+                  {displayAnalytics.uniqueTraders.toLocaleString()}
+                </p>
+                <p>
+                  <strong>Unique markets:</strong>{" "}
+                  {displayAnalytics.uniqueMarkets.toLocaleString()}
+                </p>
+              </div>
+            </div>
           )}
         </section>
 
