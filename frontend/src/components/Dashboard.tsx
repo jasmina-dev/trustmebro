@@ -587,7 +587,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
             aria-labelledby="events-markets-accordion-trigger"
             className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
             aria-hidden={!marketsAccordionOpen}
-            {...(!marketsAccordionOpen ? { inert: "" } : {})}
+            {...(!marketsAccordionOpen ? { inert: true } : {})}
           >
             <MarketList events={filtered} />
           </div>
