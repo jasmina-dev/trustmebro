@@ -15,13 +15,15 @@ interface Message {
   content: string;
 }
 
+const INITIAL_ASSISTANT_MESSAGE: Message = {
+  role: "assistant",
+  content:
+    "Hi! I'm the TrustMeBro assistant. I can help you understand prediction market data, trends, and possible inefficiencies. I don't give financial advice or tell you to place bets—just education and data context. What would you like to know?",
+};
+
 export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm the TrustMeBro assistant. I can help you understand prediction market data, trends, and possible inefficiencies. I don't give financial advice or tell you to place bets—just education and data context. What would you like to know?",
-    },
+    INITIAL_ASSISTANT_MESSAGE,
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -105,21 +107,44 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     }
   }
 
+  function handleClearChat() {
+    abortControllerRef.current?.abort();
+    setLoading(false);
+    setError(null);
+    setInput("");
+    setMessages([INITIAL_ASSISTANT_MESSAGE]);
+  }
+
+  const canClearChat =
+    messages.length > 1 ||
+    messages[0]?.content !== INITIAL_ASSISTANT_MESSAGE.content;
+
   return (
     <div className="chatbot-panel" role="dialog" aria-label="AI assistant chat">
       <div className="chatbot-header">
         <h2>Ask the assistant</h2>
-        <button
-          type="button"
-          className="chatbot-close"
-          onClick={() => {
-            abortControllerRef.current?.abort();
-            onClose();
-          }}
-          aria-label="Close chat"
-        >
-          ✕
-        </button>
+        <div className="chatbot-header-actions">
+          <button
+            type="button"
+            className="chatbot-clear"
+            onClick={handleClearChat}
+            disabled={!canClearChat}
+            aria-label="Clear chat"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            className="chatbot-close"
+            onClick={() => {
+              abortControllerRef.current?.abort();
+              onClose();
+            }}
+            aria-label="Close chat"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       <div className="chatbot-messages">
