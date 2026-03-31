@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-import { sendChatMessage } from '../api/client'
-import './Chatbot.css'
+// utilized github copilot
+
+import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import { streamChatMessage } from "../api/client";
+import "./Chatbot.css";
 
 interface ChatbotProps {
   onClose: () => void;
@@ -13,22 +15,37 @@ interface Message {
   content: string;
 }
 
+const INITIAL_ASSISTANT_MESSAGE: Message = {
+  role: "assistant",
+  content:
+    "Hi! I'm the TrustMeBro assistant. I can help you understand prediction market data, trends, and possible inefficiencies. I don't give financial advice or tell you to place bets—just education and data context. What would you like to know?",
+};
+
 export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm the TrustMeBro assistant. I can help you understand prediction market data, trends, and possible inefficiencies. I don't give financial advice or tell you to place bets—just education and data context. What would you like to know?",
-    },
+    INITIAL_ASSISTANT_MESSAGE,
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,64 +55,122 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
 
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: text },
+      { role: "assistant", content: "" },
+    ]);
     setLoading(true);
     setError(null);
 
+    const controller = new AbortController();
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = controller;
+
     try {
-      const { reply } = await sendChatMessage(
+      await streamChatMessage(
         text,
+        (chunk) => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            updated[updated.length - 1] = {
+              ...last,
+              content: last.content + chunk,
+            };
+            return updated;
+          });
+        },
         dashboardContext ?? undefined,
         history,
+        controller.signal,
       );
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setLoading(false);
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setError(msg);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `Sorry, I couldn't respond: ${msg}` },
-      ]);
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: `Sorry, I couldn't respond: ${msg}`,
+        };
+        return updated;
+      });
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   }
+
+  function handleClearChat() {
+    abortControllerRef.current?.abort();
+    setLoading(false);
+    setError(null);
+    setInput("");
+    setMessages([INITIAL_ASSISTANT_MESSAGE]);
+  }
+
+  const canClearChat =
+    messages.length > 1 ||
+    messages[0]?.content !== INITIAL_ASSISTANT_MESSAGE.content;
 
   return (
     <div className="chatbot-panel" role="dialog" aria-label="AI assistant chat">
       <div className="chatbot-header">
         <h2>Ask the assistant</h2>
-        <button
-          type="button"
-          className="chatbot-close"
-          onClick={onClose}
-          aria-label="Close chat"
-        >
-          ✕
-        </button>
+        <div className="chatbot-header-actions">
+          <button
+            type="button"
+            className="chatbot-clear"
+            onClick={handleClearChat}
+            disabled={!canClearChat}
+            aria-label="Clear chat"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            className="chatbot-close"
+            onClick={() => {
+              abortControllerRef.current?.abort();
+              onClose();
+            }}
+            aria-label="Close chat"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       <div className="chatbot-messages">
-        {messages.map((m, i) => (
-          <div key={i} className={`chat-msg ${m.role}`}>
-            <span className="chat-role">
-              {m.role === "user" ? "You" : "Assistant"}
-            </span>
-            <div className="chat-content">
-              {m.role === "assistant" ? (
-                <ReactMarkdown>{m.content}</ReactMarkdown>
-              ) : (
-                m.content
-              )}
+        {messages.map((m, i) => {
+          const isThinking =
+            loading &&
+            i === messages.length - 1 &&
+            m.role === "assistant" &&
+            m.content === "";
+          return (
+            <div key={i} className={`chat-msg ${m.role}`}>
+              <span className="chat-role">
+                {m.role === "user" ? "You" : "Assistant"}
+              </span>
+              <div className={`chat-content${isThinking ? " typing" : ""}`}>
+                {isThinking ? (
+                  "Thinking…"
+                ) : m.role === "assistant" ? (
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                ) : (
+                  m.content
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="chat-msg assistant">
-            <span className="chat-role">Assistant</span>
-            <div className="chat-content typing">Thinking…</div>
-          </div>
-        )}
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
