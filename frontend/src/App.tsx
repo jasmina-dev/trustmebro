@@ -1,26 +1,34 @@
-import { useState } from 'react'
-import { Dashboard } from './components/Dashboard'
-import { Chatbot } from './components/Chatbot'
-import './App.css'
+// utilized github copilot
+
+import { useState } from "react";
+import { Dashboard } from "./components/Dashboard";
+import { Chatbot } from "./components/Chatbot";
+import "./App.css";
 
 const CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'politics', label: 'Politics' },
-  { id: 'economy', label: 'Economy' },
-  { id: 'entertainment', label: 'Entertainment' },
-  { id: 'science', label: 'Science' },
-] as const
+  { id: "all", label: "All" },
+  { id: "politics", label: "Politics" },
+  { id: "economy", label: "Economy" },
+  { id: "entertainment", label: "Entertainment" },
+  { id: "technology", label: "Technology" },
+  { id: "crypto", label: "Crypto" },
+  { id: "climate", label: "Climate" },
+  { id: "other", label: "Other" },
+] as const;
 
 export default function App() {
-  const [category, setCategory] = useState<string>('all')
-  const [chatOpen, setChatOpen] = useState(false)
+  const [category, setCategory] = useState<string>("all");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [dashboardContext, setDashboardContext] = useState<string | null>(null);
 
   return (
     <div className="app">
       <header className="header">
         <div className="header-inner">
           <h1 className="logo">TrustMeBro Analytics</h1>
-          <p className="tagline">Prediction markets dashboard & research assistant</p>
+          <p className="tagline">
+            Prediction markets dashboard & research assistant
+          </p>
         </div>
       </header>
 
@@ -29,7 +37,7 @@ export default function App() {
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
-              className={`filter-btn ${category === c.id ? 'active' : ''}`}
+              className={`filter-btn ${category === c.id ? "active" : ""}`}
               onClick={() => setCategory(c.id)}
             >
               {c.label}
@@ -39,25 +47,25 @@ export default function App() {
       </nav>
 
       <main className="main">
-        <Dashboard category={category} />
+        <Dashboard category={category} onContextChange={setDashboardContext} />
       </main>
 
       <div className="chat-toggle-wrap">
         <button
           className="chat-toggle"
           onClick={() => setChatOpen((o) => !o)}
-          aria-label={chatOpen ? 'Close chatbot' : 'Open chatbot'}
+          aria-label={chatOpen ? "Close chatbot" : "Open chatbot"}
         >
-          {chatOpen ? '✕' : '💬'} {chatOpen ? 'Close' : 'Ask AI'}
+          {chatOpen ? "✕" : "💬"} {chatOpen ? "Close" : "Ask AI"}
         </button>
       </div>
 
       {chatOpen && (
         <Chatbot
           onClose={() => setChatOpen(false)}
-          dashboardContext={null}
+          dashboardContext={dashboardContext}
         />
       )}
     </div>
-  )
+  );
 }
