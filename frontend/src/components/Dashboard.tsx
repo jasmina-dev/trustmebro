@@ -43,10 +43,11 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   const [events, setEvents] = useState<PolymarketEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [marketsAccordionOpen, setMarketsAccordionOpen] = useState(false);
   const [tradesRaw, setTradesRaw] = useState<TradesAnalytics | null>(null);
-  const [persistedSeries, setPersistedSeries] = useState<TradesAnalytics["byTime"]>(
-    () => loadTrimmedCashflowBuckets(),
-  );
+  const [persistedSeries, setPersistedSeries] = useState<
+    TradesAnalytics["byTime"]
+  >(() => loadTrimmedCashflowBuckets());
   const [tradesError, setTradesError] = useState<string | null>(null);
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [windowHours, setWindowHours] = useState<number>(24);
@@ -557,9 +558,28 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
           )}
         </section>
 
-        <section className="dashboard-section dashboard-section-full">
-          <h2>Events & markets</h2>
-          <MarketList events={filtered} />
+        <section className="dashboard-section dashboard-section-full accordion-section">
+          <button
+            type="button"
+            className="accordion-trigger"
+            onClick={() => setMarketsAccordionOpen((open) => !open)}
+            aria-expanded={marketsAccordionOpen}
+            aria-controls="events-markets-accordion"
+          >
+            <h2>Events & markets</h2>
+            <span
+              className={`accordion-chevron ${marketsAccordionOpen ? "open" : ""}`}
+              aria-hidden="true"
+            >
+              ▾
+            </span>
+          </button>
+          <div
+            id="events-markets-accordion"
+            className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
+          >
+            <MarketList events={filtered} />
+          </div>
         </section>
       </div>
     </div>

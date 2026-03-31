@@ -56,7 +56,7 @@ export default function App() {
           onClick={() => setChatOpen((o) => !o)}
           aria-label={chatOpen ? "Close chatbot" : "Open chatbot"}
         >
-          {chatOpen ? "✕" : "💬"} {chatOpen ? "Close" : "Ask AI"}
+          {chatOpen ? "Close" : "Ask AI"}
         </button>
       </div>
 
