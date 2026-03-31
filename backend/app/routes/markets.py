@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Set
 import requests
 from flask import current_app, jsonify, request
 
-from app.market_categories import tag_events, tag_markets
 from . import bp
 
 POLYMARKET_GAMMA = os.environ.get("POLYMARKET_GAMMA_URL", "https://gamma-api.polymarket.com")
@@ -241,7 +240,6 @@ def get_events():
         if isinstance(data, list):
             data = sorted(data, key=_event_volume_key, reverse=True)
             data = [e for e in data if not _is_sports_event(e or {})]
-            data = tag_events(data)
 
         return jsonify(data)
     except requests.RequestException as e:
