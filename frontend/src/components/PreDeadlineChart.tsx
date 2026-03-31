@@ -3,18 +3,36 @@ import {
   Pie,
   Cell,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts'
+import './PreDeadlineChart.css'
 import type { PreDeadlineWindow } from '../api/client'
 
 interface PreDeadlineChartProps {
   window: PreDeadlineWindow
   totalVolume: number
+  loading?: boolean
 }
 
 const COLORS = ['#f97316', '#e5e7eb']
 
-export function PreDeadlineChart({ window, totalVolume }: PreDeadlineChartProps) {
+export function PreDeadlineChart({
+  window,
+  totalVolume,
+  loading,
+}: PreDeadlineChartProps) {
+  if (loading) {
+    return (
+      <div
+        className="trend-chart trend-chart-loading chart-panel-skeleton"
+        style={{ minHeight: 220 }}
+        aria-busy="true"
+        aria-label="Loading pre-deadline chart"
+      />
+    )
+  }
+
   if (!totalVolume || totalVolume <= 0) {
     return (
       <div className="trend-chart empty">
@@ -31,15 +49,15 @@ export function PreDeadlineChart({ window, totalVolume }: PreDeadlineChartProps)
   ]
 
   return (
-    <div className="trend-chart">
-      <ResponsiveContainer width="100%" height={220}>
-        <PieChart>
+    <div className="trend-chart predeadline-chart">
+      <ResponsiveContainer width="100%" height={248}>
+        <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
           <Pie
             data={data}
             dataKey="value"
             nameKey="name"
             cx="50%"
-            cy="50%"
+            cy="46%"
             innerRadius={50}
             outerRadius={80}
             paddingAngle={2}
@@ -55,10 +73,22 @@ export function PreDeadlineChart({ window, totalVolume }: PreDeadlineChartProps)
               borderRadius: 'var(--radius)',
               color: 'var(--text)',
             }}
+            labelStyle={{ color: 'var(--text-muted)' }}
+            itemStyle={{ color: 'var(--text)' }}
             formatter={(value: number, name: string) => [
               `$${value.toLocaleString()}`,
               name,
             ]}
+          />
+          <Legend
+            verticalAlign="bottom"
+            layout="horizontal"
+            align="center"
+            wrapperStyle={{
+              color: 'var(--text)',
+              fontSize: '0.8rem',
+              paddingTop: 4,
+            }}
           />
         </PieChart>
       </ResponsiveContainer>

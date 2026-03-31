@@ -7,89 +7,152 @@ import {
   Legend,
   ResponsiveContainer,
   CartesianGrid,
-} from 'recharts'
-import type { TradesTimeBucket } from '../api/client'
+} from "recharts";
+import type { TradesTimeBucket } from "../api/client";
+import "./TradesTimeSeriesChart.css";
 
 interface TradesTimeSeriesChartProps {
-  data: TradesTimeBucket[]
+  data: TradesTimeBucket[];
   /**
    * Optional height in pixels for the chart area.
    * Defaults to 280 to preserve existing behavior.
    */
-  height?: number
+  height?: number;
+  loading?: boolean;
 }
+
+const TOOLTIP_STYLE = {
+  background: "var(--surface-hover)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius)",
+  color: "var(--text)",
+} as const;
 
 export function TradesTimeSeriesChart({
   data,
   height = 280,
+  loading,
 }: TradesTimeSeriesChartProps) {
+  if (loading) {
+    return (
+      <div
+        className="trend-chart trend-chart-loading chart-panel-skeleton"
+        style={{ minHeight: height }}
+        aria-busy="true"
+        aria-label="Loading chart"
+      />
+    );
+  }
+
   if (!data.length) {
     return (
       <div className="trend-chart empty">
         <p>No trade history available for this selection.</p>
       </div>
-    )
+    );
   }
 
   const chartData = data.map((bucket) => ({
     time: new Date(bucket.bucketStart).toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }),
     volume: bucket.volume,
     trades: bucket.tradeCount,
-  }))
+  }));
 
-  const denseAxis = chartData.length > 36
+  const denseAxis = chartData.length > 36;
 
   return (
-    <div className="trend-chart">
+    <div className="trend-chart trades-time-series-chart">
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+        <LineChart
+          data={chartData}
+          margin={{
+            top: 16,
+            right: 28,
+            left: 12,
+            bottom: denseAxis ? 48 : 40,
+          }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="time"
-            tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
             tickLine={false}
             minTickGap={denseAxis ? 28 : undefined}
             angle={denseAxis ? -32 : 0}
-            textAnchor={denseAxis ? 'end' : 'middle'}
-            height={denseAxis ? 52 : undefined}
+            textAnchor={denseAxis ? "end" : "middle"}
+            height={denseAxis ? 56 : 36}
+            label={{
+              value: "Time (bucket start, local)",
+              position: "insideBottom",
+              offset: denseAxis ? -2 : 2,
+              fill: "var(--text-muted)",
+              fontSize: 11,
+            }}
+            stroke="var(--border)"
           />
           <YAxis
             yAxisId="left"
-            tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+            width={56}
+            tick={{ fill: "#93c5fd", fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: 'var(--border)' }}
+            axisLine={{ stroke: "var(--border)" }}
             tickFormatter={(v) =>
-              v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}k` : `${v}`
+              v >= 1e6
+                ? `${(v / 1e6).toFixed(1)}M`
+                : v >= 1e3
+                  ? `${(v / 1e3).toFixed(0)}k`
+                  : `${v}`
             }
+            label={{
+              value: "Volume (USD)",
+              angle: -90,
+              position: "insideLeft",
+              offset: 2,
+              fill: "#93c5fd",
+              fontSize: 11,
+            }}
           />
           <YAxis
             yAxisId="right"
             orientation="right"
-            tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+            width={48}
+            tick={{ fill: "#fdba74", fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: 'var(--border)' }}
+            axisLine={{ stroke: "var(--border)" }}
+            label={{
+              value: "Trades (count)",
+              angle: 90,
+              position: "insideRight",
+              offset: 4,
+              fill: "#fdba74",
+              fontSize: 11,
+            }}
           />
           <Tooltip
-            contentStyle={{
-              background: 'var(--surface-hover)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              color: 'var(--text)',
-            }}
-            labelStyle={{ color: 'var(--text-muted)' }}
+            contentStyle={TOOLTIP_STYLE}
+            labelStyle={{ color: "var(--text-muted)" }}
+            itemStyle={{ color: "var(--text)" }}
             formatter={(value: number, name: string) => {
-              if (name === 'volume') {
-                return [`$${value.toLocaleString()}`, 'Volume']
+              if (String(name).includes("Volume")) {
+                return [`$${value.toLocaleString()}`, name];
               }
-              return [value.toLocaleString(), 'Trades']
+              return [value.toLocaleString(), name];
             }}
           />
-          <Legend />
+          <Legend
+            verticalAlign="top"
+            align="right"
+            iconType="line"
+            wrapperStyle={{
+              paddingBottom: 6,
+              color: "var(--text)",
+            }}
+          />
           <Line
             yAxisId="left"
             type="monotone"
@@ -97,7 +160,7 @@ export function TradesTimeSeriesChart({
             stroke="#3b82f6"
             strokeWidth={2}
             dot={false}
-            name="Volume"
+            name="Volume (USD)"
           />
           <Line
             yAxisId="right"
@@ -106,11 +169,10 @@ export function TradesTimeSeriesChart({
             stroke="#f97316"
             strokeWidth={1.5}
             dot={false}
-            name="Trades"
+            name="Trades (count)"
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
-  )
+  );
 }
-
