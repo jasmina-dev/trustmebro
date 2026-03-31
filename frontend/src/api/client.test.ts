@@ -1,4 +1,4 @@
-import { fetchEvents, fetchMarkets, fetchTradesAnalytics, sendChatMessage } from "./client";
+import { fetchEvents, fetchMarkets, fetchTradesAnalytics } from "./client";
 
 function jsonResponse(body: unknown, ok: boolean, status = 200) {
   return {
@@ -65,21 +65,4 @@ describe("api client", () => {
     });
   });
 
-  describe("sendChatMessage", () => {
-    it("returns reply on success", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(jsonResponse({ reply: "Hello" }, true)),
-      );
-      await expect(sendChatMessage("hi")).resolves.toEqual({ reply: "Hello" });
-    });
-
-    it("throws when not ok", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(jsonResponse({ error: "Bad" }, false, 400)),
-      );
-      await expect(sendChatMessage("x")).rejects.toThrow("Bad");
-    });
-  });
 });

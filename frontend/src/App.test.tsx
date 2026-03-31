@@ -32,9 +32,18 @@ vi.mock("./api/client", () => ({
   sendChatMessage: vi.fn(() => Promise.resolve({ reply: "ok" })),
 }));
 
+async function goToDashboard() {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: /open dashboard/i }));
+}
+
 describe("App", () => {
   it("renders header and default filter", async () => {
     render(<App />);
+    expect(
+      screen.getByRole("heading", { name: /don't trust the vibe/i })
+    ).toBeInTheDocument();
+    await goToDashboard();
     expect(screen.getByRole("heading", { name: /trustmebro analytics/i })).toBeInTheDocument();
     const allBtn = screen.getByRole("button", { name: /^All$/i });
     expect(allBtn).toHaveClass("active");
@@ -46,6 +55,7 @@ describe("App", () => {
   it("activates category filter when clicked", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await goToDashboard();
     await waitFor(() => {
       expect(screen.queryByText(/loading market data/i)).not.toBeInTheDocument();
     });
@@ -58,6 +68,7 @@ describe("App", () => {
   it("opens and closes chatbot panel", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await goToDashboard();
     await waitFor(() => {
       expect(screen.queryByText(/loading market data/i)).not.toBeInTheDocument();
     });

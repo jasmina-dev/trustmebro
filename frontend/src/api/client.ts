@@ -165,6 +165,8 @@ export interface PolymarketEvent {
   markets?: PolymarketMarket[];
   groupItemTitle?: string;
   category?: string;
+  /** TrustMeBro / Gamma tag-derived categories for filtering */
+  tmCategories?: string[];
 }
 
 export interface PolymarketMarket {
@@ -181,4 +183,5 @@ export interface PolymarketMarket {
   marketSlug?: string;
   groupItemTitle?: string;
   category?: string;
+  tmCategories?: string[];
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { Chatbot } from "./components/Chatbot";
+import { LandingPage } from "./components/LandingPage";
 import "./App.css";
 
 const CATEGORIES = [
@@ -17,17 +18,30 @@ const CATEGORIES = [
 ] as const;
 
 export default function App() {
+  const [showDashboard, setShowDashboard] = useState(false);
   const [category, setCategory] = useState<string>("all");
   const [chatOpen, setChatOpen] = useState(false);
   const [dashboardContext, setDashboardContext] = useState<string | null>(null);
+
+  if (!showDashboard) {
+    return (
+      <LandingPage onEnterDashboard={() => setShowDashboard(true)} />
+    );
+  }
 
   return (
     <div className="app">
       <header className="header">
         <div className="header-inner">
-          <h1 className="logo">TrustMeBro Analytics</h1>
-          <p className="tagline">
-            Prediction markets dashboard & research assistant
+          <div className="header-brand">
+            <h1 className="logo">TrustMeBro Analytics</h1>
+            <p className="tagline">
+              Prediction markets dashboard & research assistant
+            </p>
+          </div>
+          <p className="header-mission">
+            Streaming prediction market activity into a single view of crowd
+            expectations, momentum, and structural inefficiencies.
           </p>
         </div>
       </header>

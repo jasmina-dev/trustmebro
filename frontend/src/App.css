@@ -13,6 +13,15 @@
 .header-inner {
   max-width: 1400px;
   margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem 1.75rem;
+}
+
+.header-brand {
+  flex: 0 1 auto;
+  min-width: min(100%, 14rem);
 }
 
 .logo {
@@ -28,6 +37,17 @@
   color: var(--text-muted);
 }
 
+.header-mission {
+  margin: 0;
+  flex: 1 1 18rem;
+  min-width: min(100%, 16rem);
+  max-width: 40rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  padding-top: 0.15rem;
+}
+
 .filters {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
@@ -40,6 +60,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .filter-btn {
@@ -50,6 +71,7 @@
   color: var(--text);
   font-size: 0.875rem;
   font-weight: 500;
+  flex: 0 1 auto;
 }
 
 .filter-btn:hover {
@@ -92,6 +114,13 @@
   background: var(--accent-hover);
 }
 
+@media (max-width: 1023px) {
+  .main {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 @media (max-width: 640px) {
   .header,
   .filters,
@@ -101,5 +130,10 @@
   }
   .logo {
     font-size: 1.25rem;
+  }
+
+  .header-mission {
+    max-width: none;
+    padding-top: 0;
   }
 }

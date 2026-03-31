@@ -1,6 +1,6 @@
 // utilized github copilot
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   fetchEvents,
   fetchMarkets,
@@ -10,11 +10,12 @@ import {
   type TradesAnalytics,
 } from "../api/client";
 import { MarketList } from "./MarketList";
-import { TrendChart } from "./TrendChart";
-// import { ProbabilityHistogram } from "./ProbabilityHistogram";
+import { TrendChart, type TrendChartRow } from "./TrendChart";
 import { TradesTimeSeriesChart } from "./TradesTimeSeriesChart";
-import { WhaleTradersChart } from "./WhaleTradersChart";
 import { PreDeadlineChart } from "./PreDeadlineChart";
+import { WhaleAddressesPanel } from "./WhaleAddressesPanel";
+import { SuspicionSignalLegend } from "./SuspicionSignalLegend";
+import { computeEventSuspicion } from "./suspicion";
 import {
   loadTrimmedCashflowBuckets,
   saveStoredBuckets,
@@ -28,6 +29,8 @@ import {
 } from "../lib/demoCashflowStore";
 import "./Dashboard.css";
 
+const ONBOARDING_DISMISSED_KEY = "trustmebro:dashboard:onboarding-dismissed:v1";
+
 interface DashboardProps {
   category: string;
   onContextChange?: (ctx: string) => void;
@@ -39,18 +42,80 @@ const CASHFLOW_WINDOWS = [
   { label: "7D", hours: CASHFLOW_PERSIST_LOOKBACK_HOURS },
 ] as const;
 
+function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <section
+      className="dashboard-onboarding"
+      aria-label="Dashboard introduction"
+    >
+      <div className="dashboard-onboarding-inner">
+        <div className="dashboard-onboarding-copy">
+          <p className="dashboard-onboarding-title">How to use this view</p>
+          <ul className="dashboard-onboarding-list">
+            <li>
+              This dashboard pulls Polymarket volume, whale concentration, and
+              late-window activity into one research surface.
+            </li>
+            <li>
+              &quot;Insider trading signals&quot; here means statistical red
+              flags—not evidence of wrongdoing.
+            </li>
+            <li>
+              Pick a trending bar to focus charts and the event list; open deep
+              analysis when you want raw whales and timing detail.
+            </li>
+          </ul>
+        </div>
+        <button
+          type="button"
+          className="dashboard-onboarding-dismiss"
+          onClick={onDismiss}
+        >
+          Dismiss
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function Dashboard({ category, onContextChange }: DashboardProps) {
   const [events, setEvents] = useState<PolymarketEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [marketsAccordionOpen, setMarketsAccordionOpen] = useState(false);
-  const [tradesRaw, setTradesRaw] = useState<TradesAnalytics | null>(null);
+  const [globalTradesRaw, setGlobalTradesRaw] = useState<TradesAnalytics | null>(
+    null,
+  );
   const [persistedSeries, setPersistedSeries] = useState<
     TradesAnalytics["byTime"]
   >(() => loadTrimmedCashflowBuckets());
   const [tradesError, setTradesError] = useState<string | null>(null);
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [windowHours, setWindowHours] = useState<number>(24);
+  const [onboardingVisible, setOnboardingVisible] = useState(() => {
+    try {
+      return !localStorage.getItem(ONBOARDING_DISMISSED_KEY);
+    } catch {
+      return true;
+    }
+  });
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
+  const [focusedTradesRaw, setFocusedTradesRaw] =
+    useState<TradesAnalytics | null>(null);
+  const [focusedTradesLoading, setFocusedTradesLoading] = useState(false);
+  const [focusedTradesError, setFocusedTradesError] = useState<string | null>(
+    null,
+  );
+  const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
+  const [whaleAccordionOpen, setWhaleAccordionOpen] = useState(false);
+
+  const dismissOnboarding = useCallback(() => {
+    try {
+      localStorage.setItem(ONBOARDING_DISMISSED_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    setOnboardingVisible(false);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -82,7 +147,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
     })
       .then((res) => {
-        setTradesRaw(res.analytics);
+        setGlobalTradesRaw(res.analytics);
         setTradesError(null);
         setPersistedSeries((prev) => {
           let merged = trimBucketsToLookback(
@@ -98,7 +163,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       })
       .catch((err) => {
         setTradesError(err.message ?? "Failed to load trades analytics");
-        setTradesRaw(null);
+        setGlobalTradesRaw(null);
         setPersistedSeries((prev) => {
           const fromLs = prev.length ? prev : loadTrimmedCashflowBuckets();
           let merged = fromLs;
@@ -110,6 +175,39 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         });
       });
   }, []);
+
+  useEffect(() => {
+    if (!focusedEventId) {
+      setFocusedTradesRaw(null);
+      setFocusedTradesError(null);
+      setFocusedTradesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setFocusedTradesLoading(true);
+    setFocusedTradesError(null);
+    fetchTradesAnalytics({
+      eventId: focusedEventId,
+      windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
+    })
+      .then((res) => {
+        if (!cancelled) setFocusedTradesRaw(res.analytics);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setFocusedTradesError(
+            err.message ?? "Failed to load trades for this event",
+          );
+          setFocusedTradesRaw(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFocusedTradesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [focusedEventId]);
 
   function extractYesPrice(
     market: PolymarketMarket | undefined,
@@ -223,15 +321,130 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   }, [windowHours]);
 
   const displayAnalytics = useMemo(() => {
-    if (tradesRaw === null && persistedSeries.length === 0) return null;
-    if (tradesRaw) {
-      return applyWindowToAnalytics(tradesRaw, persistedSeries, windowHours);
+    if (focusedEventId) {
+      if (focusedTradesLoading) return null;
+      if (focusedTradesError) return null;
+      if (!focusedTradesRaw) return null;
+      return applyWindowToAnalytics(
+        focusedTradesRaw,
+        focusedTradesRaw.byTime,
+        windowHours,
+      );
+    }
+
+    if (globalTradesRaw === null && persistedSeries.length === 0) return null;
+    if (globalTradesRaw) {
+      return applyWindowToAnalytics(
+        globalTradesRaw,
+        persistedSeries,
+        windowHours,
+      );
     }
     const dense = densifyHourlyWindow(persistedSeries, windowHours);
     return buildMinimalAnalytics(dense, windowHours);
-  }, [tradesRaw, persistedSeries, windowHours]);
+  }, [
+    focusedEventId,
+    focusedTradesLoading,
+    focusedTradesError,
+    focusedTradesRaw,
+    globalTradesRaw,
+    persistedSeries,
+    windowHours,
+  ]);
+
+  const globalTradesPending =
+    globalTradesRaw === null && tradesError === null && !focusedEventId;
+
+  const cashFlowChartLoading =
+    Boolean(focusedEventId) && focusedTradesLoading;
+
+  const trendChartLoading =
+    globalTradesPending && persistedSeries.length === 0;
+
+  const eventsForList = useMemo(() => {
+    if (!focusedEventId) return filtered;
+    return filtered.filter((e) => e.id === focusedEventId);
+  }, [filtered, focusedEventId]);
+
+  const highVolumeEventIds = useMemo(
+    () => new Set(analytics.highVolumeEvents.map((e) => e.id)),
+    [analytics.highVolumeEvents],
+  );
+
+  const inconsistentTitles = useMemo(
+    () => new Set(analytics.inconsistentEvents),
+    [analytics.inconsistentEvents],
+  );
+
+  const trendingChartData: TrendChartRow[] = useMemo(() => {
+    const sorted = filtered
+      .map((e) => ({
+        event: e,
+        volume:
+          e.markets?.reduce(
+            (s, m) => s + (m.volumeNum ?? m.volume ?? 0),
+            0,
+          ) ?? 0,
+      }))
+      .filter((x) => x.volume > 0)
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 10);
+
+    return sorted.map((x, rank) => {
+      const title = x.event.title ?? "Untitled";
+      const short =
+        title.slice(0, 24) + (title.length > 24 ? "…" : "");
+      return {
+        eventId: x.event.id,
+        name: short,
+        volume: x.volume,
+        suspicion: computeEventSuspicion(x.event, {
+          highVolumeEventIds,
+          inconsistentTitles,
+          trades: globalTradesRaw,
+          chartVolumeRank: rank,
+          totalChartBars: sorted.length,
+        }),
+      };
+    });
+  }, [
+    filtered,
+    highVolumeEventIds,
+    inconsistentTitles,
+    globalTradesRaw,
+  ]);
+
+  const handleTrendBarClick = useCallback((eventId: string) => {
+    setFocusedEventId((prev) => (prev === eventId ? null : eventId));
+  }, []);
+
+  const clearFocus = useCallback(() => setFocusedEventId(null), []);
 
   const heroHeadlines = useMemo(() => {
+    if (focusedEventId) {
+      const ev = filtered.find((e) => e.id === focusedEventId);
+      if (ev) {
+        const volume =
+          ev.markets?.reduce(
+            (s, m) => s + (m.volumeNum ?? (m.volume as number | undefined) ?? 0),
+            0,
+          ) ?? 0;
+        const metaParts: string[] = [];
+        if (ev.category) metaParts.push(ev.category);
+        if (volume > 0) metaParts.push(`$${volume.toLocaleString()} volume`);
+        metaParts.push("Focused from trending");
+        return [
+          {
+            title:
+              ev.title && ev.title.length > 100
+                ? `${ev.title.slice(0, 100)}…`
+                : (ev.title ?? "Untitled market event"),
+            meta: metaParts.join(" • "),
+          },
+        ];
+      }
+    }
+
     const headlines: { title: string; meta?: string }[] = [];
 
     for (const event of filtered.slice(0, 6)) {
@@ -271,12 +484,16 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return headlines;
-  }, [filtered, displayAnalytics]);
+  }, [filtered, displayAnalytics, focusedEventId]);
 
   const contextString = useMemo(() => {
     const lines: string[] = [];
     lines.push(`Active filter: ${category}`);
     lines.push(`Events loaded: ${filtered.length}`);
+    if (focusedEventId) {
+      const t = filtered.find((e) => e.id === focusedEventId)?.title;
+      lines.push(`Focused event: ${t ?? focusedEventId}`);
+    }
 
     const topEvents = filtered
       .map((e) => ({
@@ -332,21 +549,25 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return lines.join("\n");
-  }, [category, filtered, analytics, displayAnalytics, cashflowWindowLabel]);
+  }, [category, filtered, analytics, displayAnalytics, cashflowWindowLabel, focusedEventId]);
 
   useEffect(() => {
     if (!loading) onContextChange?.(contextString);
   }, [contextString, loading, onContextChange]);
 
   useEffect(() => {
-    if (!heroHeadlines.length) return;
+    if (!heroHeadlines.length || focusedEventId) return;
 
     const id = window.setInterval(() => {
       setHeadlineIndex((i) => (i + 1) % heroHeadlines.length);
     }, 6000);
 
     return () => window.clearInterval(id);
-  }, [heroHeadlines, heroHeadlines.length]);
+  }, [heroHeadlines, heroHeadlines.length, focusedEventId]);
+
+  useEffect(() => {
+    setHeadlineIndex(0);
+  }, [focusedEventId]);
 
   if (loading) {
     return (
@@ -365,22 +586,27 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     );
   }
 
-  const chartData = filtered
-    .slice(0, 10)
-    .map((e) => ({
-      name: e.title.slice(0, 24) + (e.title.length > 24 ? "…" : ""),
-      volume:
-        e.markets?.reduce((s, m) => s + (m.volumeNum ?? m.volume ?? 0), 0) ?? 0,
-    }))
-    .filter((d) => d.volume > 0)
-    .sort((a, b) => b.volume - a.volume);
-
   const activeHeadline = heroHeadlines[headlineIndex] ?? heroHeadlines[0];
+
+  const focusedTitle = focusedEventId
+    ? filtered.find((e) => e.id === focusedEventId)?.title
+    : null;
 
   return (
     <div className="dashboard">
-      <section className="dashboard-hero">
-        <div className="hero-left">
+      {onboardingVisible && (
+        <DashboardOnboardingBanner onDismiss={dismissOnboarding} />
+      )}
+
+      <section
+        className="dashboard-markets-today dashboard-hero-spotlight"
+        aria-labelledby="markets-today-heading"
+      >
+        <div className="dashboard-markets-today-inner">
+          <p className="dashboard-hero-eyebrow">Primary spotlight</p>
+          <h2 id="markets-today-heading" className="markets-today-title">
+            Markets Today
+          </h2>
           <div className="hero-kicker-row">
             <span className="hero-pill">Real-time</span>
             <span className="hero-label">News &amp; Sentiment</span>
@@ -390,169 +616,296 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
               key={`${headlineIndex}-${activeHeadline?.title ?? "headline"}`}
               className="hero-headline"
             >
-              <h2 className="hero-heading">{activeHeadline?.title}</h2>
+              <h3 className="hero-heading">{activeHeadline?.title}</h3>
               {activeHeadline?.meta && (
                 <p className="hero-meta">{activeHeadline.meta}</p>
               )}
             </div>
           </div>
-          <p className="hero-copy">
-            Streaming prediction market activity into a single view of crowd
-            expectations, momentum, and structural inefficiencies.
-          </p>
         </div>
+      </section>
 
-        <div className="hero-right">
-          <div className="hero-chart-card">
-            <div className="hero-chart-header">
-              <span className="hero-chart-title">Cash flow over time</span>
-              <span className="hero-chart-subtitle">
-                Recent Polymarket bets · {cashflowWindowLabel}
+      <section
+        className="dashboard-section dashboard-trending-nav"
+        aria-labelledby="trending-heading"
+      >
+        <div className="dashboard-section-header-row">
+          <div>
+            <h2 id="trending-heading" className="dashboard-trending-title">
+              Trending markets
+            </h2>
+            <p className="dashboard-trending-sub">
+              Top events by volume · suspicion signal on each bar · click to
+              focus the rest of the dashboard
+            </p>
+          </div>
+          {focusedEventId && (
+            <div className="dashboard-focus-chip-wrap">
+              <span className="dashboard-focus-chip-label">Focused:</span>
+              <span className="dashboard-focus-chip-title" title={focusedTitle ?? ""}>
+                {focusedTitle && focusedTitle.length > 40
+                  ? `${focusedTitle.slice(0, 40)}…`
+                  : (focusedTitle ?? focusedEventId)}
               </span>
+              <button
+                type="button"
+                className="dashboard-focus-clear"
+                onClick={clearFocus}
+              >
+                Clear
+              </button>
             </div>
-            <div
-              className="hero-range-toggle"
-              role="tablist"
-              aria-label="Cash flow time window"
+          )}
+        </div>
+        <TrendChart
+          data={trendingChartData}
+          height={300}
+          selectedEventId={focusedEventId}
+          onBarClick={handleTrendBarClick}
+          loading={trendChartLoading}
+        />
+      </section>
+
+      <section
+        className="dashboard-section dashboard-section-full dashboard-panel-secondary dashboard-cashflow-section"
+        aria-labelledby="cashflow-section-heading"
+      >
+        <h2 id="cashflow-section-heading" className="dashboard-secondary-h2">
+          Cash flow over time
+        </h2>
+        <p className="dashboard-cashflow-lede">
+          Secondary read on Polymarket bets · {cashflowWindowLabel}
+          {focusedEventId ? " · scoped to focused event" : ""}
+        </p>
+        <div
+          className="cashflow-range-toggle"
+          role="tablist"
+          aria-label="Cash flow time window"
+        >
+          {CASHFLOW_WINDOWS.map((opt) => (
+            <button
+              key={opt.hours}
+              type="button"
+              className={`cashflow-range-chip ${
+                windowHours === opt.hours ? "active" : ""
+              }`}
+              onClick={() => setWindowHours(opt.hours)}
             >
-              {CASHFLOW_WINDOWS.map((opt) => (
-                <button
-                  key={opt.hours}
-                  type="button"
-                  className={`hero-range-chip ${
-                    windowHours === opt.hours ? "active" : ""
-                  }`}
-                  onClick={() => setWindowHours(opt.hours)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {tradesError && (
+          <p className="hint">
+            Live trades API unavailable ({tradesError}). Chart uses locally
+            saved hourly buckets or a demo series.
+          </p>
+        )}
+        {focusedTradesError && (
+          <p className="hint">
+            Could not load trades for the focused event ({focusedTradesError}
+            ). Try another bar or Clear.
+          </p>
+        )}
+        {cashFlowChartLoading || globalTradesPending ? (
+          <TradesTimeSeriesChart data={[]} loading height={320} />
+        ) : displayAnalytics ? (
+          <TradesTimeSeriesChart
+            data={displayAnalytics.byTime}
+            height={320}
+          />
+        ) : (
+          <TradesTimeSeriesChart data={[]} height={320} />
+        )}
+        <SuspicionSignalLegend />
+      </section>
+
+      <section className="dashboard-section dashboard-section-full dashboard-panel-secondary">
+        <h2 className="dashboard-secondary-h2">Events &amp; markets</h2>
+        <p className="dashboard-cashflow-lede">
+          {focusedEventId
+            ? "Showing the focused event only. Clear focus to see the full list."
+            : "Browse events matching your category filter."}
+        </p>
+        <MarketList events={eventsForList} />
+      </section>
+
+      <section className="dashboard-section dashboard-section-full dashboard-deep-section">
+        <button
+          type="button"
+          className="dashboard-deep-toggle"
+          aria-expanded={showDeepAnalysis}
+          onClick={() => setShowDeepAnalysis((o) => !o)}
+        >
+          <span>
+            {showDeepAnalysis ? "Hide deep analysis" : "Show deep analysis"}
+          </span>
+          <span className="dashboard-deep-chevron" aria-hidden>
+            {showDeepAnalysis ? "▴" : "▾"}
+          </span>
+        </button>
+        <p className="dashboard-deep-lede hint">
+          Expert-level: duplicate time series, whale addresses (accordion),
+          pre-deadline split, and headline stats for the current scope (
+          {cashflowWindowLabel}).
+        </p>
+
+        {showDeepAnalysis && (
+          <div className="dashboard-deep-panels">
+            <h2 className="dashboard-deep-heading">
+              Trading activity &amp; whales ({cashflowWindowLabel})
+            </h2>
             {tradesError && (
               <p className="hint">
-                Live trades API unavailable ({tradesError}). Chart uses locally
-                saved hourly buckets or a demo series.
+                Trades analytics unavailable: {tradesError}
               </p>
             )}
-            {!displayAnalytics && !tradesError && (
-              <p className="hint">Loading cash flow in recent bets…</p>
+            {focusedTradesError && (
+              <p className="hint">{focusedTradesError}</p>
             )}
-            {displayAnalytics && (
-              <TradesTimeSeriesChart
-                data={displayAnalytics.byTime}
-                height={320}
-              />
-            )}
-          </div>
-        </div>
-      </section>
 
-      <section className="dashboard-section dashboard-section-full">
-        <h2>Trending markets (top events by volume)</h2>
-        <TrendChart data={chartData} />
-      </section>
-
-      <div className="dashboard-body-grid">
-        {/* Probability distribution & anomalies (temporarily disabled)
-        <section className="dashboard-section dashboard-section-wide">
-          <h2>Probability distribution & anomalies</h2>
-          <div className="analytics-grid">
-            <div className="analytics-panel">
-              <ProbabilityHistogram data={analytics.histogramData} />
-            </div>
-            <div className="analytics-panel analytics-summary">
-              <p>
-                <strong>Extreme markets (≥90% or ≤10%):</strong>{" "}
-                {analytics.extremeCount} / {analytics.totalMarkets || 0}
-              </p>
-              {analytics.highVolumeEvents.length > 0 && (
+            <div
+              className="dashboard-deep-stats"
+              aria-label="Aggregate trades metrics for this scope"
+            >
+              {displayAnalytics &&
+              !(cashFlowChartLoading || globalTradesPending) ? (
                 <>
-                  <p>
-                    <strong>Unusually high-volume events (z ≥ 2):</strong>
-                  </p>
-                  <ul>
-                    {analytics.highVolumeEvents.map((ev) => (
-                      <li key={ev.id}>
-                        {ev.title.length > 80
-                          ? `${ev.title.slice(0, 80)}…`
-                          : ev.title}{" "}
-                        — ${ev.volume.toLocaleString()}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="dashboard-deep-stat">
+                    <p className="dashboard-deep-stat-value">
+                      {displayAnalytics.totalTrades.toLocaleString()}
+                    </p>
+                    <p className="dashboard-deep-stat-label">
+                      Total trades analyzed
+                    </p>
+                  </div>
+                  <div className="dashboard-deep-stat">
+                    <p className="dashboard-deep-stat-value">
+                      $
+                      {displayAnalytics.totalVolume.toLocaleString(undefined, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="dashboard-deep-stat-label">
+                      Total volume (USD)
+                    </p>
+                  </div>
+                  <div className="dashboard-deep-stat">
+                    <p className="dashboard-deep-stat-value">
+                      {displayAnalytics.uniqueTraders.toLocaleString()}
+                    </p>
+                    <p className="dashboard-deep-stat-label">Unique traders</p>
+                  </div>
+                  <div className="dashboard-deep-stat">
+                    <p className="dashboard-deep-stat-value">
+                      {displayAnalytics.uniqueMarkets.toLocaleString()}
+                    </p>
+                    <p className="dashboard-deep-stat-label">Unique markets</p>
+                  </div>
                 </>
-              )}
-              {analytics.inconsistentEvents.length > 0 && (
+              ) : cashFlowChartLoading || globalTradesPending ? (
                 <>
-                  <p>
-                    <strong>
-                      Potentially inconsistent related markets (heuristic):
-                    </strong>
-                  </p>
-                  <ul>
-                    {analytics.inconsistentEvents.slice(0, 5).map((title) => (
-                      <li key={title}>{title}</li>
-                    ))}
-                  </ul>
-                  <p className="hint">
-                    Based on multiple markets within the same event whose
-                    implied probabilities sum above 150%. This highlights
-                    candidates for manual review of economic vs election
-                    outcomes.
-                  </p>
+                  {[0, 1, 2, 3].map((k) => (
+                    <div key={k} className="dashboard-deep-stat-skeleton" />
+                  ))}
                 </>
+              ) : (
+                <p className="hint dashboard-deep-stats-empty">
+                  No aggregate stats for this scope yet.
+                </p>
               )}
             </div>
-          </div>
-        </section>
-        */}
 
-        <section className="dashboard-section dashboard-section-full">
-          <h2>Trading activity & whales ({cashflowWindowLabel})</h2>
-          {tradesError && (
-            <p className="hint">Trades analytics unavailable: {tradesError}</p>
-          )}
-          {!displayAnalytics && !tradesError && (
-            <p className="hint">Loading trades analytics…</p>
-          )}
-          {displayAnalytics && (
-            <div className="trading-activity-grid">
+            <div className="trading-activity-grid trading-activity-grid-deep">
               <div className="analytics-panel">
                 <h3 className="analytics-subtitle">
                   Incremental trading patterns
                 </h3>
-                <TradesTimeSeriesChart data={displayAnalytics.byTime} />
+                {cashFlowChartLoading || globalTradesPending ? (
+                  <TradesTimeSeriesChart data={[]} loading />
+                ) : displayAnalytics ? (
+                  <TradesTimeSeriesChart data={displayAnalytics.byTime} />
+                ) : (
+                  <TradesTimeSeriesChart data={[]} />
+                )}
               </div>
-              <div className="analytics-panel">
-                <h3 className="analytics-subtitle">Whale addresses</h3>
-                <WhaleTradersChart data={displayAnalytics.whaleTraders} />
+              <div className="analytics-panel dashboard-deep-whale-accordion-wrap">
+                <div className="dashboard-deep-accordion">
+                  <button
+                    type="button"
+                    className="dashboard-deep-accordion-trigger"
+                    aria-expanded={whaleAccordionOpen}
+                    id="deep-whale-accordion-trigger"
+                    aria-controls="deep-whale-accordion-panel"
+                    onClick={() => setWhaleAccordionOpen((o) => !o)}
+                  >
+                    <span className="dashboard-deep-accordion-title">
+                      Whale addresses
+                    </span>
+                    <span className="dashboard-deep-accordion-chevron" aria-hidden>
+                      {whaleAccordionOpen ? "▴" : "▾"}
+                    </span>
+                  </button>
+                  {whaleAccordionOpen && (
+                    <div
+                      id="deep-whale-accordion-panel"
+                      role="region"
+                      aria-labelledby="deep-whale-accordion-trigger"
+                      className="dashboard-deep-accordion-panel"
+                    >
+                      {cashFlowChartLoading || globalTradesPending ? (
+                        <div
+                          className="chart-panel-skeleton trend-chart-loading"
+                          style={{ minHeight: 200 }}
+                          aria-busy="true"
+                        />
+                      ) : displayAnalytics ? (
+                        <WhaleAddressesPanel
+                          data={displayAnalytics.whaleTraders}
+                        />
+                      ) : (
+                        <WhaleAddressesPanel data={[]} />
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="analytics-panel">
                 <h3 className="analytics-subtitle">
                   Pre-deadline volume spike
                 </h3>
-                <PreDeadlineChart
-                  window={displayAnalytics.preDeadlineWindow}
-                  totalVolume={displayAnalytics.totalVolume}
-                />
-              </div>
-              <div className="analytics-panel analytics-summary">
-                <p>
-                  <strong>Total trades analyzed:</strong>{" "}
-                  {displayAnalytics.totalTrades.toLocaleString()}
-                </p>
-                <p>
-                  <strong>Total volume (USD):</strong>{" "}
-                  {`$${displayAnalytics.totalVolume.toLocaleString()}`}
-                </p>
-                <p>
-                  <strong>Unique traders:</strong>{" "}
-                  {displayAnalytics.uniqueTraders.toLocaleString()}
-                </p>
-                <p>
-                  <strong>Unique markets:</strong>{" "}
-                  {displayAnalytics.uniqueMarkets.toLocaleString()}
-                </p>
+                {cashFlowChartLoading || globalTradesPending ? (
+                  <PreDeadlineChart
+                    window={{
+                      windowHours: windowHours,
+                      windowStart: "",
+                      windowEnd: "",
+                      volume: 0,
+                      tradeCount: 0,
+                      shareOfTotalVolume: 0,
+                    }}
+                    totalVolume={1}
+                    loading
+                  />
+                ) : displayAnalytics ? (
+                  <PreDeadlineChart
+                    window={displayAnalytics.preDeadlineWindow}
+                    totalVolume={displayAnalytics.totalVolume}
+                  />
+                ) : (
+                  <PreDeadlineChart
+                    window={{
+                      windowHours: windowHours,
+                      windowStart: "",
+                      windowEnd: "",
+                      volume: 0,
+                      tradeCount: 0,
+                      shareOfTotalVolume: 0,
+                    }}
+                    totalVolume={0}
+                  />
+                )}
               </div>
             </div>
           )}
