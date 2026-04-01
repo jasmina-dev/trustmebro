@@ -721,7 +721,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
             aria-labelledby="rotating-markets-heading"
           >
             <p className="dashboard-hero-eyebrow">Rotating markets</p>
-            <h3 id="rotating-markets-heading" className="dashboard-hero-subtitle">
+            <h3
+              id="rotating-markets-heading"
+              className="dashboard-hero-subtitle"
+            >
               Live Polymarket spotlight
             </h3>
             <div className="hero-kicker-row hero-kicker-row-markets">
@@ -873,8 +876,11 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
           <span>
             {showDeepAnalysis ? "Hide deep analysis" : "Show deep analysis"}
           </span>
-          <span className="dashboard-deep-chevron" aria-hidden>
-            {showDeepAnalysis ? "▴" : "▾"}
+          <span
+            className={`accordion-chevron ${showDeepAnalysis ? "open" : ""}`}
+            aria-hidden="true"
+          >
+            ▾
           </span>
         </button>
         <p className="dashboard-deep-lede hint">
