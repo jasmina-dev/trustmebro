@@ -1,0 +1,3 @@
+# Scheduled / cron HTTP invokes often omit a user JWT; disable JWT verification and
+# protect with SYNC_CRON_SECRET + x-sync-secret (see index.ts) if you expose the URL.
+verify_jwt = false
