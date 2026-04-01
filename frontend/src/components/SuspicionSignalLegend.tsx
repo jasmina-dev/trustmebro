@@ -1,19 +1,14 @@
 import { SUSPICION_SIGNAL_DISCLAIMER } from "./suspicion";
 import "./SuspicionSignalLegend.css";
 
-/**
- * Key for 🔴/🟡/🟢 labels on trending bars; placed near cash flow so the line-chart
- * legend (volume vs trades) and suspicion methodology sit in one analysis column.
- */
+/** Key for 🔴/🟡/🟢 labels on each trending bar (sits directly under the bar chart). */
 export function SuspicionSignalLegend() {
   return (
     <div
       className="suspicion-signal-legend"
       aria-label="Suspicion signal levels for trending market bars"
     >
-      <p className="suspicion-signal-legend-title">
-        Suspicion signals (trending bars above)
-      </p>
+      <p className="suspicion-signal-legend-title">Suspicion signal key</p>
       <ul className="suspicion-signal-legend-items">
         <li>
           <span className="suspicion-signal-legend-pill suspicion-signal-high">

@@ -31,6 +31,26 @@ import "./Dashboard.css";
 
 const ONBOARDING_DISMISSED_KEY = "trustmebro:dashboard:onboarding-dismissed:v1";
 
+/** Placeholder wire copy; not live wire headlines. */
+const DEMO_NEWS_HEADLINES: { source: "NYT" | "WSJ"; text: string }[] = [
+  {
+    source: "NYT",
+    text: "Fed officials signal patience on rate cuts as inflation readings stay sticky.",
+  },
+  {
+    source: "WSJ",
+    text: "Big tech races to lock in AI chip supply ahead of renewed tariff talks.",
+  },
+  {
+    source: "NYT",
+    text: "Global climate summit ends with incremental pledges on methane and coal.",
+  },
+  {
+    source: "WSJ",
+    text: "Oil climbs as traders weigh Red Sea disruptions and OPEC spare capacity.",
+  },
+];
+
 interface DashboardProps {
   category: string;
   onContextChange?: (ctx: string) => void;
@@ -600,25 +620,55 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         className="dashboard-markets-today dashboard-hero-spotlight"
         aria-labelledby="markets-today-heading"
       >
-        <div className="dashboard-markets-today-inner">
-          <p className="dashboard-hero-eyebrow">Primary spotlight</p>
-          <h2 id="markets-today-heading" className="markets-today-title">
-            Markets Today
-          </h2>
-          <div className="hero-kicker-row">
-            <span className="hero-pill">Real-time</span>
-            <span className="hero-label">News &amp; Sentiment</span>
-          </div>
-          <div className="hero-headline-shell">
-            <div
-              key={`${headlineIndex}-${activeHeadline?.title ?? "headline"}`}
-              className="hero-headline"
-            >
-              <h3 className="hero-heading">{activeHeadline?.title}</h3>
-              {activeHeadline?.meta && (
-                <p className="hero-meta">{activeHeadline.meta}</p>
-              )}
+        <div className="dashboard-markets-today-split">
+          <div
+            className="dashboard-hero-panel dashboard-hero-rotating-markets"
+            aria-labelledby="rotating-markets-heading"
+          >
+            <p className="dashboard-hero-eyebrow">Rotating markets</p>
+            <h3 id="rotating-markets-heading" className="dashboard-hero-subtitle">
+              Live Polymarket spotlight
+            </h3>
+            <div className="hero-kicker-row hero-kicker-row-markets">
+              <span className="hero-pill">Live</span>
+              <span className="hero-label">Top events by activity</span>
             </div>
+            <div className="hero-headline-shell">
+              <div
+                key={`${headlineIndex}-${activeHeadline?.title ?? "headline"}`}
+                className="hero-headline"
+              >
+                <h4 className="hero-heading">{activeHeadline?.title}</h4>
+                {activeHeadline?.meta && (
+                  <p className="hero-meta">{activeHeadline.meta}</p>
+                )}
+              </div>
+            </div>
+          </div>
+          <div
+            className="dashboard-hero-panel dashboard-hero-news-sentiment"
+            aria-labelledby="news-sentiment-heading"
+          >
+            <p className="dashboard-hero-eyebrow">Real-time</p>
+            <h3 id="news-sentiment-heading" className="dashboard-hero-subtitle">
+              News &amp; sentiment
+            </h3>
+            <div className="hero-kicker-row hero-kicker-row-news">
+              <span className="hero-pill hero-pill-news">Wire</span>
+              <span className="hero-label">Headlines</span>
+            </div>
+            <ul className="dashboard-hero-news-list">
+              {DEMO_NEWS_HEADLINES.map((item) => (
+                <li key={item.text} className="dashboard-hero-news-item">
+                  <span
+                    className={`dashboard-hero-news-source dashboard-hero-news-source--${item.source.toLowerCase()}`}
+                  >
+                    {item.source}
+                  </span>
+                  <span className="dashboard-hero-news-text">{item.text}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
@@ -665,6 +715,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
           onBarClick={handleTrendBarClick}
           loading={trendChartLoading}
         />
+        <SuspicionSignalLegend />
       </section>
 
       <section
@@ -715,7 +766,6 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         ) : (
           <TradesTimeSeriesChart data={[]} height={320} />
         )}
-        <SuspicionSignalLegend />
       </section>
 
       <section className="dashboard-section dashboard-section-full dashboard-deep-section">
@@ -933,7 +983,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
           aria-hidden={!marketsAccordionOpen}
           {...(!marketsAccordionOpen ? { inert: true } : {})}
         >
-          <MarketList events={filtered} />
+          <MarketList events={eventsForList} />
         </div>
       </section>
     </div>
