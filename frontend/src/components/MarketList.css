@@ -32,6 +32,16 @@
   color: var(--text);
 }
 
+.market-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.market-title-link:hover,
+.market-title-link:focus-visible {
+  text-decoration: underline;
+}
+
 .market-desc {
   margin: 0.35rem 0 0;
   font-size: 0.8125rem;
