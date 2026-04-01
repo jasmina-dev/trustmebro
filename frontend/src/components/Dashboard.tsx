@@ -517,33 +517,6 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   const clearFocus = useCallback(() => setFocusedEventId(null), []);
 
   const heroHeadlines = useMemo(() => {
-    if (focusedEventId) {
-      const ev = events.find((e) => e.id === focusedEventId);
-      if (ev) {
-        const volume =
-          ev.markets?.reduce(
-            (s, m) =>
-              s + (m.volumeNum ?? (m.volume as number | undefined) ?? 0),
-            0,
-          ) ?? 0;
-        const metaParts: string[] = [];
-        if (ev.category) metaParts.push(ev.category);
-        if (volume > 0) metaParts.push(`$${volume.toLocaleString()} volume`);
-        metaParts.push("Focused from trending");
-        return [
-          {
-            title:
-              ev.title && ev.title.length > 100
-                ? `${ev.title.slice(0, 100)}…`
-                : (ev.title ?? "Untitled market event"),
-            meta: metaParts.join(" • "),
-            eventUrl: polymarketEventUrl(ev),
-            marketUrl: polymarketMarketUrl(ev.markets?.[0]),
-          },
-        ];
-      }
-    }
-
     const headlines: {
       title: string;
       meta?: string;
@@ -590,7 +563,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return headlines;
-  }, [events, displayAnalytics, focusedEventId]);
+  }, [events, displayAnalytics]);
 
   const contextString = useMemo(() => {
     const lines: string[] = [];

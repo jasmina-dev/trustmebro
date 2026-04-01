@@ -6,6 +6,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Rectangle,
   Cell,
 } from "recharts";
 import type { SuspicionLevel } from "./suspicion";
@@ -28,7 +29,7 @@ interface TrendChartProps {
   loading?: boolean;
 }
 
-const COLORS = ["#3b82f6", "#2563eb", "#1d4ed8", "#1e40af", "#1e3a8a"];
+const BAR_COLOR = "#2563eb";
 
 const SUSPICION_TICK: Record<
   SuspicionLevel,
@@ -134,8 +135,7 @@ export function TrendChart({
     return (
       <div className="trend-chart empty">
         <p>
-          No volume data to display. Try another category or wait for more
-          data.
+          No volume data to display. Try another category or wait for more data.
         </p>
       </div>
     );
@@ -175,9 +175,7 @@ export function TrendChart({
             tickLine={false}
             axisLine={{ stroke: "var(--border)" }}
             tickFormatter={(v) =>
-              v >= 1e6
-                ? `${(v / 1e6).toFixed(1)}M`
-                : `${(v / 1e3).toFixed(0)}k`
+              v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1e3).toFixed(0)}k`
             }
             label={{
               value: "Volume (USD)",
@@ -188,7 +186,7 @@ export function TrendChart({
               fontSize: 11,
             }}
           />
-          <Tooltip content={<TrendMarketTooltip />} />
+          <Tooltip content={<TrendMarketTooltip />} cursor={false} />
           <Legend
             verticalAlign="top"
             align="right"
@@ -203,18 +201,30 @@ export function TrendChart({
             dataKey="volume"
             radius={[4, 4, 0, 0]}
             cursor={onBarClick ? "pointer" : "default"}
+            activeBar={(props: unknown) => {
+              const barProps = props as { payload?: TrendChartRow };
+              const selected = barProps.payload?.eventId === selectedEventId;
+              return (
+                <Rectangle
+                  {...barProps}
+                  fill={BAR_COLOR}
+                  fillOpacity={selected ? 1 : 0.78}
+                  stroke={selected ? "#f97316" : "#ffffff"}
+                  strokeWidth={selected ? 2 : 1.5}
+                />
+              );
+            }}
             onClick={(state) => {
               const row = state?.payload as TrendChartRow | undefined;
               if (row?.eventId && onBarClick) onBarClick(row.eventId);
             }}
           >
-            {data.map((row, i) => {
+            {data.map((row) => {
               const selected = row.eventId === selectedEventId;
-              const base = COLORS[i % COLORS.length];
               return (
                 <Cell
                   key={row.eventId}
-                  fill={base}
+                  fill={BAR_COLOR}
                   fillOpacity={selected ? 1 : 0.78}
                   stroke={selected ? "#f97316" : "transparent"}
                   strokeWidth={selected ? 2 : 0}
