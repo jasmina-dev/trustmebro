@@ -107,6 +107,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   );
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
   const [whaleAccordionOpen, setWhaleAccordionOpen] = useState(false);
+  const [marketsAccordionOpen, setMarketsAccordionOpen] = useState(true);
 
   const dismissOnboarding = useCallback(() => {
     try {
