@@ -9,8 +9,13 @@ import {
   Cell,
   Rectangle,
 } from "recharts";
+import type { BarProps } from "recharts";
+import type { ComponentProps } from "react";
 import type { SuspicionLevel } from "./suspicion";
 import "./TrendChart.css";
+
+/** Shape props accepted by the Recharts Rectangle component. */
+type RectangleShapeProps = ComponentProps<typeof Rectangle>;
 
 export interface TrendChartRow {
   /** Unique key for axis + selection */
@@ -196,12 +201,12 @@ export function TrendChart({
             fill={BAR_COLOR}
             radius={[4, 4, 0, 0]}
             cursor={onBarClick ? "pointer" : "default"}
-            activeBar={(props: unknown) => {
-              const barProps = props as { payload?: TrendChartRow };
-              const selected = barProps.payload?.eventId === selectedEventId;
+            activeBar={(props: BarProps & { payload?: TrendChartRow }) => {
+              const { payload, ...shapeProps } = props;
+              const selected = payload?.eventId === selectedEventId;
               return (
                 <Rectangle
-                  {...barProps}
+                  {...(shapeProps as unknown as RectangleShapeProps)}
                   fill={BAR_COLOR}
                   fillOpacity={selected ? 1 : 0.78}
                   stroke={selected ? "#f97316" : "#ffffff"}
