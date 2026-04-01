@@ -507,4 +507,5 @@ def get_trades_analytics():
         )
     except requests.RequestException as e:
         current_app.logger.warning("Polymarket trades request failed: %s", e)
-        return jsonify({"error": "Failed to fetch trades analytics"}), 502
+        empty_analytics = _compute_trades_analytics([], window_hours)
+        return jsonify({"analytics": empty_analytics, "count": 0})
