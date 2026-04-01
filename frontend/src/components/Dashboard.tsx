@@ -412,6 +412,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       return {
         eventId: x.event.id,
         name: short,
+        fullName: title,
         volume: x.volume,
         suspicion: computeEventSuspicion(x.event, {
           highVolumeEventIds,

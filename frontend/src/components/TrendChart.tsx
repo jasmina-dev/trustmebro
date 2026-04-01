@@ -17,6 +17,8 @@ export interface TrendChartRow {
   eventId: string;
   /** Short label shown under the bar */
   name: string;
+  /** Full label shown in tooltip */
+  fullName?: string;
   volume: number;
   suspicion: SuspicionLevel;
 }
@@ -54,7 +56,7 @@ function TrendMarketTooltip({
 
   return (
     <div className="trend-chart-tooltip">
-      <p className="trend-chart-tooltip-title">{row.name}</p>
+      <p className="trend-chart-tooltip-title">{row.fullName ?? row.name}</p>
       <p className="trend-chart-tooltip-line">
         <span className="trend-chart-tooltip-muted">Volume</span>{" "}
         <span className="trend-chart-tooltip-strong">
@@ -161,7 +163,7 @@ export function TrendChart({
             )}
             height={chartBottomMargin}
             label={{
-              value: "Event (short label + signal)",
+              value: "Event (short label + suspicion signal)",
               position: "insideBottom",
               offset: 0,
               fill: "var(--text-muted)",
@@ -177,14 +179,6 @@ export function TrendChart({
             tickFormatter={(v) =>
               v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1e3).toFixed(0)}k`
             }
-            label={{
-              value: "Volume (USD)",
-              angle: -90,
-              position: "insideLeft",
-              offset: 4,
-              fill: "var(--text-muted)",
-              fontSize: 11,
-            }}
           />
           <Tooltip content={<TrendMarketTooltip />} cursor={false} />
           <Legend
@@ -199,6 +193,7 @@ export function TrendChart({
           <Bar
             name="Notional volume (USD)"
             dataKey="volume"
+            fill={BAR_COLOR}
             radius={[4, 4, 0, 0]}
             cursor={onBarClick ? "pointer" : "default"}
             activeBar={(props: unknown) => {
