@@ -57,6 +57,20 @@ function polymarketIdsForEvent(event: PolymarketEvent | undefined): string[] {
   return Array.from(ids);
 }
 
+const POLYMARKET_BASE_URL = "https://polymarket.com";
+
+function polymarketEventUrl(event: PolymarketEvent): string | undefined {
+  const slug = event.slug?.trim();
+  return slug ? `${POLYMARKET_BASE_URL}/event/${slug}` : undefined;
+}
+
+function polymarketMarketUrl(
+  market: PolymarketMarket | undefined,
+): string | undefined {
+  const slug = market?.slug?.trim() || market?.marketSlug?.trim();
+  return slug ? `${POLYMARKET_BASE_URL}/market/${slug}` : undefined;
+}
+
 function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <section
@@ -103,7 +117,6 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     TradesAnalytics["byTime"]
   >(() => loadTrimmedCashflowBuckets());
   const [tradesError, setTradesError] = useState<string | null>(null);
-  const [headlineIndex, setHeadlineIndex] = useState(0);
   const [windowHours, setWindowHours] = useState<number>(24);
   const [onboardingVisible, setOnboardingVisible] = useState(() => {
     try {
@@ -505,7 +518,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
 
   const heroHeadlines = useMemo(() => {
     if (focusedEventId) {
-      const ev = filtered.find((e) => e.id === focusedEventId);
+      const ev = events.find((e) => e.id === focusedEventId);
       if (ev) {
         const volume =
           ev.markets?.reduce(
@@ -524,14 +537,21 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
                 ? `${ev.title.slice(0, 100)}…`
                 : (ev.title ?? "Untitled market event"),
             meta: metaParts.join(" • "),
+            eventUrl: polymarketEventUrl(ev),
+            marketUrl: polymarketMarketUrl(ev.markets?.[0]),
           },
         ];
       }
     }
 
-    const headlines: { title: string; meta?: string }[] = [];
+    const headlines: {
+      title: string;
+      meta?: string;
+      eventUrl?: string;
+      marketUrl?: string;
+    }[] = [];
 
-    for (const event of filtered.slice(0, 6)) {
+    for (const event of events.slice(0, 6)) {
       const volume =
         event.markets?.reduce(
           (s, m) => s + (m.volumeNum ?? (m.volume as number | undefined) ?? 0),
@@ -550,6 +570,8 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       headlines.push({
         title,
         meta: metaParts.join(" • ") || undefined,
+        eventUrl: polymarketEventUrl(event),
+        marketUrl: polymarketMarketUrl(event.markets?.[0]),
       });
     }
 
@@ -568,7 +590,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return headlines;
-  }, [filtered, displayAnalytics, focusedEventId]);
+  }, [events, displayAnalytics, focusedEventId]);
 
   const contextString = useMemo(() => {
     const lines: string[] = [];
@@ -646,20 +668,6 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     if (!loading) onContextChange?.(contextString);
   }, [contextString, loading, onContextChange]);
 
-  useEffect(() => {
-    if (!heroHeadlines.length || focusedEventId) return;
-
-    const id = window.setInterval(() => {
-      setHeadlineIndex((i) => (i + 1) % heroHeadlines.length);
-    }, 6000);
-
-    return () => window.clearInterval(id);
-  }, [heroHeadlines, heroHeadlines.length, focusedEventId]);
-
-  useEffect(() => {
-    setHeadlineIndex(0);
-  }, [focusedEventId]);
-
   if (loading) {
     return (
       <div className="dashboard dashboard-loading">
@@ -677,7 +685,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     );
   }
 
-  const activeHeadline = heroHeadlines[headlineIndex] ?? heroHeadlines[0];
+  const tickerHeadlines =
+    heroHeadlines.length > 1
+      ? [...heroHeadlines, ...heroHeadlines]
+      : [...heroHeadlines, ...heroHeadlines];
 
   const focusedTitle = focusedEventId
     ? filtered.find((e) => e.id === focusedEventId)?.title
@@ -689,18 +700,37 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         <DashboardOnboardingBanner onDismiss={dismissOnboarding} />
       )}
 
-      <section className="dashboard-live-spotlight" aria-live="polite">
-        <span className="dashboard-live-dot" aria-hidden="true" />
-        <span className="dashboard-live-label">Live spotlight</span>
-        <span
-          key={`${headlineIndex}-${activeHeadline?.title ?? "headline"}`}
-          className="dashboard-live-title"
-        >
-          {activeHeadline?.title}
+      <section className="dashboard-live-ticker" aria-label="Live spotlight">
+        <span className="dashboard-live-ticker-label">
+          <span className="dashboard-live-dot" aria-hidden="true" />
+          <span>Live spotlight</span>
         </span>
-        {activeHeadline?.meta && (
-          <span className="dashboard-live-meta">{activeHeadline.meta}</span>
-        )}
+        <div className="dashboard-live-ticker-viewport">
+          <div className="dashboard-live-ticker-track">
+            {tickerHeadlines.map((headline, index) => (
+              <div
+                key={`${index}-${headline.title}`}
+                className="dashboard-live-ticker-item"
+              >
+                {headline.eventUrl || headline.marketUrl ? (
+                  <a
+                    className="dashboard-live-title dashboard-live-title-link"
+                    href={headline.eventUrl ?? headline.marketUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {headline.title}
+                  </a>
+                ) : (
+                  <span className="dashboard-live-title">{headline.title}</span>
+                )}
+                {headline.meta && (
+                  <span className="dashboard-live-meta">{headline.meta}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section
