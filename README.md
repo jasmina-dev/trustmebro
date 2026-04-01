@@ -22,10 +22,12 @@ cp .env.example .env      # Edit .env and add ANTHROPIC_API_KEY for chatbot
 python run.py
 ```
 
-API runs at **http://localhost:5000**. Endpoints:
+API runs at **http://localhost:5001** by default. If that port is busy, set `API_PORT` to another value and use the same port for the frontend proxy.
+
+Endpoints:
 
 - `GET /api/markets/events` — Polymarket events
-- `GET /api/markets/markets` — Polymarket markets  
+- `GET /api/markets/markets` — Polymarket markets
 - `POST /api/chat` — Chatbot (body: `{ "message": "..." }`)
 
 ### Frontend (React + Vite)
@@ -36,18 +38,21 @@ npm install
 npm run dev
 ```
 
-App runs at **http://localhost:5173** and proxies `/api` to the backend.
+App runs at **http://localhost:5173** and proxies `/api` to the backend on port 5001 by default. If you override the backend port, set `VITE_BACKEND_PORT` or `VITE_API_URL` to match.
 
 ### Environment (backend)
 
-| Variable | Description |
-|----------|-------------|
-| `POLYMARKET_GAMMA_URL` | Gamma API base (default: https://gamma-api.polymarket.com) |
-| `POLYMARKET_DATA_URL` | Data API base for trades analytics (default: https://data-api.polymarket.com) |
-| `KALSHI_API_URL` | Kalshi API base |
-| `KALSHI_API_KEY` | Required for Kalshi endpoints |
-| `ANTHROPIC_API_KEY` | Required for chatbot |
-| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Optional, for future storage |
+| Variable                                | Description                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| `API_PORT`                              | Optional backend port override for `python run.py`. Defaults to `5001` locally. |
+| `VITE_BACKEND_PORT`                     | Frontend proxy port override when using `npm run dev`.                          |
+| `VITE_API_URL`                          | Full backend URL override for the Vite dev proxy.                               |
+| `POLYMARKET_GAMMA_URL`                  | Gamma API base (default: https://gamma-api.polymarket.com)                      |
+| `POLYMARKET_DATA_URL`                   | Data API base for trades analytics (default: https://data-api.polymarket.com)   |
+| `KALSHI_API_URL`                        | Kalshi API base                                                                 |
+| `KALSHI_API_KEY`                        | Required for Kalshi endpoints                                                   |
+| `ANTHROPIC_API_KEY`                     | Required for chatbot                                                            |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Optional, for future storage                                                    |
 
 ## Running tests
 

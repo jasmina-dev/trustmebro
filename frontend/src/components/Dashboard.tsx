@@ -36,26 +36,6 @@ import "./Dashboard.css";
 
 const ONBOARDING_DISMISSED_KEY = "trustmebro:dashboard:onboarding-dismissed:v1";
 
-/** Placeholder wire copy; not live wire headlines. */
-const DEMO_NEWS_HEADLINES: { source: "NYT" | "WSJ"; text: string }[] = [
-  {
-    source: "NYT",
-    text: "Fed officials signal patience on rate cuts as inflation readings stay sticky.",
-  },
-  {
-    source: "WSJ",
-    text: "Big tech races to lock in AI chip supply ahead of renewed tariff talks.",
-  },
-  {
-    source: "NYT",
-    text: "Global climate summit ends with incremental pledges on methane and coal.",
-  },
-  {
-    source: "WSJ",
-    text: "Oil climbs as traders weigh Red Sea disruptions and OPEC spare capacity.",
-  },
-];
-
 interface DashboardProps {
   category: string;
   onContextChange?: (ctx: string) => void;
@@ -67,9 +47,7 @@ const CASHFLOW_WINDOWS = [
   { label: "7D", hours: CASHFLOW_PERSIST_LOOKBACK_HOURS },
 ] as const;
 
-function polymarketIdsForEvent(
-  event: PolymarketEvent | undefined,
-): string[] {
+function polymarketIdsForEvent(event: PolymarketEvent | undefined): string[] {
   if (!event?.markets?.length) return [];
   const ids = new Set<string>();
   for (const m of event.markets) {
@@ -213,10 +191,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     async function loadCashflowSeries() {
-      if (
-        isSupabaseChartsConfigured() &&
-        !cancelled
-      ) {
+      if (isSupabaseChartsConfigured() && !cancelled) {
         const since = new Date(
           Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
         ).toISOString();
@@ -309,7 +284,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         const since = new Date(
           Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
         ).toISOString();
-        const buckets = await fetchHourlyCashflowForPolymarketIds(since, polyIds);
+        const buckets = await fetchHourlyCashflowForPolymarketIds(
+          since,
+          polyIds,
+        );
         if (cancelled) return;
         if (buckets.length > 0) {
           setFocusedTradesRaw(
@@ -711,64 +689,18 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         <DashboardOnboardingBanner onDismiss={dismissOnboarding} />
       )}
 
-      <section
-        className="dashboard-markets-today dashboard-hero-spotlight"
-        aria-labelledby="markets-today-heading"
-      >
-        <div className="dashboard-markets-today-split">
-          <div
-            className="dashboard-hero-panel dashboard-hero-rotating-markets"
-            aria-labelledby="rotating-markets-heading"
-          >
-            <p className="dashboard-hero-eyebrow">Rotating markets</p>
-            <h3
-              id="rotating-markets-heading"
-              className="dashboard-hero-subtitle"
-            >
-              Live Polymarket spotlight
-            </h3>
-            <div className="hero-kicker-row hero-kicker-row-markets">
-              <span className="hero-pill">Live</span>
-              <span className="hero-label">Top events by activity</span>
-            </div>
-            <div className="hero-headline-shell">
-              <div
-                key={`${headlineIndex}-${activeHeadline?.title ?? "headline"}`}
-                className="hero-headline"
-              >
-                <h4 className="hero-heading">{activeHeadline?.title}</h4>
-                {activeHeadline?.meta && (
-                  <p className="hero-meta">{activeHeadline.meta}</p>
-                )}
-              </div>
-            </div>
-          </div>
-          <div
-            className="dashboard-hero-panel dashboard-hero-news-sentiment"
-            aria-labelledby="news-sentiment-heading"
-          >
-            <p className="dashboard-hero-eyebrow">Real-time</p>
-            <h3 id="news-sentiment-heading" className="dashboard-hero-subtitle">
-              News &amp; sentiment
-            </h3>
-            <div className="hero-kicker-row hero-kicker-row-news">
-              <span className="hero-pill hero-pill-news">Wire</span>
-              <span className="hero-label">Headlines</span>
-            </div>
-            <ul className="dashboard-hero-news-list">
-              {DEMO_NEWS_HEADLINES.map((item) => (
-                <li key={item.text} className="dashboard-hero-news-item">
-                  <span
-                    className={`dashboard-hero-news-source dashboard-hero-news-source--${item.source.toLowerCase()}`}
-                  >
-                    {item.source}
-                  </span>
-                  <span className="dashboard-hero-news-text">{item.text}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      <section className="dashboard-live-spotlight" aria-live="polite">
+        <span className="dashboard-live-dot" aria-hidden="true" />
+        <span className="dashboard-live-label">Live spotlight</span>
+        <span
+          key={`${headlineIndex}-${activeHeadline?.title ?? "headline"}`}
+          className="dashboard-live-title"
+        >
+          {activeHeadline?.title}
+        </span>
+        {activeHeadline?.meta && (
+          <span className="dashboard-live-meta">{activeHeadline.meta}</span>
+        )}
       </section>
 
       <section

@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
 
   const apiTarget =
     env.VITE_API_URL ||
-    `http://127.0.0.1:${env.VITE_BACKEND_PORT || "5000"}`;
+    `http://127.0.0.1:${env.VITE_BACKEND_PORT || env.API_PORT || "5001"}`;
 
   return {
     plugins: [react()],
