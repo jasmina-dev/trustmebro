@@ -6,6 +6,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Rectangle,
   Cell,
 } from "recharts";
 import type { SuspicionLevel } from "./suspicion";
@@ -16,6 +17,8 @@ export interface TrendChartRow {
   eventId: string;
   /** Short label shown under the bar */
   name: string;
+  /** Full label shown in tooltip */
+  fullName?: string;
   volume: number;
   suspicion: SuspicionLevel;
 }
@@ -28,7 +31,7 @@ interface TrendChartProps {
   loading?: boolean;
 }
 
-const COLORS = ["#3b82f6", "#2563eb", "#1d4ed8", "#1e40af", "#1e3a8a"];
+const BAR_COLOR = "#2563eb";
 
 const SUSPICION_TICK: Record<
   SuspicionLevel,
@@ -53,7 +56,7 @@ function TrendMarketTooltip({
 
   return (
     <div className="trend-chart-tooltip">
-      <p className="trend-chart-tooltip-title">{row.name}</p>
+      <p className="trend-chart-tooltip-title">{row.fullName ?? row.name}</p>{" "}
       <p className="trend-chart-tooltip-line">
         <span className="trend-chart-tooltip-muted">Volume</span>{" "}
         <span className="trend-chart-tooltip-strong">
@@ -134,8 +137,7 @@ export function TrendChart({
     return (
       <div className="trend-chart empty">
         <p>
-          No volume data to display. Try another category or wait for more
-          data.
+          No volume data to display. Try another category or wait for more data.
         </p>
       </div>
     );
@@ -161,7 +163,7 @@ export function TrendChart({
             )}
             height={chartBottomMargin}
             label={{
-              value: "Event (short label + signal)",
+              value: "Event (short label + suspicion signal)",
               position: "insideBottom",
               offset: 0,
               fill: "var(--text-muted)",
@@ -175,20 +177,10 @@ export function TrendChart({
             tickLine={false}
             axisLine={{ stroke: "var(--border)" }}
             tickFormatter={(v) =>
-              v >= 1e6
-                ? `${(v / 1e6).toFixed(1)}M`
-                : `${(v / 1e3).toFixed(0)}k`
+              v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1e3).toFixed(0)}k`
             }
-            label={{
-              value: "Volume (USD)",
-              angle: -90,
-              position: "insideLeft",
-              offset: 4,
-              fill: "var(--text-muted)",
-              fontSize: 11,
-            }}
           />
-          <Tooltip content={<TrendMarketTooltip />} />
+          <Tooltip content={<TrendMarketTooltip />} cursor={false} />
           <Legend
             verticalAlign="top"
             align="right"
@@ -201,20 +193,33 @@ export function TrendChart({
           <Bar
             name="Notional volume (USD)"
             dataKey="volume"
+            fill={BAR_COLOR}
             radius={[4, 4, 0, 0]}
             cursor={onBarClick ? "pointer" : "default"}
+            activeBar={(props: unknown) => {
+              const barProps = props as { payload?: TrendChartRow };
+              const selected = barProps.payload?.eventId === selectedEventId;
+              return (
+                <Rectangle
+                  {...barProps}
+                  fill={BAR_COLOR}
+                  fillOpacity={selected ? 1 : 0.78}
+                  stroke={selected ? "#f97316" : "#ffffff"}
+                  strokeWidth={selected ? 2 : 1.5}
+                />
+              );
+            }}
             onClick={(state) => {
               const row = state?.payload as TrendChartRow | undefined;
               if (row?.eventId && onBarClick) onBarClick(row.eventId);
             }}
           >
-            {data.map((row, i) => {
+            {data.map((row) => {
               const selected = row.eventId === selectedEventId;
-              const base = COLORS[i % COLORS.length];
               return (
                 <Cell
                   key={row.eventId}
-                  fill={base}
+                  fill={BAR_COLOR}
                   fillOpacity={selected ? 1 : 0.78}
                   stroke={selected ? "#f97316" : "transparent"}
                   strokeWidth={selected ? 2 : 0}

@@ -36,26 +36,6 @@ import "./Dashboard.css";
 
 const ONBOARDING_DISMISSED_KEY = "trustmebro:dashboard:onboarding-dismissed:v1";
 
-/** Placeholder wire copy; not live wire headlines. */
-const DEMO_NEWS_HEADLINES: { source: "NYT" | "WSJ"; text: string }[] = [
-  {
-    source: "NYT",
-    text: "Fed officials signal patience on rate cuts as inflation readings stay sticky.",
-  },
-  {
-    source: "WSJ",
-    text: "Big tech races to lock in AI chip supply ahead of renewed tariff talks.",
-  },
-  {
-    source: "NYT",
-    text: "Global climate summit ends with incremental pledges on methane and coal.",
-  },
-  {
-    source: "WSJ",
-    text: "Oil climbs as traders weigh Red Sea disruptions and OPEC spare capacity.",
-  },
-];
-
 interface DashboardProps {
   category: string;
   onContextChange?: (ctx: string) => void;
@@ -67,9 +47,7 @@ const CASHFLOW_WINDOWS = [
   { label: "7D", hours: CASHFLOW_PERSIST_LOOKBACK_HOURS },
 ] as const;
 
-function polymarketIdsForEvent(
-  event: PolymarketEvent | undefined,
-): string[] {
+function polymarketIdsForEvent(event: PolymarketEvent | undefined): string[] {
   if (!event?.markets?.length) return [];
   const ids = new Set<string>();
   for (const m of event.markets) {
@@ -77,6 +55,20 @@ function polymarketIdsForEvent(
     if (c) ids.add(String(c));
   }
   return Array.from(ids);
+}
+
+const POLYMARKET_BASE_URL = "https://polymarket.com";
+
+function polymarketEventUrl(event: PolymarketEvent): string | undefined {
+  const slug = event.slug?.trim();
+  return slug ? `${POLYMARKET_BASE_URL}/event/${slug}` : undefined;
+}
+
+function polymarketMarketUrl(
+  market: PolymarketMarket | undefined,
+): string | undefined {
+  const slug = market?.slug?.trim() || market?.marketSlug?.trim();
+  return slug ? `${POLYMARKET_BASE_URL}/market/${slug}` : undefined;
 }
 
 function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
@@ -125,7 +117,6 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     TradesAnalytics["byTime"]
   >(() => loadTrimmedCashflowBuckets());
   const [tradesError, setTradesError] = useState<string | null>(null);
-  const [headlineIndex, setHeadlineIndex] = useState(0);
   const [windowHours, setWindowHours] = useState<number>(24);
   const [onboardingVisible, setOnboardingVisible] = useState(() => {
     try {
@@ -213,10 +204,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     async function loadCashflowSeries() {
-      if (
-        isSupabaseChartsConfigured() &&
-        !cancelled
-      ) {
+      if (isSupabaseChartsConfigured() && !cancelled) {
         const since = new Date(
           Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
         ).toISOString();
@@ -309,7 +297,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         const since = new Date(
           Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
         ).toISOString();
-        const buckets = await fetchHourlyCashflowForPolymarketIds(since, polyIds);
+        const buckets = await fetchHourlyCashflowForPolymarketIds(
+          since,
+          polyIds,
+        );
         if (cancelled) return;
         if (buckets.length > 0) {
           setFocusedTradesRaw(
@@ -507,6 +498,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       return {
         eventId: x.event.id,
         name: short,
+        fullName: title,
         volume: x.volume,
         suspicion: computeEventSuspicion(x.event, {
           highVolumeEventIds,
@@ -526,34 +518,14 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   const clearFocus = useCallback(() => setFocusedEventId(null), []);
 
   const heroHeadlines = useMemo(() => {
-    if (focusedEventId) {
-      const ev = filtered.find((e) => e.id === focusedEventId);
-      if (ev) {
-        const volume =
-          ev.markets?.reduce(
-            (s, m) =>
-              s + (m.volumeNum ?? (m.volume as number | undefined) ?? 0),
-            0,
-          ) ?? 0;
-        const metaParts: string[] = [];
-        if (ev.category) metaParts.push(ev.category);
-        if (volume > 0) metaParts.push(`$${volume.toLocaleString()} volume`);
-        metaParts.push("Focused from trending");
-        return [
-          {
-            title:
-              ev.title && ev.title.length > 100
-                ? `${ev.title.slice(0, 100)}…`
-                : (ev.title ?? "Untitled market event"),
-            meta: metaParts.join(" • "),
-          },
-        ];
-      }
-    }
+    const headlines: {
+      title: string;
+      meta?: string;
+      eventUrl?: string;
+      marketUrl?: string;
+    }[] = [];
 
-    const headlines: { title: string; meta?: string }[] = [];
-
-    for (const event of filtered.slice(0, 6)) {
+    for (const event of events.slice(0, 6)) {
       const volume =
         event.markets?.reduce(
           (s, m) => s + (m.volumeNum ?? (m.volume as number | undefined) ?? 0),
@@ -572,6 +544,8 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       headlines.push({
         title,
         meta: metaParts.join(" • ") || undefined,
+        eventUrl: polymarketEventUrl(event),
+        marketUrl: polymarketMarketUrl(event.markets?.[0]),
       });
     }
 
@@ -590,7 +564,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return headlines;
-  }, [filtered, displayAnalytics, focusedEventId]);
+  }, [events, displayAnalytics]);
 
   const contextString = useMemo(() => {
     const lines: string[] = [];
@@ -668,20 +642,6 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     if (!loading) onContextChange?.(contextString);
   }, [contextString, loading, onContextChange]);
 
-  useEffect(() => {
-    if (!heroHeadlines.length || focusedEventId) return;
-
-    const id = window.setInterval(() => {
-      setHeadlineIndex((i) => (i + 1) % heroHeadlines.length);
-    }, 6000);
-
-    return () => window.clearInterval(id);
-  }, [heroHeadlines, heroHeadlines.length, focusedEventId]);
-
-  useEffect(() => {
-    setHeadlineIndex(0);
-  }, [focusedEventId]);
-
   if (loading) {
     return (
       <div className="dashboard dashboard-loading">
@@ -699,7 +659,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     );
   }
 
-  const activeHeadline = heroHeadlines[headlineIndex] ?? heroHeadlines[0];
+  const tickerHeadlines =
+    heroHeadlines.length > 1
+      ? [...heroHeadlines, ...heroHeadlines]
+      : [...heroHeadlines, ...heroHeadlines];
 
   const focusedTitle = focusedEventId
     ? filtered.find((e) => e.id === focusedEventId)?.title
@@ -711,62 +674,35 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         <DashboardOnboardingBanner onDismiss={dismissOnboarding} />
       )}
 
-      <section
-        className="dashboard-markets-today dashboard-hero-spotlight"
-        aria-labelledby="markets-today-heading"
-      >
-        <div className="dashboard-markets-today-split">
-          <div
-            className="dashboard-hero-panel dashboard-hero-rotating-markets"
-            aria-labelledby="rotating-markets-heading"
-          >
-            <p className="dashboard-hero-eyebrow">Rotating markets</p>
-            <h3
-              id="rotating-markets-heading"
-              className="dashboard-hero-subtitle"
-            >
-              Live Polymarket spotlight
-            </h3>
-            <div className="hero-kicker-row hero-kicker-row-markets">
-              <span className="hero-pill">Live</span>
-              <span className="hero-label">Top events by activity</span>
-            </div>
-            <div className="hero-headline-shell">
+      <section className="dashboard-live-ticker" aria-label="Live spotlight">
+        <span className="dashboard-live-ticker-label">
+          <span className="dashboard-live-dot" aria-hidden="true" />
+          <span>Live spotlight</span>
+        </span>
+        <div className="dashboard-live-ticker-viewport">
+          <div className="dashboard-live-ticker-track">
+            {tickerHeadlines.map((headline, index) => (
               <div
-                key={`${headlineIndex}-${activeHeadline?.title ?? "headline"}`}
-                className="hero-headline"
+                key={`${index}-${headline.title}`}
+                className="dashboard-live-ticker-item"
               >
-                <h4 className="hero-heading">{activeHeadline?.title}</h4>
-                {activeHeadline?.meta && (
-                  <p className="hero-meta">{activeHeadline.meta}</p>
+                {headline.eventUrl || headline.marketUrl ? (
+                  <a
+                    className="dashboard-live-title dashboard-live-title-link"
+                    href={headline.eventUrl ?? headline.marketUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {headline.title}
+                  </a>
+                ) : (
+                  <span className="dashboard-live-title">{headline.title}</span>
+                )}
+                {headline.meta && (
+                  <span className="dashboard-live-meta">{headline.meta}</span>
                 )}
               </div>
-            </div>
-          </div>
-          <div
-            className="dashboard-hero-panel dashboard-hero-news-sentiment"
-            aria-labelledby="news-sentiment-heading"
-          >
-            <p className="dashboard-hero-eyebrow">Real-time</p>
-            <h3 id="news-sentiment-heading" className="dashboard-hero-subtitle">
-              News &amp; sentiment
-            </h3>
-            <div className="hero-kicker-row hero-kicker-row-news">
-              <span className="hero-pill hero-pill-news">Wire</span>
-              <span className="hero-label">Headlines</span>
-            </div>
-            <ul className="dashboard-hero-news-list">
-              {DEMO_NEWS_HEADLINES.map((item) => (
-                <li key={item.text} className="dashboard-hero-news-item">
-                  <span
-                    className={`dashboard-hero-news-source dashboard-hero-news-source--${item.source.toLowerCase()}`}
-                  >
-                    {item.source}
-                  </span>
-                  <span className="dashboard-hero-news-text">{item.text}</span>
-                </li>
-              ))}
-            </ul>
+            ))}
           </div>
         </div>
       </section>
