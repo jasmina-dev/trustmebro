@@ -3,39 +3,158 @@
   font-size: 0.8rem;
 }
 
-.trend-chart-tooltip {
-  background: var(--surface-hover);
+.trend-list-chart {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.65rem 0.9rem;
-  color: var(--text);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  background: var(--surface);
+  overflow: hidden;
 }
 
-.trend-chart-tooltip-title {
-  margin: 0 0 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
+.trend-list-header {
+  padding: 0.8rem 0.95rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.trend-chart-tooltip-line {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text);
-  line-height: 1.45;
-}
-
-.trend-chart-tooltip-muted {
+.trend-list-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--text-muted);
 }
 
-.trend-chart-tooltip-strong {
-  font-weight: 600;
-  color: var(--text);
+.trend-list-subtitle {
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
-.trend-bar-chart .recharts-legend-item-text {
-  color: var(--text) !important;
+.trend-list {
+  overflow-y: auto;
+}
+
+.trend-market-row {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 0.72rem 0.95rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.trend-market-row:last-child {
+  border-bottom: none;
+}
+
+.trend-market-row:hover {
+  background: var(--surface-hover);
+}
+
+.trend-market-row.selected {
+  background: rgba(55, 138, 221, 0.1);
+  box-shadow: inset 2px 0 0 #378add;
+}
+
+.trend-market-rank {
+  min-width: 1.1rem;
+  padding-top: 0.1rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.trend-market-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.trend-market-name {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trend-market-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.trend-market-right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.trend-market-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.trend-market-dot {
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 50%;
+}
+
+.trend-market-signal-high {
+  background: #fcebeb;
+  color: #a32d2d;
+}
+
+.trend-market-dot-high {
+  background: #e24b4a;
+}
+
+.trend-market-signal-medium {
+  background: #faeeda;
+  color: #854f0b;
+}
+
+.trend-market-dot-medium {
+  background: #ba7517;
+}
+
+.trend-market-signal-low {
+  background: #eaf3de;
+  color: #3b6d11;
+}
+
+.trend-market-dot-low {
+  background: #639922;
+}
+
+.trend-market-bar-wrap {
+  width: 3.9rem;
+  height: 0.26rem;
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.trend-market-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #378add;
 }

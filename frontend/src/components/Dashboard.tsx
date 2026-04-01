@@ -38,6 +38,8 @@ const ONBOARDING_DISMISSED_KEY = "trustmebro:dashboard:onboarding-dismissed:v1";
 
 interface DashboardProps {
   category: string;
+  categories: ReadonlyArray<{ id: string; label: string }>;
+  onCategoryChange: (category: string) => void;
   onContextChange?: (ctx: string) => void;
 }
 
@@ -107,7 +109,12 @@ function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
-export function Dashboard({ category, onContextChange }: DashboardProps) {
+export function Dashboard({
+  category,
+  categories,
+  onCategoryChange,
+  onContextChange,
+}: DashboardProps) {
   const [events, setEvents] = useState<PolymarketEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -707,322 +714,361 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         </div>
       </section>
 
-      <section
-        className="dashboard-section dashboard-trending-nav"
-        aria-labelledby="trending-heading"
-      >
-        <div className="dashboard-section-header-row">
-          <div>
-            <h2 id="trending-heading" className="dashboard-trending-title">
-              Trending markets
-            </h2>
-            <p className="dashboard-trending-sub">
-              Top events by volume · suspicion signal on each bar · click to
-              focus the rest of the dashboard
-            </p>
-          </div>
-          {focusedEventId && (
-            <div className="dashboard-focus-chip-wrap">
-              <span className="dashboard-focus-chip-label">Focused:</span>
-              <span
-                className="dashboard-focus-chip-title"
-                title={focusedTitle ?? ""}
-              >
-                {focusedTitle && focusedTitle.length > 40
-                  ? `${focusedTitle.slice(0, 40)}…`
-                  : (focusedTitle ?? focusedEventId)}
-              </span>
-              <button
-                type="button"
-                className="dashboard-focus-clear"
-                onClick={clearFocus}
-              >
-                Clear
-              </button>
-            </div>
-          )}
-        </div>
-        <TrendChart
-          data={trendingChartData}
-          height={300}
-          selectedEventId={focusedEventId}
-          onBarClick={handleTrendBarClick}
-          loading={trendChartLoading}
-        />
-        <SuspicionSignalLegend />
-      </section>
-
-      <section
-        className="dashboard-section dashboard-section-full dashboard-panel-secondary dashboard-cashflow-section"
-        aria-labelledby="cashflow-section-heading"
-      >
-        <h2 id="cashflow-section-heading" className="dashboard-secondary-h2">
-          Cash flow over time
-        </h2>
-        <p className="dashboard-cashflow-lede">
-          Secondary read on Polymarket bets · {cashflowWindowLabel}
-          {focusedEventId ? " · scoped to focused event" : ""}
-        </p>
-        <div
-          className="cashflow-range-toggle"
-          role="tablist"
-          aria-label="Cash flow time window"
-        >
-          {CASHFLOW_WINDOWS.map((opt) => (
-            <button
-              key={opt.hours}
-              type="button"
-              className={`cashflow-range-chip ${
-                windowHours === opt.hours ? "active" : ""
-              }`}
-              onClick={() => setWindowHours(opt.hours)}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        {tradesError && (
-          <p className="hint">
-            Live trades API unavailable ({tradesError}). Chart uses locally
-            saved hourly buckets or a demo series.
-          </p>
-        )}
-        {focusedTradesError && (
-          <p className="hint">
-            Could not load trades for the focused event ({focusedTradesError}
-            ). Try another bar or Clear.
-          </p>
-        )}
-        {cashFlowChartLoading || globalTradesPending ? (
-          <TradesTimeSeriesChart data={[]} loading height={320} />
-        ) : displayAnalytics ? (
-          <TradesTimeSeriesChart data={displayAnalytics.byTime} height={320} />
-        ) : (
-          <TradesTimeSeriesChart data={[]} height={320} />
-        )}
-      </section>
-
-      <section className="dashboard-section dashboard-section-full dashboard-deep-section">
-        <button
-          type="button"
-          className="dashboard-deep-toggle"
-          aria-expanded={showDeepAnalysis}
-          onClick={() => setShowDeepAnalysis((o) => !o)}
-        >
-          <span>
-            {showDeepAnalysis ? "Hide deep analysis" : "Show deep analysis"}
-          </span>
-          <span
-            className={`accordion-chevron ${showDeepAnalysis ? "open" : ""}`}
-            aria-hidden="true"
+      <nav className="filters" aria-label="Category filters">
+        <div className="filters-inner">
+          <span className="dashboard-filter-label">Filter by:</span>
+          <select
+            className="dashboard-filter-select"
+            value={category}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            aria-label="Filter by category"
           >
-            ▾
-          </span>
-        </button>
-        <p className="dashboard-deep-lede hint">
-          Expert-level: duplicate time series, whale addresses (accordion),
-          pre-deadline split, and headline stats for the current scope (
-          {cashflowWindowLabel}).
-        </p>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </nav>
 
-        {showDeepAnalysis && (
-          <div className="dashboard-deep-panels">
-            <h2 className="dashboard-deep-heading">
-              Trading activity &amp; whales ({cashflowWindowLabel})
-            </h2>
-            {tradesError && (
-              <p className="hint">
-                Trades analytics unavailable: {tradesError}
-              </p>
-            )}
-            {focusedTradesError && <p className="hint">{focusedTradesError}</p>}
-
-            <div
-              className="dashboard-deep-stats"
-              aria-label="Aggregate trades metrics for this scope"
-            >
-              {displayAnalytics &&
-              !(cashFlowChartLoading || globalTradesPending) ? (
-                <>
-                  <div className="dashboard-deep-stat">
-                    <p className="dashboard-deep-stat-value">
-                      {displayAnalytics.totalTrades.toLocaleString()}
-                    </p>
-                    <p className="dashboard-deep-stat-label">
-                      Total trades analyzed
-                    </p>
-                  </div>
-                  <div className="dashboard-deep-stat">
-                    <p className="dashboard-deep-stat-value">
-                      $
-                      {displayAnalytics.totalVolume.toLocaleString(undefined, {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 2,
-                      })}
-                    </p>
-                    <p className="dashboard-deep-stat-label">
-                      Total volume (USD)
-                    </p>
-                  </div>
-                  <div className="dashboard-deep-stat">
-                    <p className="dashboard-deep-stat-value">
-                      {displayAnalytics.uniqueTraders.toLocaleString()}
-                    </p>
-                    <p className="dashboard-deep-stat-label">Unique traders</p>
-                  </div>
-                  <div className="dashboard-deep-stat">
-                    <p className="dashboard-deep-stat-value">
-                      {displayAnalytics.uniqueMarkets.toLocaleString()}
-                    </p>
-                    <p className="dashboard-deep-stat-label">Unique markets</p>
-                  </div>
-                </>
-              ) : cashFlowChartLoading || globalTradesPending ? (
-                <>
-                  {[0, 1, 2, 3].map((k) => (
-                    <div key={k} className="dashboard-deep-stat-skeleton" />
-                  ))}
-                </>
-              ) : (
-                <p className="hint dashboard-deep-stats-empty">
-                  No aggregate stats for this scope yet.
+      <div className="dashboard-content-layout">
+        <div className="dashboard-content-sidebar">
+          <section
+            className="dashboard-section dashboard-trending-nav dashboard-trending-sidebar"
+            aria-labelledby="trending-heading"
+          >
+            <div className="dashboard-section-header-row">
+              <div>
+                <h2 id="trending-heading" className="dashboard-trending-title">
+                  Trending markets
+                </h2>
+                <p className="dashboard-trending-sub">
+                  Top events by volume · suspicion signal on each bar · click to
+                  focus the rest of the dashboard
                 </p>
-              )}
-            </div>
-
-            <div className="trading-activity-grid trading-activity-grid-deep">
-              <div className="analytics-panel">
-                <h3 className="analytics-subtitle">
-                  Incremental trading patterns
-                </h3>
-                {cashFlowChartLoading || globalTradesPending ? (
-                  <TradesTimeSeriesChart data={[]} loading />
-                ) : displayAnalytics ? (
-                  <TradesTimeSeriesChart data={displayAnalytics.byTime} />
-                ) : (
-                  <TradesTimeSeriesChart data={[]} />
-                )}
               </div>
-              <div className="analytics-panel dashboard-deep-whale-accordion-wrap">
-                <div className="dashboard-deep-accordion">
+              {focusedEventId && (
+                <div className="dashboard-focus-chip-wrap">
+                  <span className="dashboard-focus-chip-label">Focused:</span>
+                  <span
+                    className="dashboard-focus-chip-title"
+                    title={focusedTitle ?? ""}
+                  >
+                    {focusedTitle && focusedTitle.length > 40
+                      ? `${focusedTitle.slice(0, 40)}…`
+                      : (focusedTitle ?? focusedEventId)}
+                  </span>
                   <button
                     type="button"
-                    className="dashboard-deep-accordion-trigger"
-                    aria-expanded={whaleAccordionOpen}
-                    id="deep-whale-accordion-trigger"
-                    aria-controls="deep-whale-accordion-panel"
-                    onClick={() => setWhaleAccordionOpen((o) => !o)}
+                    className="dashboard-focus-clear"
+                    onClick={clearFocus}
                   >
-                    <span className="dashboard-deep-accordion-title">
-                      Whale addresses
-                    </span>
-                    <span
-                      className="dashboard-deep-accordion-chevron"
-                      aria-hidden
-                    >
-                      {whaleAccordionOpen ? "▴" : "▾"}
-                    </span>
+                    Clear
                   </button>
-                  {whaleAccordionOpen && (
-                    <div
-                      id="deep-whale-accordion-panel"
-                      role="region"
-                      aria-labelledby="deep-whale-accordion-trigger"
-                      className="dashboard-deep-accordion-panel"
-                    >
-                      {cashFlowChartLoading || globalTradesPending ? (
-                        <div
-                          className="chart-panel-skeleton trend-chart-loading"
-                          style={{ minHeight: 200 }}
-                          aria-busy="true"
-                        />
-                      ) : displayAnalytics ? (
-                        <WhaleAddressesPanel
-                          data={displayAnalytics.whaleTraders}
-                        />
-                      ) : (
-                        <WhaleAddressesPanel data={[]} />
-                      )}
-                    </div>
+                </div>
+              )}
+            </div>
+            <TrendChart
+              data={trendingChartData}
+              height={300}
+              selectedEventId={focusedEventId}
+              onBarClick={handleTrendBarClick}
+              loading={trendChartLoading}
+            />
+            <SuspicionSignalLegend />
+          </section>
+        </div>
+        <div className="dashboard-content-main">
+          <section
+            className="dashboard-section dashboard-section-full dashboard-panel-secondary dashboard-cashflow-section"
+            aria-labelledby="cashflow-section-heading"
+          >
+            <h2
+              id="cashflow-section-heading"
+              className="dashboard-secondary-h2"
+            >
+              Cash flow over time
+            </h2>
+            <p className="dashboard-cashflow-lede">
+              Secondary read on Polymarket bets · {cashflowWindowLabel}
+              {focusedEventId ? " · scoped to focused event" : ""}
+            </p>
+            <div
+              className="cashflow-range-toggle"
+              role="tablist"
+              aria-label="Cash flow time window"
+            >
+              {CASHFLOW_WINDOWS.map((opt) => (
+                <button
+                  key={opt.hours}
+                  type="button"
+                  className={`cashflow-range-chip ${
+                    windowHours === opt.hours ? "active" : ""
+                  }`}
+                  onClick={() => setWindowHours(opt.hours)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {tradesError && (
+              <p className="hint">
+                Live trades API unavailable ({tradesError}). Chart uses locally
+                saved hourly buckets or a demo series.
+              </p>
+            )}
+            {focusedTradesError && (
+              <p className="hint">
+                Could not load trades for the focused event (
+                {focusedTradesError}
+                ). Try another bar or Clear.
+              </p>
+            )}
+            {cashFlowChartLoading || globalTradesPending ? (
+              <TradesTimeSeriesChart data={[]} loading height={320} />
+            ) : displayAnalytics ? (
+              <TradesTimeSeriesChart
+                data={displayAnalytics.byTime}
+                height={320}
+              />
+            ) : (
+              <TradesTimeSeriesChart data={[]} height={320} />
+            )}
+          </section>
+
+          <section className="dashboard-section dashboard-section-full dashboard-deep-section">
+            <button
+              type="button"
+              className="dashboard-deep-toggle"
+              aria-expanded={showDeepAnalysis}
+              onClick={() => setShowDeepAnalysis((o) => !o)}
+            >
+              <span>
+                {showDeepAnalysis ? "Hide deep analysis" : "Show deep analysis"}
+              </span>
+              <span
+                className={`accordion-chevron ${showDeepAnalysis ? "open" : ""}`}
+                aria-hidden="true"
+              >
+                ▾
+              </span>
+            </button>
+            <p className="dashboard-deep-lede hint">
+              Expert-level: duplicate time series, whale addresses (accordion),
+              pre-deadline split, and headline stats for the current scope (
+              {cashflowWindowLabel}).
+            </p>
+
+            {showDeepAnalysis && (
+              <div className="dashboard-deep-panels">
+                <h2 className="dashboard-deep-heading">
+                  Trading activity &amp; whales ({cashflowWindowLabel})
+                </h2>
+                {tradesError && (
+                  <p className="hint">
+                    Trades analytics unavailable: {tradesError}
+                  </p>
+                )}
+                {focusedTradesError && (
+                  <p className="hint">{focusedTradesError}</p>
+                )}
+
+                <div
+                  className="dashboard-deep-stats"
+                  aria-label="Aggregate trades metrics for this scope"
+                >
+                  {displayAnalytics &&
+                  !(cashFlowChartLoading || globalTradesPending) ? (
+                    <>
+                      <div className="dashboard-deep-stat">
+                        <p className="dashboard-deep-stat-value">
+                          {displayAnalytics.totalTrades.toLocaleString()}
+                        </p>
+                        <p className="dashboard-deep-stat-label">
+                          Total trades analyzed
+                        </p>
+                      </div>
+                      <div className="dashboard-deep-stat">
+                        <p className="dashboard-deep-stat-value">
+                          $
+                          {displayAnalytics.totalVolume.toLocaleString(
+                            undefined,
+                            {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 2,
+                            },
+                          )}
+                        </p>
+                        <p className="dashboard-deep-stat-label">
+                          Total volume (USD)
+                        </p>
+                      </div>
+                      <div className="dashboard-deep-stat">
+                        <p className="dashboard-deep-stat-value">
+                          {displayAnalytics.uniqueTraders.toLocaleString()}
+                        </p>
+                        <p className="dashboard-deep-stat-label">
+                          Unique traders
+                        </p>
+                      </div>
+                      <div className="dashboard-deep-stat">
+                        <p className="dashboard-deep-stat-value">
+                          {displayAnalytics.uniqueMarkets.toLocaleString()}
+                        </p>
+                        <p className="dashboard-deep-stat-label">
+                          Unique markets
+                        </p>
+                      </div>
+                    </>
+                  ) : cashFlowChartLoading || globalTradesPending ? (
+                    <>
+                      {[0, 1, 2, 3].map((k) => (
+                        <div key={k} className="dashboard-deep-stat-skeleton" />
+                      ))}
+                    </>
+                  ) : (
+                    <p className="hint dashboard-deep-stats-empty">
+                      No aggregate stats for this scope yet.
+                    </p>
                   )}
                 </div>
-              </div>
-              <div className="analytics-panel">
-                <h3 className="analytics-subtitle">
-                  Pre-deadline volume spike
-                </h3>
-                {cashFlowChartLoading || globalTradesPending ? (
-                  <PreDeadlineChart
-                    window={{
-                      windowHours: windowHours,
-                      windowStart: "",
-                      windowEnd: "",
-                      volume: 0,
-                      tradeCount: 0,
-                      shareOfTotalVolume: 0,
-                    }}
-                    totalVolume={1}
-                    loading
-                  />
-                ) : displayAnalytics ? (
-                  <PreDeadlineChart
-                    window={displayAnalytics.preDeadlineWindow}
-                    totalVolume={displayAnalytics.totalVolume}
-                  />
-                ) : (
-                  <PreDeadlineChart
-                    window={{
-                      windowHours: windowHours,
-                      windowStart: "",
-                      windowEnd: "",
-                      volume: 0,
-                      tradeCount: 0,
-                      shareOfTotalVolume: 0,
-                    }}
-                    totalVolume={0}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
 
-      <section className="dashboard-section dashboard-section-full accordion-section">
-        <button
-          id="events-markets-accordion-trigger"
-          type="button"
-          className="accordion-trigger"
-          onClick={() => setMarketsAccordionOpen((open) => !open)}
-          aria-expanded={marketsAccordionOpen}
-          aria-controls="events-markets-accordion"
-        >
-          <span className="accordion-title" role="heading" aria-level={2}>
-            Events & markets
-          </span>
-          <span
-            className={`accordion-chevron ${marketsAccordionOpen ? "open" : ""}`}
-            aria-hidden="true"
-          >
-            ▾
-          </span>
-        </button>
-        <p className="dashboard-cashflow-lede">
-          {focusedEventId
-            ? "Showing the focused event only. Clear focus to see the full list."
-            : "Browse events matching your category filter."}
-        </p>
-        <div
-          id="events-markets-accordion"
-          role="region"
-          aria-labelledby="events-markets-accordion-trigger"
-          className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
-          aria-hidden={!marketsAccordionOpen}
-          {...(!marketsAccordionOpen ? { inert: true } : {})}
-        >
-          <MarketList events={eventsForList} />
+                <div className="trading-activity-grid trading-activity-grid-deep">
+                  <div className="analytics-panel">
+                    <h3 className="analytics-subtitle">
+                      Incremental trading patterns
+                    </h3>
+                    {cashFlowChartLoading || globalTradesPending ? (
+                      <TradesTimeSeriesChart data={[]} loading />
+                    ) : displayAnalytics ? (
+                      <TradesTimeSeriesChart data={displayAnalytics.byTime} />
+                    ) : (
+                      <TradesTimeSeriesChart data={[]} />
+                    )}
+                  </div>
+                  <div className="analytics-panel dashboard-deep-whale-accordion-wrap">
+                    <div className="dashboard-deep-accordion">
+                      <button
+                        type="button"
+                        className="dashboard-deep-accordion-trigger"
+                        aria-expanded={whaleAccordionOpen}
+                        id="deep-whale-accordion-trigger"
+                        aria-controls="deep-whale-accordion-panel"
+                        onClick={() => setWhaleAccordionOpen((o) => !o)}
+                      >
+                        <span className="dashboard-deep-accordion-title">
+                          Whale addresses
+                        </span>
+                        <span
+                          className="dashboard-deep-accordion-chevron"
+                          aria-hidden
+                        >
+                          {whaleAccordionOpen ? "▴" : "▾"}
+                        </span>
+                      </button>
+                      {whaleAccordionOpen && (
+                        <div
+                          id="deep-whale-accordion-panel"
+                          role="region"
+                          aria-labelledby="deep-whale-accordion-trigger"
+                          className="dashboard-deep-accordion-panel"
+                        >
+                          {cashFlowChartLoading || globalTradesPending ? (
+                            <div
+                              className="chart-panel-skeleton trend-chart-loading"
+                              style={{ minHeight: 200 }}
+                              aria-busy="true"
+                            />
+                          ) : displayAnalytics ? (
+                            <WhaleAddressesPanel
+                              data={displayAnalytics.whaleTraders}
+                            />
+                          ) : (
+                            <WhaleAddressesPanel data={[]} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="analytics-panel">
+                    <h3 className="analytics-subtitle">
+                      Pre-deadline volume spike
+                    </h3>
+                    {cashFlowChartLoading || globalTradesPending ? (
+                      <PreDeadlineChart
+                        window={{
+                          windowHours: windowHours,
+                          windowStart: "",
+                          windowEnd: "",
+                          volume: 0,
+                          tradeCount: 0,
+                          shareOfTotalVolume: 0,
+                        }}
+                        totalVolume={1}
+                        loading
+                      />
+                    ) : displayAnalytics ? (
+                      <PreDeadlineChart
+                        window={displayAnalytics.preDeadlineWindow}
+                        totalVolume={displayAnalytics.totalVolume}
+                      />
+                    ) : (
+                      <PreDeadlineChart
+                        window={{
+                          windowHours: windowHours,
+                          windowStart: "",
+                          windowEnd: "",
+                          volume: 0,
+                          tradeCount: 0,
+                          shareOfTotalVolume: 0,
+                        }}
+                        totalVolume={0}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="dashboard-section dashboard-section-full accordion-section">
+            <button
+              id="events-markets-accordion-trigger"
+              type="button"
+              className="accordion-trigger"
+              onClick={() => setMarketsAccordionOpen((open) => !open)}
+              aria-expanded={marketsAccordionOpen}
+              aria-controls="events-markets-accordion"
+            >
+              <span className="accordion-title" role="heading" aria-level={2}>
+                Events & markets
+              </span>
+              <span
+                className={`accordion-chevron ${marketsAccordionOpen ? "open" : ""}`}
+                aria-hidden="true"
+              >
+                ▾
+              </span>
+            </button>
+            <p className="dashboard-cashflow-lede">
+              {focusedEventId
+                ? "Showing the focused event only. Clear focus to see the full list."
+                : "Browse events matching your category filter."}
+            </p>
+            <div
+              id="events-markets-accordion"
+              role="region"
+              aria-labelledby="events-markets-accordion-trigger"
+              className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
+              aria-hidden={!marketsAccordionOpen}
+              {...(!marketsAccordionOpen ? { inert: true } : {})}
+            >
+              <MarketList events={eventsForList} />
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
