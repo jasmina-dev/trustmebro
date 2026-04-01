@@ -68,7 +68,6 @@ export default function App() {
         <button
           className="chat-toggle"
           onClick={() => setChatOpen((o) => !o)}
-          aria-label={chatOpen ? "Close chatbot" : "Open chatbot"}
         >
           {chatOpen ? "Close" : "Ask AI"}
         </button>
