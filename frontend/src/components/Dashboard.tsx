@@ -27,6 +27,11 @@ import {
   applyWindowToAnalytics,
   densifyHourlyWindow,
 } from "../lib/demoCashflowStore";
+import { isSupabaseChartsConfigured } from "../lib/supabaseClient";
+import {
+  fetchGlobalHourlyCashflowFromSupabase,
+  fetchHourlyCashflowForPolymarketIds,
+} from "../lib/supabaseCandles";
 import "./Dashboard.css";
 
 const ONBOARDING_DISMISSED_KEY = "trustmebro:dashboard:onboarding-dismissed:v1";
@@ -61,6 +66,18 @@ const CASHFLOW_WINDOWS = [
   { label: "24H", hours: 24 },
   { label: "7D", hours: CASHFLOW_PERSIST_LOOKBACK_HOURS },
 ] as const;
+
+function polymarketIdsForEvent(
+  event: PolymarketEvent | undefined,
+): string[] {
+  if (!event?.markets?.length) return [];
+  const ids = new Set<string>();
+  for (const m of event.markets) {
+    const c = m.conditionId;
+    if (c) ids.add(String(c));
+  }
+  return Array.from(ids);
+}
 
 function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
@@ -162,72 +179,91 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   }, []);
 
   useEffect(() => {
-    setTradesError(null);
-    fetchTradesAnalytics({
-      windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
-    })
-      .then((res) => {
-        setGlobalTradesRaw(res.analytics);
-        setTradesError(null);
-        setPersistedSeries((prev) => {
-          let merged = trimBucketsToLookback(
-            mergeBucketSeries(prev, res.analytics.byTime),
-            CASHFLOW_PERSIST_LOOKBACK_HOURS,
-          );
-          if (merged.length === 0) {
-            merged = generateDemoHourlyBuckets(CASHFLOW_PERSIST_LOOKBACK_HOURS);
-          }
-          saveStoredBuckets(merged);
-          return merged;
-        });
-      })
-      .catch((err) => {
-        setTradesError(err.message ?? "Failed to load trades analytics");
-        setGlobalTradesRaw(null);
-        setPersistedSeries((prev) => {
-          const fromLs = prev.length ? prev : loadTrimmedCashflowBuckets();
-          let merged = fromLs;
-          if (merged.length === 0) {
-            merged = generateDemoHourlyBuckets(CASHFLOW_PERSIST_LOOKBACK_HOURS);
-            saveStoredBuckets(merged);
-          }
-          return merged;
-        });
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!focusedEventId) {
-      setFocusedTradesRaw(null);
-      setFocusedTradesError(null);
-      setFocusedTradesLoading(false);
-      return;
-    }
     let cancelled = false;
-    setFocusedTradesLoading(true);
-    setFocusedTradesError(null);
-    fetchTradesAnalytics({
-      eventId: focusedEventId,
-      windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
-    })
-      .then((res) => {
-        if (!cancelled) setFocusedTradesRaw(res.analytics);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setFocusedTradesError(
-            err.message ?? "Failed to load trades for this event",
-          );
-          setFocusedTradesRaw(null);
+    setTradesError(null);
+
+    function applyPolymarketApiSeries(analytics: TradesAnalytics) {
+      setGlobalTradesRaw(analytics);
+      setTradesError(null);
+      setPersistedSeries((prev) => {
+        let merged = trimBucketsToLookback(
+          mergeBucketSeries(prev, analytics.byTime),
+          CASHFLOW_PERSIST_LOOKBACK_HOURS,
+        );
+        if (merged.length === 0) {
+          merged = generateDemoHourlyBuckets(CASHFLOW_PERSIST_LOOKBACK_HOURS);
         }
-      })
-      .finally(() => {
-        if (!cancelled) setFocusedTradesLoading(false);
+        saveStoredBuckets(merged);
+        return merged;
       });
+    }
+
+    function fallbackPersistedOnError(message: string) {
+      setTradesError(message);
+      setGlobalTradesRaw(null);
+      setPersistedSeries((prev) => {
+        const fromLs = prev.length ? prev : loadTrimmedCashflowBuckets();
+        let merged = fromLs;
+        if (merged.length === 0) {
+          merged = generateDemoHourlyBuckets(CASHFLOW_PERSIST_LOOKBACK_HOURS);
+          saveStoredBuckets(merged);
+        }
+        return merged;
+      });
+    }
+
+    async function loadCashflowSeries() {
+      if (
+        isSupabaseChartsConfigured() &&
+        !cancelled
+      ) {
+        const since = new Date(
+          Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
+        ).toISOString();
+        const fromDb = await fetchGlobalHourlyCashflowFromSupabase(since);
+        if (cancelled) return;
+        if (fromDb.length > 0) {
+          setPersistedSeries((prev) => {
+            const merged = trimBucketsToLookback(
+              mergeBucketSeries(prev, fromDb),
+              CASHFLOW_PERSIST_LOOKBACK_HOURS,
+            );
+            saveStoredBuckets(merged);
+            queueMicrotask(() => {
+              if (cancelled) return;
+              setGlobalTradesRaw(
+                buildMinimalAnalytics(merged, CASHFLOW_PERSIST_LOOKBACK_HOURS),
+              );
+              setTradesError(null);
+            });
+            return merged;
+          });
+          return;
+        }
+      }
+
+      if (cancelled) return;
+      try {
+        const res = await fetchTradesAnalytics({
+          windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
+        });
+        if (cancelled) return;
+        applyPolymarketApiSeries(res.analytics);
+      } catch (err) {
+        if (cancelled) return;
+        fallbackPersistedOnError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load trades analytics",
+        );
+      }
+    }
+
+    void loadCashflowSeries();
     return () => {
       cancelled = true;
     };
-  }, [focusedEventId]);
+  }, []);
 
   function extractYesPrice(
     market: PolymarketMarket | undefined,
@@ -252,6 +288,65 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       return false;
     });
   }, [events, category]);
+
+  useEffect(() => {
+    if (!focusedEventId) {
+      setFocusedTradesRaw(null);
+      setFocusedTradesError(null);
+      setFocusedTradesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setFocusedTradesLoading(true);
+    setFocusedTradesError(null);
+
+    const event = filtered.find((e) => e.id === focusedEventId);
+    const polyIds = polymarketIdsForEvent(event);
+    const eventIdParam = focusedEventId;
+
+    async function loadFocused() {
+      if (isSupabaseChartsConfigured() && polyIds.length > 0) {
+        const since = new Date(
+          Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
+        ).toISOString();
+        const buckets = await fetchHourlyCashflowForPolymarketIds(since, polyIds);
+        if (cancelled) return;
+        if (buckets.length > 0) {
+          setFocusedTradesRaw(
+            buildMinimalAnalytics(buckets, CASHFLOW_PERSIST_LOOKBACK_HOURS),
+          );
+          setFocusedTradesError(null);
+          setFocusedTradesLoading(false);
+          return;
+        }
+      }
+
+      if (cancelled) return;
+      try {
+        const res = await fetchTradesAnalytics({
+          eventId: eventIdParam,
+          windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
+        });
+        if (!cancelled) setFocusedTradesRaw(res.analytics);
+      } catch (err) {
+        if (!cancelled) {
+          setFocusedTradesError(
+            err instanceof Error
+              ? err.message
+              : "Failed to load trades for this event",
+          );
+          setFocusedTradesRaw(null);
+        }
+      } finally {
+        if (!cancelled) setFocusedTradesLoading(false);
+      }
+    }
+
+    void loadFocused();
+    return () => {
+      cancelled = true;
+    };
+  }, [focusedEventId, filtered]);
 
   const analytics = useMemo(() => {
     const allMarkets: PolymarketMarket[] = [];
