@@ -34,6 +34,13 @@ const corsHeaders: Record<string, string> = {
     "authorization, x-client-info, apikey, content-type, x-sync-secret",
 };
 
+type GammaSeriesRef = { slug?: string; title?: string; ticker?: string };
+type GammaEventRef = {
+  seriesSlug?: string;
+  series?: GammaSeriesRef[];
+  title?: string;
+};
+
 type GammaMarket = {
   id?: string;
   conditionId?: string;
@@ -47,10 +54,64 @@ type GammaMarket = {
   closed?: boolean;
   umaResolutionStatus?: string;
   groupItemTitle?: string;
+  groupItemThreshold?: string;
   volumeNum?: number;
   volume?: number;
   liquidity?: number;
+  events?: GammaEventRef[];
+  sportsMarketType?: string;
 };
+
+/** Labels like "20°C", "12-3", "99%" are outcomes/thresholds, not taxonomy categories. */
+function looksLikeOutcomeOrThresholdLabel(s: string): boolean {
+  const t = s.trim();
+  if (t.length === 0) return true;
+  if (/[°℃℉]|\bdeg(?:rees?)?\s*[cf]\b|celsius|fahrenheit/i.test(t)) {
+    return true;
+  }
+  if (/^\d+(\.\d+)?\s*°?\s*[cf]?\s*$/i.test(t)) return true;
+  if (/^\d+(\.\d+)?\s*[-–]\s*\d+(\.\d+)?$/.test(t)) return true;
+  if (/^\d+(\.\d+)?%$/.test(t)) return true;
+  return false;
+}
+
+function humanizeSlug(slug: string): string {
+  const s = slug.replace(/-/g, " ").trim();
+  if (!s) return slug;
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Prefer event → series (real taxonomy). Never use groupItemTitle (often "20°C", scores, etc.).
+ */
+function deriveMarketCategory(m: GammaMarket): string | null {
+  const ev = Array.isArray(m.events) && m.events.length ? m.events[0] : undefined;
+  const series0 = Array.isArray(ev?.series) && ev!.series!.length
+    ? ev!.series![0]
+    : undefined;
+
+  const fromSeriesTitle = series0?.title?.trim();
+  if (fromSeriesTitle && !looksLikeOutcomeOrThresholdLabel(fromSeriesTitle)) {
+    return fromSeriesTitle;
+  }
+
+  const slug = (series0?.slug || series0?.ticker || ev?.seriesSlug)?.trim();
+  if (slug && !looksLikeOutcomeOrThresholdLabel(slug)) {
+    return humanizeSlug(slug);
+  }
+
+  const raw = typeof m.category === "string" ? m.category.trim() : "";
+  if (raw && !looksLikeOutcomeOrThresholdLabel(raw)) return raw;
+
+  if (
+    typeof m.sportsMarketType === "string" &&
+    m.sportsMarketType.trim().length > 0
+  ) {
+    return "Sports";
+  }
+
+  return null;
+}
 
 type DataTrade = {
   timestamp?: number | string;
@@ -206,12 +267,7 @@ function gammaToMarketRow(m: GammaMarket): {
   const cid = m.conditionId ?? m.condition_id;
   if (!cid) return null;
   const question = String(m.question ?? "").trim() || "(no question)";
-  const category =
-    typeof m.category === "string"
-      ? m.category
-      : typeof m.groupItemTitle === "string"
-        ? m.groupItemTitle
-        : null;
+  const category = deriveMarketCategory(m);
   let resolved_at: string | null = null;
   if (m.closed === true || m.umaResolutionStatus === "resolved") {
     if (m.endDate) {
@@ -228,6 +284,11 @@ function gammaToMarketRow(m: GammaMarket): {
     volumeNum: m.volumeNum ?? m.volume ?? null,
     liquidity: m.liquidity ?? null,
     gammaCreatedAt: createdRaw ?? null,
+    groupItemTitle: m.groupItemTitle ?? null,
+    groupItemThreshold: m.groupItemThreshold ?? null,
+    sportsMarketType: m.sportsMarketType ?? null,
+    gammaCategoryRaw: typeof m.category === "string" ? m.category : null,
+    eventSeriesSlug: m.events?.[0]?.seriesSlug ?? null,
   };
   return { polymarket_id: String(cid), question, category, resolved_at, extra };
 }
