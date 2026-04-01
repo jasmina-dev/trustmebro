@@ -107,6 +107,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   );
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
   const [whaleAccordionOpen, setWhaleAccordionOpen] = useState(false);
+  const [marketsAccordionOpen, setMarketsAccordionOpen] = useState(true);
 
   const dismissOnboarding = useCallback(() => {
     try {
@@ -908,9 +909,44 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
                 )}
               </div>
             </div>
+          )}
+        </section>
+
+        <section className="dashboard-section dashboard-section-full accordion-section">
+          <button
+            id="events-markets-accordion-trigger"
+            type="button"
+            className="accordion-trigger"
+            onClick={() => setMarketsAccordionOpen((open) => !open)}
+            aria-expanded={marketsAccordionOpen}
+            aria-controls="events-markets-accordion"
+          >
+            <span
+              className="accordion-title"
+              role="heading"
+              aria-level={2}
+            >
+              Events & markets
+            </span>
+            <span
+              className={`accordion-chevron ${marketsAccordionOpen ? "open" : ""}`}
+              aria-hidden="true"
+            >
+              ▾
+            </span>
+          </button>
+          <div
+            id="events-markets-accordion"
+            role="region"
+            aria-labelledby="events-markets-accordion-trigger"
+            className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
+            aria-hidden={!marketsAccordionOpen}
+            {...(!marketsAccordionOpen ? { inert: true } : {})}
+          >
+            <MarketList events={filtered} />
           </div>
-        )}
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
