@@ -16,6 +16,12 @@ def test_get_categories_infers_politics():
     assert "Politics" in get_categories({"question": "Who wins the 2028 election?", "id": "m1"})
 
 
+def test_get_categories_eurovision_from_slug():
+    assert "Entertainment" in get_categories(
+        {"id": "ev1", "title": "Song contest 2026", "slug": "eurovision-winner-2026"}
+    )
+
+
 def test_get_categories_other_when_no_match():
     assert get_categories({"title": "Random xyzabc unmatched", "id": "z"}) == ["Other"]
 
