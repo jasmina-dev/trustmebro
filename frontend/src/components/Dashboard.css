@@ -38,7 +38,7 @@
   color: var(--text);
 }
 
-.accordion-trigger h2 {
+.accordion-trigger .accordion-title {
   margin: 0;
 }
 
