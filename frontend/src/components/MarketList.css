@@ -42,6 +42,21 @@
   line-height: 1.35;
 }
 
+.market-title-link {
+  text-decoration: none;
+}
+
+.market-title-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.market-title-link:focus-visible {
+  outline: 2px solid rgba(55, 138, 221, 0.85);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 .event-tag-list {
   list-style: none;
   margin: 0;
