@@ -11,7 +11,7 @@
 }
 
 .header-inner {
-  max-width: 1400px;
+  max-width: calc(1400px + 3rem);
   margin: 0 auto;
   display: flex;
   flex-wrap: wrap;
@@ -39,6 +39,7 @@
 
 .header-mission {
   margin: 0;
+  margin-left: auto;
   flex: 1 1 18rem;
   min-width: min(100%, 16rem);
   max-width: 40rem;
@@ -46,6 +47,7 @@
   line-height: 1.5;
   color: var(--text-muted);
   padding-top: 0.15rem;
+  text-align: right;
 }
 
 .filters {
