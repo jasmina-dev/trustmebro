@@ -82,9 +82,8 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   const [events, setEvents] = useState<PolymarketEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [globalTradesRaw, setGlobalTradesRaw] = useState<TradesAnalytics | null>(
-    null,
-  );
+  const [globalTradesRaw, setGlobalTradesRaw] =
+    useState<TradesAnalytics | null>(null);
   const [persistedSeries, setPersistedSeries] = useState<
     TradesAnalytics["byTime"]
   >(() => loadTrimmedCashflowBuckets());
@@ -107,7 +106,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   );
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
   const [whaleAccordionOpen, setWhaleAccordionOpen] = useState(false);
-  const [marketsAccordionOpen, setMarketsAccordionOpen] = useState(true);
+  const [marketsAccordionOpen, setMarketsAccordionOpen] = useState(false);
 
   const dismissOnboarding = useCallback(() => {
     try {
@@ -356,11 +355,9 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
   const globalTradesPending =
     globalTradesRaw === null && tradesError === null && !focusedEventId;
 
-  const cashFlowChartLoading =
-    Boolean(focusedEventId) && focusedTradesLoading;
+  const cashFlowChartLoading = Boolean(focusedEventId) && focusedTradesLoading;
 
-  const trendChartLoading =
-    globalTradesPending && persistedSeries.length === 0;
+  const trendChartLoading = globalTradesPending && persistedSeries.length === 0;
 
   const eventsForList = useMemo(() => {
     if (!focusedEventId) return filtered;
@@ -382,10 +379,8 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       .map((e) => ({
         event: e,
         volume:
-          e.markets?.reduce(
-            (s, m) => s + (m.volumeNum ?? m.volume ?? 0),
-            0,
-          ) ?? 0,
+          e.markets?.reduce((s, m) => s + (m.volumeNum ?? m.volume ?? 0), 0) ??
+          0,
       }))
       .filter((x) => x.volume > 0)
       .sort((a, b) => b.volume - a.volume)
@@ -393,8 +388,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
 
     return sorted.map((x, rank) => {
       const title = x.event.title ?? "Untitled";
-      const short =
-        title.slice(0, 24) + (title.length > 24 ? "…" : "");
+      const short = title.slice(0, 24) + (title.length > 24 ? "…" : "");
       return {
         eventId: x.event.id,
         name: short,
@@ -408,12 +402,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         }),
       };
     });
-  }, [
-    filtered,
-    highVolumeEventIds,
-    inconsistentTitles,
-    globalTradesRaw,
-  ]);
+  }, [filtered, highVolumeEventIds, inconsistentTitles, globalTradesRaw]);
 
   const handleTrendBarClick = useCallback((eventId: string) => {
     setFocusedEventId((prev) => (prev === eventId ? null : eventId));
@@ -427,7 +416,8 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
       if (ev) {
         const volume =
           ev.markets?.reduce(
-            (s, m) => s + (m.volumeNum ?? (m.volume as number | undefined) ?? 0),
+            (s, m) =>
+              s + (m.volumeNum ?? (m.volume as number | undefined) ?? 0),
             0,
           ) ?? 0;
         const metaParts: string[] = [];
@@ -550,7 +540,14 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     }
 
     return lines.join("\n");
-  }, [category, filtered, analytics, displayAnalytics, cashflowWindowLabel, focusedEventId]);
+  }, [
+    category,
+    filtered,
+    analytics,
+    displayAnalytics,
+    cashflowWindowLabel,
+    focusedEventId,
+  ]);
 
   useEffect(() => {
     if (!loading) onContextChange?.(contextString);
@@ -643,7 +640,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
           {focusedEventId && (
             <div className="dashboard-focus-chip-wrap">
               <span className="dashboard-focus-chip-label">Focused:</span>
-              <span className="dashboard-focus-chip-title" title={focusedTitle ?? ""}>
+              <span
+                className="dashboard-focus-chip-title"
+                title={focusedTitle ?? ""}
+              >
                 {focusedTitle && focusedTitle.length > 40
                   ? `${focusedTitle.slice(0, 40)}…`
                   : (focusedTitle ?? focusedEventId)}
@@ -711,24 +711,11 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         {cashFlowChartLoading || globalTradesPending ? (
           <TradesTimeSeriesChart data={[]} loading height={320} />
         ) : displayAnalytics ? (
-          <TradesTimeSeriesChart
-            data={displayAnalytics.byTime}
-            height={320}
-          />
+          <TradesTimeSeriesChart data={displayAnalytics.byTime} height={320} />
         ) : (
           <TradesTimeSeriesChart data={[]} height={320} />
         )}
         <SuspicionSignalLegend />
-      </section>
-
-      <section className="dashboard-section dashboard-section-full dashboard-panel-secondary">
-        <h2 className="dashboard-secondary-h2">Events &amp; markets</h2>
-        <p className="dashboard-cashflow-lede">
-          {focusedEventId
-            ? "Showing the focused event only. Clear focus to see the full list."
-            : "Browse events matching your category filter."}
-        </p>
-        <MarketList events={eventsForList} />
       </section>
 
       <section className="dashboard-section dashboard-section-full dashboard-deep-section">
@@ -761,9 +748,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
                 Trades analytics unavailable: {tradesError}
               </p>
             )}
-            {focusedTradesError && (
-              <p className="hint">{focusedTradesError}</p>
-            )}
+            {focusedTradesError && <p className="hint">{focusedTradesError}</p>}
 
             <div
               className="dashboard-deep-stats"
@@ -844,7 +829,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
                     <span className="dashboard-deep-accordion-title">
                       Whale addresses
                     </span>
-                    <span className="dashboard-deep-accordion-chevron" aria-hidden>
+                    <span
+                      className="dashboard-deep-accordion-chevron"
+                      aria-hidden
+                    >
                       {whaleAccordionOpen ? "▴" : "▾"}
                     </span>
                   </button>
@@ -909,44 +897,45 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
                 )}
               </div>
             </div>
-          )}
-        </section>
-
-        <section className="dashboard-section dashboard-section-full accordion-section">
-          <button
-            id="events-markets-accordion-trigger"
-            type="button"
-            className="accordion-trigger"
-            onClick={() => setMarketsAccordionOpen((open) => !open)}
-            aria-expanded={marketsAccordionOpen}
-            aria-controls="events-markets-accordion"
-          >
-            <span
-              className="accordion-title"
-              role="heading"
-              aria-level={2}
-            >
-              Events & markets
-            </span>
-            <span
-              className={`accordion-chevron ${marketsAccordionOpen ? "open" : ""}`}
-              aria-hidden="true"
-            >
-              ▾
-            </span>
-          </button>
-          <div
-            id="events-markets-accordion"
-            role="region"
-            aria-labelledby="events-markets-accordion-trigger"
-            className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
-            aria-hidden={!marketsAccordionOpen}
-            {...(!marketsAccordionOpen ? { inert: true } : {})}
-          >
-            <MarketList events={filtered} />
           </div>
-        </section>
-      </div>
+        )}
+      </section>
+
+      <section className="dashboard-section dashboard-section-full accordion-section">
+        <button
+          id="events-markets-accordion-trigger"
+          type="button"
+          className="accordion-trigger"
+          onClick={() => setMarketsAccordionOpen((open) => !open)}
+          aria-expanded={marketsAccordionOpen}
+          aria-controls="events-markets-accordion"
+        >
+          <span className="accordion-title" role="heading" aria-level={2}>
+            Events & markets
+          </span>
+          <span
+            className={`accordion-chevron ${marketsAccordionOpen ? "open" : ""}`}
+            aria-hidden="true"
+          >
+            ▾
+          </span>
+        </button>
+        <p className="dashboard-cashflow-lede">
+          {focusedEventId
+            ? "Showing the focused event only. Clear focus to see the full list."
+            : "Browse events matching your category filter."}
+        </p>
+        <div
+          id="events-markets-accordion"
+          role="region"
+          aria-labelledby="events-markets-accordion-trigger"
+          className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
+          aria-hidden={!marketsAccordionOpen}
+          {...(!marketsAccordionOpen ? { inert: true } : {})}
+        >
+          <MarketList events={filtered} />
+        </div>
+      </section>
     </div>
   );
 }
