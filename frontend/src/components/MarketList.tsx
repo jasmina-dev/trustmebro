@@ -49,7 +49,11 @@ export function MarketList({ events }: MarketListProps) {
           ) ?? 0;
         const prices = event.markets?.[0]?.outcomePrices;
         const yesPrice = prices
-          ? (parseFloat(String(prices).split(",")[0]) * 100).toFixed(0)
+          ? (() => {
+              const raw = String(prices).split(",")[0];
+              const parsed = parseFloat(raw);
+              return Number.isFinite(parsed) ? (parsed * 100).toFixed(0) : "—";
+            })()
           : "—";
 
         return (
