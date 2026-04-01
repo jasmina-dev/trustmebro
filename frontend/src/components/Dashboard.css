@@ -91,6 +91,12 @@
   border-color: rgba(148, 163, 184, 0.7);
 }
 
+.dashboard-deep-toggle:hover .accordion-chevron,
+.dashboard-deep-toggle:focus-visible .accordion-chevron {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(148, 163, 184, 0.7);
+}
+
 .accordion-chevron.open {
   transform: rotate(180deg);
 }
