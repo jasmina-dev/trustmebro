@@ -15,10 +15,7 @@ import { TradesTimeSeriesChart } from "./TradesTimeSeriesChart";
 import { PreDeadlineChart } from "./PreDeadlineChart";
 import { WhaleAddressesPanel } from "./WhaleAddressesPanel";
 import { SuspicionSignalLegend } from "./SuspicionSignalLegend";
-import {
-  computeEventSuspicion,
-  type SuspicionLevel,
-} from "./suspicion";
+import { computeEventSuspicion, type SuspicionLevel } from "./suspicion";
 import {
   loadTrimmedCashflowBuckets,
   saveStoredBuckets,
@@ -599,7 +596,12 @@ export function Dashboard({
         }),
       };
     });
-  }, [volumeFilteredEvents, highVolumeEventIds, inconsistentTitles, globalTradesRaw]);
+  }, [
+    volumeFilteredEvents,
+    highVolumeEventIds,
+    inconsistentTitles,
+    globalTradesRaw,
+  ]);
 
   const trendingChartData: TrendChartRow[] = useMemo(() => {
     if (suspicionFilter === "all") return trendingChartDataAll;
@@ -766,8 +768,8 @@ export function Dashboard({
       : [...heroHeadlines, ...heroHeadlines];
 
   const focusedTitle = focusedEventId
-    ? volumeFilteredEvents.find((e) => e.id === focusedEventId)?.title ??
-      filtered.find((e) => e.id === focusedEventId)?.title
+    ? (volumeFilteredEvents.find((e) => e.id === focusedEventId)?.title ??
+      filtered.find((e) => e.id === focusedEventId)?.title)
     : null;
 
   const aggregateStatsSection = (
@@ -781,9 +783,7 @@ export function Dashboard({
             <p className="dashboard-deep-stat-value">
               {displayAnalytics.totalTrades.toLocaleString()}
             </p>
-            <p className="dashboard-deep-stat-label">
-              Total trades analyzed
-            </p>
+            <p className="dashboard-deep-stat-label">Total trades analyzed</p>
           </div>
           <div className="dashboard-deep-stat">
             <p className="dashboard-deep-stat-value">
@@ -846,6 +846,10 @@ export function Dashboard({
     </>
   );
 
+  const cashflowSectionTitle = focusedEventId
+    ? `Cash flow over time · ${focusedTitle ?? focusedEventId}`
+    : "Cash flow over time";
+
   return (
     <div className="dashboard">
       {onboardingVisible && (
@@ -885,10 +889,7 @@ export function Dashboard({
         </div>
       </section>
 
-      <nav
-        className="dashboard-main-tabs"
-        aria-label="Dashboard sections"
-      >
+      <nav className="dashboard-main-tabs" aria-label="Dashboard sections">
         {MAIN_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -1042,9 +1043,7 @@ export function Dashboard({
                     const event = volumeFilteredEvents.find(
                       (e) => e.id === row.eventId,
                     );
-                    const cat = event
-                      ? primaryCategoryLabel(event)
-                      : "—";
+                    const cat = event ? primaryCategoryLabel(event) : "—";
                     const sus = suspicionUi(row.suspicion);
                     const selected = row.eventId === focusedEventId;
                     return (
@@ -1088,7 +1087,7 @@ export function Dashboard({
                 id="cashflow-section-heading"
                 className="dashboard-secondary-h2"
               >
-                Cash flow over time
+                {cashflowSectionTitle}
               </h2>
               <p className="dashboard-cashflow-lede">
                 Secondary read on Polymarket bets · {cashflowWindowLabel}
@@ -1187,9 +1186,7 @@ export function Dashboard({
           {tradesError && (
             <p className="hint">Trades analytics unavailable: {tradesError}</p>
           )}
-          {focusedTradesError && (
-            <p className="hint">{focusedTradesError}</p>
-          )}
+          {focusedTradesError && <p className="hint">{focusedTradesError}</p>}
           <div className="dashboard-whale-tab-grid">
             <div className="analytics-panel">
               <h3 className="analytics-subtitle">Whale addresses</h3>
@@ -1206,9 +1203,7 @@ export function Dashboard({
               )}
             </div>
             <div className="analytics-panel">
-              <h3 className="analytics-subtitle">
-                Pre-deadline volume spike
-              </h3>
+              <h3 className="analytics-subtitle">Pre-deadline volume spike</h3>
               {cashFlowChartLoading || globalTradesPending ? (
                 <PreDeadlineChart
                   window={{

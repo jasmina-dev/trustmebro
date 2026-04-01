@@ -12,7 +12,7 @@ export function SuspicionSignalLegend() {
       <ul className="suspicion-signal-legend-items">
         <li>
           <span className="suspicion-signal-legend-pill suspicion-signal-high">
-            🔴 High
+            🔴 HIGH
           </span>
           <span className="suspicion-signal-legend-desc">
             Stronger overlap of volume, whale, and structural flags.
@@ -20,7 +20,7 @@ export function SuspicionSignalLegend() {
         </li>
         <li>
           <span className="suspicion-signal-legend-pill suspicion-signal-medium">
-            🟡 Med
+            🟡 MED
           </span>
           <span className="suspicion-signal-legend-desc">
             Some elevated activity or rank-driven signal.
@@ -28,14 +28,16 @@ export function SuspicionSignalLegend() {
         </li>
         <li>
           <span className="suspicion-signal-legend-pill suspicion-signal-low">
-            🟢 Low
+            🟢 LOW
           </span>
           <span className="suspicion-signal-legend-desc">
             Fewer heuristic hits on the inputs we can observe.
           </span>
         </li>
       </ul>
-      <p className="suspicion-signal-legend-disclaimer">{SUSPICION_SIGNAL_DISCLAIMER}</p>
+      <p className="suspicion-signal-legend-disclaimer">
+        {SUSPICION_SIGNAL_DISCLAIMER}
+      </p>
     </div>
   );
 }
