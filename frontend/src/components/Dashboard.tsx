@@ -611,6 +611,10 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
     ? filtered.find((e) => e.id === focusedEventId)?.title
     : null;
 
+  const cashflowSectionTitle = focusedEventId
+    ? `Cash flow over time · ${focusedTitle ?? focusedEventId}`
+    : "Cash flow over time";
+
   return (
     <div className="dashboard">
       {onboardingVisible && (
@@ -727,7 +731,7 @@ export function Dashboard({ category, onContextChange }: DashboardProps) {
         aria-labelledby="cashflow-section-heading"
       >
         <h2 id="cashflow-section-heading" className="dashboard-secondary-h2">
-          Cash flow over time
+          {cashflowSectionTitle}
         </h2>
         <p className="dashboard-cashflow-lede">
           Secondary read on Polymarket bets · {cashflowWindowLabel}
