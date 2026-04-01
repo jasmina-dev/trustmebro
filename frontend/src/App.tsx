@@ -46,22 +46,13 @@ export default function App() {
         </div>
       </header>
 
-      <nav className="filters">
-        <div className="filters-inner">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              className={`filter-btn ${category === c.id ? "active" : ""}`}
-              onClick={() => setCategory(c.id)}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
       <main className="main">
-        <Dashboard category={category} onContextChange={setDashboardContext} />
+        <Dashboard
+          category={category}
+          onCategoryChange={setCategory}
+          categoryOptions={CATEGORIES}
+          onContextChange={setDashboardContext}
+        />
       </main>
 
       <div className="chat-toggle-wrap">

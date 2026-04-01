@@ -45,8 +45,8 @@ describe("App", () => {
     ).toBeInTheDocument();
     await goToDashboard();
     expect(screen.getByRole("heading", { name: /trustmebro analytics/i })).toBeInTheDocument();
-    const allBtn = screen.getByRole("button", { name: /^All$/i });
-    expect(allBtn).toHaveClass("active");
+    const categorySelect = screen.getByRole("combobox", { name: /category/i });
+    expect(categorySelect).toHaveValue("all");
     await waitFor(() => {
       expect(screen.queryByText(/loading market data/i)).not.toBeInTheDocument();
     });
@@ -59,10 +59,10 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.queryByText(/loading market data/i)).not.toBeInTheDocument();
     });
-    const politics = screen.getByRole("button", { name: /^Politics$/i });
-    await user.click(politics);
-    expect(politics).toHaveClass("active");
-    expect(screen.getByRole("button", { name: /^All$/i })).not.toHaveClass("active");
+    const categorySelect = screen.getByRole("combobox", { name: /category/i });
+    await user.selectOptions(categorySelect, "politics");
+    expect(categorySelect).toHaveValue("politics");
+    expect(categorySelect).not.toHaveValue("all");
   });
 
   it("opens and closes chatbot panel", async () => {
