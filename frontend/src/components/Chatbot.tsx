@@ -52,7 +52,10 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
 
     const topMarketLine = lines.find((line) => line.startsWith("- "));
     const topMarket = topMarketLine
-      ? topMarketLine.replace(/^-\s*/, "").split(":")[0]?.trim() || null
+      ? topMarketLine
+          .replace(/^-\s*/, "")
+          .replace(/:\s*\$[^$]*$/, "")
+          .trim() || null
       : null;
 
     const starters: string[] = [
