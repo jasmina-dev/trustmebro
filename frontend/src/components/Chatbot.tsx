@@ -1,6 +1,6 @@
 // utilized github copilot
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import { streamChatMessage } from "../api/client";
 import "./Chatbot.css";
@@ -31,6 +31,96 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const promptStarters = useMemo(() => {
+    const lines = (dashboardContext ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const byPrefix = (prefix: string): string | null => {
+      const line = lines.find((l) => l.startsWith(prefix));
+      if (!line) return null;
+      const value = line.slice(prefix.length).trim();
+      return value || null;
+    };
+
+    const focusedEvent = byPrefix("Focused event:");
+    const activeTab = byPrefix("Active tab:");
+    const activeFilter = byPrefix("Active filter:");
+    const volumeFilter = byPrefix("Volume filter:");
+
+    const topMarketLine = lines.find((line) => line.startsWith("- "));
+    const topMarket = topMarketLine
+      ? topMarketLine.replace(/^-\s*/, "").split(":")[0]?.trim() || null
+      : null;
+
+    const starters: string[] = [
+      "Give me a quick summary of what stands out right now in this dashboard.",
+    ];
+
+    if (activeTab === "Markets") {
+      starters.push(
+        "Which events look most overextended in probability versus available market depth?",
+      );
+      starters.push(
+        "Find one market that looks underpriced and one that looks overpriced on this screen, with your reasoning.",
+      );
+    } else if (activeTab === "Trade flow") {
+      starters.push(
+        "Interpret the current trade-flow trend and tell me whether momentum is accelerating or fading.",
+      );
+      starters.push(
+        "How concentrated is current flow among whales versus broad participation, and why does that matter?",
+      );
+    } else if (activeTab === "News & sentiment") {
+      starters.push(
+        "Based on this view, what narrative is the market pricing in right now, and what could challenge it?",
+      );
+      starters.push(
+        "Give me a bullish and bearish interpretation of the current sentiment signals on screen.",
+      );
+    } else if (activeTab === "Whale activity") {
+      starters.push(
+        "Which whale behavior here looks most unusual, and what are two plausible explanations?",
+      );
+      starters.push(
+        "Are whale positions reinforcing consensus or betting against it in this snapshot?",
+      );
+    } else if (activeTab === "Research notes") {
+      starters.push(
+        "Draft three concise research notes from this context: key signal, uncertainty, and next check.",
+      );
+      starters.push(
+        "Turn the current dashboard state into a short hypothesis I can test over the next 24 hours.",
+      );
+    }
+
+    if (focusedEvent) {
+      starters.push(
+        `Break down why \"${focusedEvent}\" looks interesting right now, including volume, probability, and whale activity.`,
+      );
+      starters.push(
+        `What are the biggest risk factors or caveats for \"${focusedEvent}\" based on the current signals?`,
+      );
+    } else if (topMarket) {
+      starters.push(
+        `Why is \"${topMarket}\" near the top by volume, and what should I watch next?`,
+      );
+    }
+
+    if (activeFilter || volumeFilter) {
+      starters.push(
+        `Given the current filters (${[activeFilter, volumeFilter].filter(Boolean).join(", ")}), what patterns could be hidden from this view?`,
+      );
+    }
+
+    starters.push(
+      "Which market on screen looks most mispriced versus the rest of its event, and why?",
+    );
+
+    return Array.from(new Set(starters)).slice(0, 4);
+  }, [dashboardContext]);
 
   useEffect(() => {
     return () => {
@@ -65,9 +155,8 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
+  async function sendMessage(rawText: string) {
+    const text = rawText.trim();
     if (!text || loading) return;
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
@@ -123,6 +212,15 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
         setLoading(false);
       }
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await sendMessage(input);
+  }
+
+  function handleStarterClick(starter: string) {
+    void sendMessage(starter);
   }
 
   function handleClearChat() {
@@ -255,6 +353,25 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
       {error && (
         <div className="chatbot-error" role="alert">
           {error}
+        </div>
+      )}
+
+      {promptStarters.length > 0 && (
+        <div className="chatbot-starters" aria-label="Suggested prompts">
+          <p className="chatbot-starters-label">Try asking</p>
+          <div className="chatbot-starter-list">
+            {promptStarters.map((starter) => (
+              <button
+                key={starter}
+                type="button"
+                className="chatbot-starter-chip"
+                onClick={() => handleStarterClick(starter)}
+                disabled={loading}
+              >
+                {starter}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

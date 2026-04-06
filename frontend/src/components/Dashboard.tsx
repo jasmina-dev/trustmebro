@@ -665,6 +665,9 @@ export function Dashboard({
 
   const contextString = useMemo(() => {
     const lines: string[] = [];
+    const activeTabLabel =
+      MAIN_TABS.find((tab) => tab.id === mainTab)?.label ?? mainTab;
+    lines.push(`Active tab: ${activeTabLabel}`);
     lines.push(`Active filter: ${category}`);
     lines.push(
       `Volume filter: ${VOLUME_FILTER_OPTIONS.find((o) => o.id === volumeFilter)?.label ?? volumeFilter}`,
@@ -737,6 +740,7 @@ export function Dashboard({
     displayAnalytics,
     cashflowWindowLabel,
     focusedEventId,
+    mainTab,
     volumeFilter,
     suspicionFilter,
   ]);
