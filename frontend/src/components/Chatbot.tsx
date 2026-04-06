@@ -152,12 +152,6 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
-
   async function sendMessage(rawText: string) {
     const text = rawText.trim();
     if (!text || loading) return;
