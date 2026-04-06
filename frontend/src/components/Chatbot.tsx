@@ -28,6 +28,7 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -36,6 +37,23 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
       abortControllerRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsFullscreen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullscreen]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,7 +138,11 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     messages[0]?.content !== INITIAL_ASSISTANT_MESSAGE.content;
 
   return (
-    <div className="chatbot-panel" role="dialog" aria-label="AI assistant chat">
+    <div
+      className={`chatbot-panel${isFullscreen ? " fullscreen" : ""}`}
+      role="dialog"
+      aria-label="AI assistant chat"
+    >
       <div className="chatbot-header">
         <h2>Ask the assistant</h2>
         <div className="chatbot-header-actions">
@@ -132,6 +154,62 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
             aria-label="Clear chat"
           >
             Clear
+          </button>
+          <button
+            type="button"
+            className="chatbot-fullscreen"
+            onClick={() => setIsFullscreen((prev) => !prev)}
+            aria-label={
+              isFullscreen ? "Restore chat size" : "Open chat in full screen"
+            }
+            aria-pressed={isFullscreen}
+            title={isFullscreen ? "Restore" : "Fullscreen"}
+          >
+            {isFullscreen ? (
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <rect
+                  x="3"
+                  y="5"
+                  width="10"
+                  height="10"
+                  rx="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <rect
+                  x="7"
+                  y="3"
+                  width="10"
+                  height="10"
+                  rx="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+              </svg>
+            ) : (
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M8 2H2v6M12 2h6v6M18 12v6h-6M8 18H2v-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+            <span className="sr-only">
+              {isFullscreen ? "Restore chat size" : "Open chat in full screen"}
+            </span>
           </button>
           <button
             type="button"
