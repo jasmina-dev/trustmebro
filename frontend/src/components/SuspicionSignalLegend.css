@@ -64,3 +64,21 @@
   line-height: 1.5;
   color: var(--text-muted);
 }
+
+:root[data-theme="light"] .suspicion-signal-legend {
+  border-color: rgba(37, 99, 235, 0.2);
+  background: linear-gradient(145deg, #f6faff 0%, #edf5ff 100%);
+}
+
+:root[data-theme="light"] .suspicion-signal-legend-title {
+  color: #294a80;
+}
+
+:root[data-theme="light"] .suspicion-signal-legend-desc,
+:root[data-theme="light"] .suspicion-signal-legend-disclaimer {
+  color: #4f6283;
+}
+
+:root[data-theme="light"] .suspicion-signal-legend-disclaimer {
+  border-top-color: rgba(37, 99, 235, 0.2);
+}
