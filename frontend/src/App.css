@@ -48,6 +48,22 @@
   padding-top: 0.15rem;
 }
 
+.theme-toggle {
+  margin-left: auto;
+  margin-right: -0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.theme-toggle:hover {
+  background: var(--surface-hover);
+}
+
 .filters {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
@@ -135,5 +151,10 @@
   .header-mission {
     max-width: none;
     padding-top: 0;
+  }
+
+  .theme-toggle {
+    margin-left: 0;
+    margin-right: 0;
   }
 }

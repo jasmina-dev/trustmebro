@@ -7,12 +7,91 @@
   --text-muted: #8b92a0;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
+  --chart-axis-left: #93c5fd;
+  --chart-axis-right: #fdba74;
   --success: #22c55e;
   --warning: #eab308;
   --danger: #ef4444;
   --radius: 10px;
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --surface-hover: #eef3fb;
+  --border: #d7e1ef;
+  --text: #172033;
+  --text-muted: #5b6578;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --chart-axis-left: #0f2f63;
+  --chart-axis-right: #0f2f63;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+:root[data-theme="light"] .dashboard-cashflow-section {
+  --bg: #eaf3ff;
+  --surface: #f3f8ff;
+  --surface-hover: #e2eeff;
+  --border: #b9cff2;
+  --text: #0f2f63;
+  --text-muted: #294a80;
+  background: #eaf3ff;
+  border-color: #b9cff2;
+}
+
+:root[data-theme="light"] .dashboard-cashflow-section .dashboard-deep-stat-value {
+  color: #0f2f63;
+}
+
+:root[data-theme="light"] .event-tag {
+  font-weight: 700;
+}
+
+:root[data-theme="light"] .event-tag--politics {
+  color: #0c4a6e;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+:root[data-theme="light"] .event-tag--economy {
+  color: #78350f;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+:root[data-theme="light"] .event-tag--entertainment {
+  color: #7f1d1d;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+:root[data-theme="light"] .event-tag--technology {
+  color: #4c1d95;
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+
+:root[data-theme="light"] .event-tag--crypto {
+  color: #7c2d12;
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+
+:root[data-theme="light"] .event-tag--climate {
+  color: #14532d;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+:root[data-theme="light"] .event-tag--other {
+  color: #334155;
+  background: #e2e8f0;
+  border-color: #94a3b8;
 }
 
 * {

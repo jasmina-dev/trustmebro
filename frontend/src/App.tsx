@@ -1,6 +1,6 @@
 // utilized github copilot
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { Chatbot } from "./components/Chatbot";
 import { LandingPage } from "./components/LandingPage";
@@ -22,6 +22,19 @@ export default function App() {
   const [category, setCategory] = useState<string>("all");
   const [chatOpen, setChatOpen] = useState(false);
   const [dashboardContext, setDashboardContext] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const stored = localStorage.getItem("trustmebro-theme");
+    if (stored === "light" || stored === "dark") return stored;
+
+    return window.matchMedia("(prefers-color-scheme: light)").matches
+      ? "light"
+      : "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("trustmebro-theme", theme);
+  }, [theme]);
 
   if (!showDashboard) {
     return (
@@ -43,6 +56,14 @@ export default function App() {
             Streaming prediction market activity into a single view of crowd
             expectations, momentum, and structural inefficiencies.
           </p>
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
         </div>
       </header>
 

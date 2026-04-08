@@ -98,7 +98,7 @@ export function TradesTimeSeriesChart({
           <YAxis
             yAxisId="left"
             width={56}
-            tick={{ fill: "#93c5fd", fontSize: 11 }}
+            tick={{ fill: "var(--chart-axis-left)", fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: "var(--border)" }}
             tickFormatter={(v) =>
@@ -113,7 +113,7 @@ export function TradesTimeSeriesChart({
               angle: -90,
               position: "insideLeft",
               offset: 2,
-              fill: "#93c5fd",
+              fill: "var(--chart-axis-left)",
               fontSize: 11,
             }}
           />
@@ -121,7 +121,7 @@ export function TradesTimeSeriesChart({
             yAxisId="right"
             orientation="right"
             width={48}
-            tick={{ fill: "#fdba74", fontSize: 11 }}
+            tick={{ fill: "var(--chart-axis-right)", fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: "var(--border)" }}
             label={{
@@ -129,7 +129,7 @@ export function TradesTimeSeriesChart({
               angle: 90,
               position: "insideRight",
               offset: 4,
-              fill: "#fdba74",
+              fill: "var(--chart-axis-right)",
               fontSize: 11,
             }}
           />
