@@ -204,7 +204,9 @@ export function TrendChart({
                   {...barProps}
                   fill={BAR_COLOR}
                   fillOpacity={selected ? 1 : 0.78}
-                  stroke={selected ? "#f97316" : "var(--trend-bar-hover-stroke)"}
+                  stroke={
+                    selected ? "#f97316" : "var(--trend-bar-hover-stroke)"
+                  }
                   strokeWidth={selected ? 2 : 1.5}
                 />
               );

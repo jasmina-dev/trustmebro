@@ -14,8 +14,8 @@
   --danger: #ef4444;
   --trend-bar-hover-stroke: #ffffff;
   --radius: 10px;
-  --font-sans: 'DM Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 :root[data-theme="light"] {
@@ -46,7 +46,9 @@
   border-color: #b9cff2;
 }
 
-:root[data-theme="light"] .dashboard-cashflow-section .dashboard-deep-stat-value {
+:root[data-theme="light"]
+  .dashboard-cashflow-section
+  .dashboard-deep-stat-value {
   color: #0f2f63;
 }
 
