@@ -6,6 +6,8 @@ import { Chatbot } from "./components/Chatbot";
 import { LandingPage } from "./components/LandingPage";
 import "./App.css";
 
+const THEME_STORAGE_KEY = "trustmebro-theme-v2";
+
 const CATEGORIES = [
   { id: "all", label: "All" },
   { id: "politics", label: "Politics" },
@@ -23,23 +25,19 @@ export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [dashboardContext, setDashboardContext] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
-    const stored = localStorage.getItem("trustmebro-theme");
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (stored === "light" || stored === "dark") return stored;
 
-    return window.matchMedia("(prefers-color-scheme: light)").matches
-      ? "light"
-      : "dark";
+    return "dark";
   });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("trustmebro-theme", theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
   if (!showDashboard) {
-    return (
-      <LandingPage onEnterDashboard={() => setShowDashboard(true)} />
-    );
+    return <LandingPage onEnterDashboard={() => setShowDashboard(true)} />;
   }
 
   return (
@@ -58,7 +56,9 @@ export default function App() {
           </p>
           <button
             className="theme-toggle"
-            onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
+            onClick={() =>
+              setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+            }
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
@@ -77,10 +77,7 @@ export default function App() {
       </main>
 
       <div className="chat-toggle-wrap">
-        <button
-          className="chat-toggle"
-          onClick={() => setChatOpen((o) => !o)}
-        >
+        <button className="chat-toggle" onClick={() => setChatOpen((o) => !o)}>
           {chatOpen ? "Close" : "Ask AI"}
         </button>
       </div>

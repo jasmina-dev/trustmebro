@@ -509,6 +509,38 @@
   white-space: nowrap;
 }
 
+:root[data-theme="light"] .dashboard-live-ticker {
+  border-color: rgba(37, 99, 235, 0.2);
+  background: linear-gradient(135deg, #f2f8ff 0%, #e9f3ff 100%);
+}
+
+:root[data-theme="light"] .dashboard-live-ticker-label {
+  color: #194b8f;
+  border-right-color: rgba(37, 99, 235, 0.18);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+:root[data-theme="light"] .dashboard-live-ticker-item {
+  color: #172033;
+  border-right-color: rgba(37, 99, 235, 0.18);
+}
+
+:root[data-theme="light"] .dashboard-live-title {
+  color: #0f2f63;
+}
+
+:root[data-theme="light"] .dashboard-live-title-link {
+  color: #0f2f63;
+}
+
+:root[data-theme="light"] .dashboard-live-meta {
+  color: #355e98;
+}
+
+:root[data-theme="light"] .dashboard-live-dot {
+  background: #0ea5a0;
+}
+
 @keyframes dashboardLiveTickerScroll {
   from {
     transform: translateX(0);
