@@ -12,7 +12,10 @@ from . import bp
 
 POLYMARKET_GAMMA = os.environ.get("POLYMARKET_GAMMA_URL", "https://gamma-api.polymarket.com")
 POLYMARKET_DATA = os.environ.get("POLYMARKET_DATA_URL", "https://data-api.polymarket.com")
-KALSHI_BASE = os.environ.get("KALSHI_API_URL", "https://trading-api.kalshi.com/trade-api/v2")
+KALSHI_BASE = os.environ.get("KALSHI_API_URL", "https://api.elections.kalshi.com/trade-api/v2")
+
+MARKET_SOURCE_POLYMARKET = "polymarket"
+MARKET_SOURCE_KALSHI = "kalshi"
 
 
 def _one_year_ago_iso() -> str:
@@ -20,6 +23,16 @@ def _one_year_ago_iso() -> str:
     cutoff = datetime.now(timezone.utc) - timedelta(days=365)
     # Gamma OpenAPI uses date-time strings; normalize to Z suffix.
     return cutoff.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _safe_parse_dt(value: Optional[str]) -> datetime:
+    """Parse ISO8601 timestamps defensively for market/date helpers."""
+    if not value:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
 
 
 def _numeric_field(obj: dict, *keys: str) -> float:
@@ -54,6 +67,313 @@ def _is_sports_event(event: dict) -> bool:
             if "sport" in label:
                 return True
     return False
+
+
+def _requested_source() -> str:
+    source = str(request.args.get("source") or MARKET_SOURCE_POLYMARKET).strip().lower()
+    return MARKET_SOURCE_KALSHI if source == MARKET_SOURCE_KALSHI else MARKET_SOURCE_POLYMARKET
+
+
+def _as_list_payload(data: Any, *keys: str) -> List[Dict[str, Any]]:
+    if isinstance(data, list):
+        return [x for x in data if isinstance(x, dict)]
+    if isinstance(data, dict):
+        for key in keys:
+            value = data.get(key)
+            if isinstance(value, list):
+                return [x for x in value if isinstance(x, dict)]
+    return []
+
+
+def _text_field(raw: Dict[str, Any], *keys: str) -> Optional[str]:
+    for key in keys:
+        value = raw.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return None
+
+
+def _kalshi_market_id(raw: Dict[str, Any], fallback: str) -> str:
+    return _text_field(raw, "ticker", "market_ticker", "marketTicker", "id", "symbol") or fallback
+
+
+def _kalshi_event_id(raw: Dict[str, Any], market_id: str) -> str:
+    return _text_field(
+        raw,
+        "event_ticker",
+        "eventTicker",
+        "series_ticker",
+        "seriesTicker",
+        "event_id",
+        "eventId",
+    ) or market_id
+
+
+def _kalshi_market_rows() -> List[Dict[str, Any]]:
+    api_key = os.environ.get("KALSHI_API_KEY")
+    if not api_key:
+        raise requests.RequestException("Kalshi API key not configured")
+    r = requests.get(
+        f"{KALSHI_BASE}/markets",
+        headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+        timeout=10,
+    )
+    r.raise_for_status()
+    return _as_list_payload(r.json(), "markets", "data", "results")
+
+
+def _kalshi_event_title_map_for_markets(markets: List[Dict[str, Any]]) -> Dict[str, Dict[str, str]]:
+    api_key = os.environ.get("KALSHI_API_KEY")
+    if not api_key:
+        return {}
+
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    tickers: List[str] = []
+    seen: Set[str] = set()
+    for row in markets:
+        ticker = _kalshi_event_id(row, "")
+        if not ticker or ticker in seen:
+            continue
+        seen.add(ticker)
+        tickers.append(ticker)
+        if len(tickers) >= 120:
+            break
+
+    out: Dict[str, Dict[str, str]] = {}
+    for ticker in tickers:
+        try:
+            r = requests.get(
+                f"{KALSHI_BASE}/events/{ticker}",
+                headers=headers,
+                timeout=6,
+            )
+            r.raise_for_status()
+            payload = r.json()
+            if isinstance(payload, dict):
+                event = payload.get("event") if isinstance(payload.get("event"), dict) else payload
+            else:
+                event = {}
+            if not isinstance(event, dict):
+                continue
+            out[ticker] = {
+                "title": _text_field(event, "title") or ticker,
+                "sub_title": _text_field(event, "sub_title", "subTitle") or "",
+                "category": _text_field(event, "category") or "",
+            }
+        except requests.RequestException:
+            continue
+
+    return out
+
+
+def _normalize_kalshi_market(
+    raw: Dict[str, Any],
+    index: int,
+    event_titles: Optional[Dict[str, Dict[str, str]]] = None,
+) -> Dict[str, Any]:
+    market_id = _kalshi_market_id(raw, f"kalshi-{index}")
+    event_id = _kalshi_event_id(raw, market_id)
+    event_info = (event_titles or {}).get(event_id, {})
+    title = (
+        event_info.get("title")
+        or _text_field(raw, "title", "question", "name", "subtitle")
+        or market_id
+    )
+    slug = _text_field(raw, "ticker", "market_ticker", "slug") or market_id
+    category = event_info.get("category") or _text_field(raw, "category", "sector", "group", "type")
+    volume = _numeric_field(raw, "volume", "volumeNum", "liquidity", "dollar_volume", "dollarVolume")
+    price = _text_field(raw, "yes_ask", "yesAsk", "price", "last_price", "lastPrice", "mark_price")
+
+    return {
+        "id": market_id,
+        "source": MARKET_SOURCE_KALSHI,
+        "eventId": event_id,
+        "ticker": _text_field(raw, "ticker", "market_ticker", "marketTicker"),
+        "eventTicker": _text_field(raw, "event_ticker", "eventTicker", "series_ticker", "seriesTicker"),
+        "question": title,
+        "conditionId": event_id,
+        "slug": slug,
+        "outcomePrices": price,
+        "volume": volume,
+        "volumeNum": volume,
+        "liquidity": volume,
+        "marketSlug": slug,
+        "groupItemTitle": event_info.get("sub_title") or _text_field(raw, "subtitle", "name", "title"),
+        "category": category,
+        "tmCategories": [category] if category else [],
+        "yesAsk": _text_field(raw, "yes_ask", "yesAsk"),
+        "yesBid": _text_field(raw, "yes_bid", "yesBid"),
+        "price": price,
+    }
+
+
+def _kalshi_events_from_markets(markets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    event_titles = _kalshi_event_title_map_for_markets(markets)
+    grouped: Dict[str, Dict[str, Any]] = {}
+    for index, raw in enumerate(markets):
+        normalized_market = _normalize_kalshi_market(raw, index, event_titles)
+        event_id = normalized_market["conditionId"]
+        event = grouped.get(event_id)
+        if not event:
+            event_info = event_titles.get(event_id, {})
+            event = {
+                "id": event_id,
+                "source": MARKET_SOURCE_KALSHI,
+                "slug": normalized_market.get("slug"),
+                "title": event_info.get("title") or normalized_market.get("question"),
+                "description": event_info.get("sub_title") or normalized_market.get("category"),
+                "markets": [],
+                "category": normalized_market.get("category"),
+                "tmCategories": normalized_market.get("tmCategories") or [],
+            }
+            grouped[event_id] = event
+        event.setdefault("markets", []).append(normalized_market)
+    return list(grouped.values())
+
+
+def _kalshi_markets_response() -> List[Dict[str, Any]]:
+    rows = _kalshi_market_rows()
+    event_titles = _kalshi_event_title_map_for_markets(rows)
+    return [
+        _normalize_kalshi_market(raw, index, event_titles)
+        for index, raw in enumerate(rows)
+    ]
+
+
+def _to_unix_seconds(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        ts = int(value)
+        if ts > 10**12:
+            ts //= 1000
+        return ts
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    try:
+        ts = int(float(text))
+        if ts > 10**12:
+            ts //= 1000
+        return ts
+    except ValueError:
+        pass
+
+    try:
+        dt = _safe_parse_dt(text)
+        if dt == datetime.min.replace(tzinfo=timezone.utc):
+            return None
+        return int(dt.timestamp())
+    except Exception:
+        return None
+
+
+def _kalshi_trade_rows(passthrough: Dict[str, Any]) -> List[Dict[str, Any]]:
+    api_key = os.environ.get("KALSHI_API_KEY")
+    if not api_key:
+        raise requests.RequestException("Kalshi API key not configured")
+
+    params: Dict[str, Any] = {"limit": "1000"}
+    for key in ("market", "eventId", "side", "cursor"):
+        value = passthrough.get(key)
+        if value:
+            params[key] = value
+
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    candidates = (
+        f"{KALSHI_BASE}/trades",
+        f"{KALSHI_BASE}/portfolio/trades",
+        f"{KALSHI_BASE}/markets/trades",
+    )
+
+    last_error: Optional[Exception] = None
+    for url in candidates:
+        try:
+            r = requests.get(url, headers=headers, params=params, timeout=12)
+            r.raise_for_status()
+            return _as_list_payload(r.json(), "trades", "data", "results")
+        except requests.RequestException as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise requests.RequestException(f"Kalshi trades request failed: {last_error}")
+    return []
+
+
+def _normalize_kalshi_trade(raw: Dict[str, Any], index: int) -> Optional[Dict[str, Any]]:
+    ticker = _text_field(raw, "ticker", "market_ticker", "marketTicker", "event_ticker", "eventTicker")
+    market_id = ticker or _text_field(raw, "event_ticker", "eventTicker") or f"kalshi-{index}"
+    trader = _text_field(raw, "user", "user_id", "trader", "wallet", "address") or "kalshi-user"
+
+    ts = _to_unix_seconds(
+        raw.get("created_time")
+        or raw.get("createdAt")
+        or raw.get("time")
+        or raw.get("timestamp")
+        or raw.get("executed_time")
+    )
+    if ts is None:
+        return None
+
+    size = _numeric_field(raw, "count", "size", "quantity", "contract_count", "volume")
+    if size <= 0:
+        size = 1.0
+
+    raw_price = _numeric_field(
+        raw,
+        "price",
+        "yes_price",
+        "yesPrice",
+        "yes_price_cents",
+        "yesPriceCents",
+        "avg_price",
+    )
+    if raw_price > 1:
+        raw_price = raw_price / 100.0
+    price = min(max(raw_price, 0.0), 1.0)
+
+    return {
+        "size": str(size),
+        "price": str(price),
+        "timestamp": ts,
+        "proxyWallet": trader,
+        "conditionId": market_id,
+        "side": _text_field(raw, "side", "action"),
+        "transactionHash": _text_field(raw, "trade_id", "id", "tradeId") or f"kalshi-{index}-{ts}",
+    }
+
+
+def _collect_kalshi_trades_for_analytics_window(
+    window_hours: int,
+    passthrough: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    cutoff_ts = _trades_window_cutoff_ts(window_hours)
+    rows = _kalshi_trade_rows(passthrough)
+    out: List[Dict[str, Any]] = []
+    seen: Set[str] = set()
+
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        normalized = _normalize_kalshi_trade(row, index)
+        if not normalized:
+            continue
+        ts = _trade_ts_seconds(normalized)
+        if ts is None or ts < cutoff_ts:
+            continue
+        dedupe = str(normalized.get("transactionHash") or f"{index}-{ts}")
+        if dedupe in seen:
+            continue
+        seen.add(dedupe)
+        out.append(normalized)
+
+    return out
 
 
 # --- Polymarket Data API /trades: pagination & time window -----------------
@@ -219,8 +539,17 @@ def get_events():
     - Orders by traded volume (Gamma ``order=volume``), then stable-sort locally.
     - Filters out sports-related events (based on tags).
     """
+    source = _requested_source()
     limit = request.args.get("limit", "20")
     closed = request.args.get("closed", "false")
+
+    if source == MARKET_SOURCE_KALSHI:
+        try:
+            markets = _kalshi_markets_response()
+            return jsonify(_kalshi_events_from_markets(markets)[: int(limit or "20")])
+        except requests.RequestException as e:
+            current_app.logger.warning("Kalshi events request failed: %s", e)
+            return jsonify({"error": "Failed to fetch Kalshi events", "events": []}), 502
 
     params: Dict[str, str] = {
         "limit": limit,
@@ -243,6 +572,9 @@ def get_events():
             data = sorted(data, key=_event_volume_key, reverse=True)
             data = [e for e in data if not _is_sports_event(e or {})]
             data = tag_events(data)
+            for item in data:
+                if isinstance(item, dict):
+                    item["source"] = MARKET_SOURCE_POLYMARKET
 
         return jsonify(data)
     except requests.RequestException as e:
@@ -266,6 +598,16 @@ def get_event_by_id(event_id):
 def get_markets():
     """Fetch active Polymarket markets (Gamma), ordered by volume."""
     limit = request.args.get("limit", "50")
+    source = _requested_source()
+
+    if source == MARKET_SOURCE_KALSHI:
+        try:
+            markets = _kalshi_markets_response()
+            return jsonify(markets[: int(limit or "50")])
+        except requests.RequestException as e:
+            current_app.logger.warning("Kalshi markets request failed: %s", e)
+            return jsonify({"error": "Failed to fetch Kalshi markets", "markets": []}), 502
+
     try:
         params = {
             "limit": limit,
@@ -282,6 +624,9 @@ def get_markets():
         if isinstance(data, list):
             data = sorted(data, key=_market_volume_key, reverse=True)
             data = tag_markets(data)
+            for item in data:
+                if isinstance(item, dict):
+                    item["source"] = MARKET_SOURCE_POLYMARKET
 
         return jsonify(data)
     except requests.RequestException as e:
@@ -292,17 +637,8 @@ def get_markets():
 @bp.route("/markets/kalshi/markets", methods=["GET"])
 def get_kalshi_markets():
     """Fetch Kalshi markets (public endpoint when available)."""
-    api_key = os.environ.get("KALSHI_API_KEY")
-    if not api_key:
-        return jsonify({"error": "Kalshi API key not configured", "markets": []}), 503
     try:
-        r = requests.get(
-            f"{KALSHI_BASE}/markets",
-            headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
-            timeout=10,
-        )
-        r.raise_for_status()
-        return jsonify(r.json())
+        return jsonify(_kalshi_markets_response())
     except requests.RequestException as e:
         current_app.logger.warning("Kalshi markets request failed: %s", e)
         return jsonify({"error": "Failed to fetch Kalshi markets", "markets": []}), 502
@@ -483,6 +819,7 @@ def get_trades_analytics():
     - windowHours: trades must fall in [now - windowHours, now] (default 24);
       also drives pre-deadline concentration metrics.
     """
+    source = _requested_source()
     passthrough: Dict[str, Any] = {}
     for key in ("market", "eventId", "user", "side", "filterType", "filterAmount"):
         value = request.args.get(key)
@@ -500,6 +837,14 @@ def get_trades_analytics():
         window_hours = 24
 
     try:
+        if source == MARKET_SOURCE_KALSHI:
+            trades = _collect_kalshi_trades_for_analytics_window(
+                window_hours,
+                passthrough,
+            )
+            analytics = _compute_trades_analytics(trades, window_hours)
+            return jsonify({"analytics": analytics, "count": len(trades)})
+
         trades = _collect_trades_for_analytics_window(window_hours, passthrough)
         analytics = _compute_trades_analytics(trades, window_hours)
         return jsonify(
@@ -509,6 +854,17 @@ def get_trades_analytics():
             }
         )
     except requests.RequestException as e:
-        current_app.logger.warning("Polymarket trades request failed: %s", e)
+        current_app.logger.warning("%s trades request failed: %s", source.capitalize(), e)
         empty_analytics = _compute_trades_analytics([], window_hours)
+        if source == MARKET_SOURCE_KALSHI:
+            return (
+                jsonify(
+                    {
+                        "error": "Kalshi trades endpoint unavailable or requires signed API auth",
+                        "analytics": empty_analytics,
+                        "count": 0,
+                    }
+                ),
+                502,
+            )
         return jsonify({"analytics": empty_analytics, "count": 0})

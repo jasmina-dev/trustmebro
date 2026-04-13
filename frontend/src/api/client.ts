@@ -2,27 +2,147 @@
 
 const API_BASE = "/api";
 
+export type MarketSource = "polymarket" | "kalshi";
+
+const SOURCE_BASE_URLS: Record<MarketSource, string> = {
+  polymarket: "https://polymarket.com",
+  kalshi: "https://kalshi.com",
+};
+
+function sourcePath(source: MarketSource): string {
+  return source === "kalshi" ? "/api/markets" : "/api/markets";
+}
+
+function readTextField(
+  obj: Record<string, unknown>,
+  ...keys: string[]
+): string | undefined {
+  for (const key of keys) {
+    const value = obj[key];
+    if (value == null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return undefined;
+}
+
+function readNumberField(
+  obj: Record<string, unknown>,
+  ...keys: string[]
+): number | undefined {
+  for (const key of keys) {
+    const value = obj[key];
+    if (value == null || value === "") continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function asArrayPayload<T>(data: unknown, key: string): T[] {
+  if (Array.isArray(data)) return data as T[];
+  if (data && typeof data === "object") {
+    const candidate = (data as Record<string, unknown>)[key];
+    if (Array.isArray(candidate)) return candidate as T[];
+  }
+  return [];
+}
+
+export function getSourceBaseUrl(source: MarketSource): string {
+  return SOURCE_BASE_URLS[source];
+}
+
+function kalshiWebUrlFromSlug(slug: string): string {
+  const trimmed = slug.trim();
+  if (!trimmed) return `${SOURCE_BASE_URLS.kalshi}/browse`;
+
+  const upper = trimmed.toUpperCase();
+  // Multi-leg products (KXMVE*) frequently don't have canonical direct market pages.
+  if (upper.startsWith("KXMVE")) {
+    return `${SOURCE_BASE_URLS.kalshi}/browse?query=${encodeURIComponent(trimmed)}`;
+  }
+
+  const dashIdx = trimmed.indexOf("-");
+  if (dashIdx > 0) {
+    const series = trimmed.slice(0, dashIdx).toLowerCase();
+    const market = trimmed.toLowerCase();
+    return `${SOURCE_BASE_URLS.kalshi}/markets/${series}/${market}`;
+  }
+
+  return `${SOURCE_BASE_URLS.kalshi}/browse?query=${encodeURIComponent(trimmed)}`;
+}
+
+export function getSourceEventUrl(
+  source: MarketSource,
+  event: Pick<PolymarketEvent, "id" | "slug"> | undefined,
+): string | undefined {
+  const slug =
+    source === "kalshi"
+      ? event?.slug?.trim() || event?.id?.trim()
+      : event?.slug?.trim();
+  if (!slug) return undefined;
+  if (source === "kalshi") {
+    return kalshiWebUrlFromSlug(slug);
+  }
+  return `${SOURCE_BASE_URLS.polymarket}/event/${slug}`;
+}
+
+export function getSourceMarketUrl(
+  source: MarketSource,
+  market:
+    | Pick<PolymarketMarket, "id" | "slug" | "marketSlug" | "ticker">
+    | undefined,
+): string | undefined {
+  const slug =
+    market?.slug?.trim() ||
+    market?.marketSlug?.trim() ||
+    market?.ticker?.trim() ||
+    market?.id?.trim();
+  if (!slug) return undefined;
+  if (source === "kalshi") {
+    return kalshiWebUrlFromSlug(slug);
+  }
+  return `${SOURCE_BASE_URLS.polymarket}/market/${slug}`;
+}
+
 export async function fetchEvents(
   limit = 20,
   closed = false,
+  source: MarketSource = "polymarket",
 ): Promise<PolymarketEvent[]> {
-  const res = await fetch(
-    `${API_BASE}/markets/events?limit=${limit}&closed=${closed}`,
-  );
+  const search = new URLSearchParams();
+  search.set("limit", String(limit));
+  search.set("closed", String(closed));
+  if (source !== "polymarket") search.set("source", source);
+
+  const res = await fetch(`${sourcePath(source)}/events?${search.toString()}`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    return data.events ?? [];
+    const msg = (data as { error?: string }).error;
+    if (msg) throw new Error(msg);
+    return asArrayPayload<PolymarketEvent>(data, "events");
   }
-  return res.json();
+  const data = await res.json();
+  return asArrayPayload<PolymarketEvent>(data, "events");
 }
 
-export async function fetchMarkets(limit = 50): Promise<PolymarketMarket[]> {
-  const res = await fetch(`${API_BASE}/markets/markets?limit=${limit}`);
+export async function fetchMarkets(
+  limit = 50,
+  source: MarketSource = "polymarket",
+): Promise<PolymarketMarket[]> {
+  const search = new URLSearchParams();
+  search.set("limit", String(limit));
+  if (source !== "polymarket") search.set("source", source);
+
+  const res = await fetch(`${sourcePath(source)}/markets?${search.toString()}`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    return data.markets ?? [];
+    const msg = (data as { error?: string }).error;
+    if (msg) throw new Error(msg);
+    return asArrayPayload<PolymarketMarket>(data, "markets");
   }
-  return res.json();
+  const data = await res.json();
+  return asArrayPayload<PolymarketMarket>(data, "markets");
 }
 
 export interface TradesTimeBucket {
@@ -79,6 +199,7 @@ export interface TradesAnalyticsParams {
   side?: "BUY" | "SELL";
   windowHours?: number;
   limit?: number;
+  source?: MarketSource;
 }
 
 export async function fetchTradesAnalytics(
@@ -91,6 +212,9 @@ export async function fetchTradesAnalytics(
   if (params.side) search.set("side", params.side);
   if (params.windowHours != null) {
     search.set("windowHours", String(params.windowHours));
+  }
+  if (params.source && params.source !== "polymarket") {
+    search.set("source", params.source);
   }
   // Backend pages the Data API internally; limit/offset are not used for analytics.
 
@@ -124,9 +248,7 @@ export async function streamChatMessage(
     );
   }
   if (!res.body) {
-    throw new Error(
-      "Streaming is not supported: response body is null",
-    );
+    throw new Error("Streaming is not supported: response body is null");
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -155,6 +277,7 @@ export async function streamChatMessage(
 
 export interface PolymarketEvent {
   id: string;
+  source?: MarketSource;
   slug?: string;
   title: string;
   description?: string;
@@ -171,10 +294,17 @@ export interface PolymarketEvent {
 
 export interface PolymarketMarket {
   id: string;
+  source?: MarketSource;
+  eventId?: string;
+  ticker?: string;
+  eventTicker?: string;
   question: string;
   conditionId?: string;
   slug?: string;
   outcomePrices?: string;
+  yesAsk?: string;
+  yesBid?: string;
+  price?: string;
   volume?: number;
   volumeNum?: number;
   liquidity?: number;

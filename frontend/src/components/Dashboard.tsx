@@ -5,6 +5,9 @@ import {
   fetchEvents,
   fetchMarkets,
   fetchTradesAnalytics,
+  getSourceEventUrl,
+  getSourceMarketUrl,
+  type MarketSource,
   type PolymarketEvent,
   type PolymarketMarket,
   type TradesAnalytics,
@@ -44,6 +47,7 @@ type DashboardMainTab =
   | "researchNotes";
 
 interface DashboardProps {
+  source: MarketSource;
   category: string;
   onCategoryChange: (id: string) => void;
   categoryOptions: readonly { id: string; label: string }[];
@@ -106,31 +110,24 @@ const CASHFLOW_WINDOWS = [
   { label: "7D", hours: CASHFLOW_PERSIST_LOOKBACK_HOURS },
 ] as const;
 
-function polymarketIdsForEvent(event: PolymarketEvent | undefined): string[] {
+function marketIdsForEvent(event: PolymarketEvent | undefined): string[] {
   if (!event?.markets?.length) return [];
   const ids = new Set<string>();
   for (const m of event.markets) {
-    const c = m.conditionId;
+    const c =
+      m.conditionId ?? m.eventId ?? m.ticker ?? m.marketSlug ?? m.slug ?? m.id;
     if (c) ids.add(String(c));
   }
   return Array.from(ids);
 }
 
-const POLYMARKET_BASE_URL = "https://polymarket.com";
-
-function polymarketEventUrl(event: PolymarketEvent): string | undefined {
-  const slug = event.slug?.trim();
-  return slug ? `${POLYMARKET_BASE_URL}/event/${slug}` : undefined;
-}
-
-function polymarketMarketUrl(
-  market: PolymarketMarket | undefined,
-): string | undefined {
-  const slug = market?.slug?.trim() || market?.marketSlug?.trim();
-  return slug ? `${POLYMARKET_BASE_URL}/market/${slug}` : undefined;
-}
-
-function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
+function DashboardOnboardingBanner({
+  onDismiss,
+  sourceLabel,
+}: {
+  onDismiss: () => void;
+  sourceLabel: string;
+}) {
   return (
     <section
       className="dashboard-onboarding"
@@ -141,8 +138,8 @@ function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
           <p className="dashboard-onboarding-title">How to use this view</p>
           <ul className="dashboard-onboarding-list">
             <li>
-              This dashboard pulls Polymarket volume, whale concentration, and
-              late-window activity into one research surface.
+              This dashboard pulls {sourceLabel} volume, whale concentration,
+              and late-window activity into one research surface.
             </li>
             <li>
               &quot;Insider trading signals&quot; here means statistical red
@@ -167,11 +164,13 @@ function DashboardOnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
 }
 
 export function Dashboard({
+  source,
   category,
   onCategoryChange,
   categoryOptions,
   onContextChange,
 }: DashboardProps) {
+  const sourceLabel = source === "kalshi" ? "Kalshi" : "Polymarket";
   const [events, setEvents] = useState<PolymarketEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -179,7 +178,7 @@ export function Dashboard({
     useState<TradesAnalytics | null>(null);
   const [persistedSeries, setPersistedSeries] = useState<
     TradesAnalytics["byTime"]
-  >(() => loadTrimmedCashflowBuckets());
+  >(() => (source === "polymarket" ? loadTrimmedCashflowBuckets() : []));
   const [tradesError, setTradesError] = useState<string | null>(null);
   const [windowHours, setWindowHours] = useState<number>(24);
   const [onboardingVisible, setOnboardingVisible] = useState(() => {
@@ -214,9 +213,16 @@ export function Dashboard({
   }, []);
 
   useEffect(() => {
+    setFocusedEventId(null);
+    setFocusedTradesRaw(null);
+    setFocusedTradesError(null);
+    setFocusedTradesLoading(false);
+    setPersistedSeries(
+      source === "polymarket" ? loadTrimmedCashflowBuckets() : [],
+    );
     setLoading(true);
     setError(null);
-    Promise.all([fetchEvents(30, false), fetchMarkets(100)])
+    Promise.all([fetchEvents(30, false, source), fetchMarkets(100, source)])
       .then(([eventList, markets]) => {
         const byEvent = new Map<string, PolymarketEvent>();
         for (const e of eventList) {
@@ -228,14 +234,16 @@ export function Dashboard({
           const ev = byEvent.get(eid);
           if (ev) {
             if (!ev.markets) ev.markets = [];
-            ev.markets.push(m);
+            if (!ev.markets.some((existing) => existing.id === m.id)) {
+              ev.markets.push(m);
+            }
           }
         }
         setEvents(Array.from(byEvent.values()));
       })
       .catch((err) => setError(err.message ?? "Failed to load data"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [source]);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,6 +268,10 @@ export function Dashboard({
     function fallbackPersistedOnError(message: string) {
       setTradesError(message);
       setGlobalTradesRaw(null);
+      if (source !== "polymarket") {
+        setPersistedSeries([]);
+        return;
+      }
       setPersistedSeries((prev) => {
         const fromLs = prev.length ? prev : loadTrimmedCashflowBuckets();
         let merged = fromLs;
@@ -272,7 +284,11 @@ export function Dashboard({
     }
 
     async function loadCashflowSeries() {
-      if (isSupabaseChartsConfigured() && !cancelled) {
+      if (
+        source === "polymarket" &&
+        isSupabaseChartsConfigured() &&
+        !cancelled
+      ) {
         const since = new Date(
           Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
         ).toISOString();
@@ -302,6 +318,7 @@ export function Dashboard({
       try {
         const res = await fetchTradesAnalytics({
           windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
+          source,
         });
         if (cancelled) return;
         applyPolymarketApiSeries(res.analytics);
@@ -319,13 +336,16 @@ export function Dashboard({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [source]);
 
   function extractYesPrice(
     market: PolymarketMarket | undefined,
   ): number | null {
-    if (!market || market.outcomePrices == null) return null;
-    const first = String(market.outcomePrices).split(",")[0];
+    if (!market) return null;
+    const rawPrice =
+      market.outcomePrices ?? market.yesAsk ?? market.yesBid ?? market.price;
+    if (rawPrice == null) return null;
+    const first = String(rawPrice).split(",")[0];
     const v = parseFloat(first);
     if (!Number.isFinite(v)) return null;
     return v;
@@ -376,17 +396,21 @@ export function Dashboard({
     setFocusedTradesError(null);
 
     const event = filtered.find((e) => e.id === focusedEventId);
-    const polyIds = polymarketIdsForEvent(event);
+    const marketIds = marketIdsForEvent(event);
     const eventIdParam = focusedEventId;
 
     async function loadFocused() {
-      if (isSupabaseChartsConfigured() && polyIds.length > 0) {
+      if (
+        source === "polymarket" &&
+        isSupabaseChartsConfigured() &&
+        marketIds.length > 0
+      ) {
         const since = new Date(
           Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
         ).toISOString();
         const buckets = await fetchHourlyCashflowForPolymarketIds(
           since,
-          polyIds,
+          marketIds,
         );
         if (cancelled) return;
         if (buckets.length > 0) {
@@ -404,6 +428,7 @@ export function Dashboard({
         const res = await fetchTradesAnalytics({
           eventId: eventIdParam,
           windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
+          source,
         });
         if (!cancelled) setFocusedTradesRaw(res.analytics);
       } catch (err) {
@@ -424,7 +449,7 @@ export function Dashboard({
     return () => {
       cancelled = true;
     };
-  }, [focusedEventId, filtered]);
+  }, [focusedEventId, filtered, source]);
 
   const analytics = useMemo(() => {
     const allMarkets: PolymarketMarket[] = [];
@@ -641,8 +666,8 @@ export function Dashboard({
       headlines.push({
         title,
         meta: metaParts.join(" • ") || undefined,
-        eventUrl: polymarketEventUrl(event),
-        marketUrl: polymarketMarketUrl(event.markets?.[0]),
+        eventUrl: getSourceEventUrl(source, event),
+        marketUrl: getSourceMarketUrl(source, event.markets?.[0]),
       });
     }
 
@@ -661,12 +686,13 @@ export function Dashboard({
     }
 
     return headlines;
-  }, [events, displayAnalytics]);
+  }, [events, displayAnalytics, source]);
 
   const contextString = useMemo(() => {
     const lines: string[] = [];
     const activeTabLabel =
       MAIN_TABS.find((tab) => tab.id === mainTab)?.label ?? mainTab;
+    lines.push(`Active source: ${sourceLabel}`);
     lines.push(`Active tab: ${activeTabLabel}`);
     lines.push(`Active filter: ${category}`);
     lines.push(
@@ -734,6 +760,7 @@ export function Dashboard({
 
     return lines.join("\n");
   }, [
+    sourceLabel,
     category,
     filtered,
     analytics,
@@ -857,7 +884,10 @@ export function Dashboard({
   return (
     <div className="dashboard">
       {onboardingVisible && (
-        <DashboardOnboardingBanner onDismiss={dismissOnboarding} />
+        <DashboardOnboardingBanner
+          onDismiss={dismissOnboarding}
+          sourceLabel={sourceLabel}
+        />
       )}
 
       <section className="dashboard-live-ticker" aria-label="Live spotlight">
@@ -1094,7 +1124,7 @@ export function Dashboard({
                 {cashflowSectionTitle}
               </h2>
               <p className="dashboard-cashflow-lede">
-                Secondary read on Polymarket bets · {cashflowWindowLabel}
+                Secondary read on {sourceLabel} bets · {cashflowWindowLabel}
                 {focusedEventId ? " · scoped to focused event" : ""}
               </p>
               <div

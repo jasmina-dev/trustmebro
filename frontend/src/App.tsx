@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { Chatbot } from "./components/Chatbot";
 import { LandingPage } from "./components/LandingPage";
+import { type MarketSource } from "./api/client";
 import "./App.css";
 
 const THEME_STORAGE_KEY = "trustmebro-theme-v2";
@@ -21,6 +22,7 @@ const CATEGORIES = [
 
 export default function App() {
   const [showDashboard, setShowDashboard] = useState(false);
+  const [source, setSource] = useState<MarketSource>("polymarket");
   const [category, setCategory] = useState<string>("all");
   const [chatOpen, setChatOpen] = useState(false);
   const [dashboardContext, setDashboardContext] = useState<string | null>(null);
@@ -40,6 +42,14 @@ export default function App() {
     return <LandingPage onEnterDashboard={() => setShowDashboard(true)} />;
   }
 
+  const sourceOptions: { id: MarketSource; label: string }[] = [
+    { id: "polymarket", label: "Polymarket" },
+    { id: "kalshi", label: "Kalshi" },
+  ];
+
+  const activeSourceLabel =
+    sourceOptions.find((option) => option.id === source)?.label ?? source;
+
   return (
     <div className="app">
       <header className="header">
@@ -51,7 +61,7 @@ export default function App() {
             </p>
           </div>
           <p className="header-mission">
-            Streaming prediction market activity into a single view of crowd
+            Streaming {activeSourceLabel} activity into a single view of crowd
             expectations, momentum, and structural inefficiencies.
           </p>
           <button
@@ -67,8 +77,25 @@ export default function App() {
         </div>
       </header>
 
+      <nav className="filters source-switcher" aria-label="Market source">
+        <div className="filters-inner">
+          <span className="source-switcher-label">Source</span>
+          {sourceOptions.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`filter-btn ${source === option.id ? "active" : ""}`}
+              onClick={() => setSource(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       <main className="main">
         <Dashboard
+          source={source}
           category={category}
           onCategoryChange={setCategory}
           categoryOptions={CATEGORIES}
@@ -78,7 +105,7 @@ export default function App() {
 
       <div className="chat-toggle-wrap">
         <button className="chat-toggle" onClick={() => setChatOpen((o) => !o)}>
-          {chatOpen ? "Close" : "Ask AI"}
+          {chatOpen ? "Close chat" : "Ask AI"}
         </button>
       </div>
 

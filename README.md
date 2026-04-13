@@ -49,8 +49,9 @@ App runs at **http://localhost:5173** and proxies `/api` to the backend on port 
 | `VITE_API_URL`                          | Full backend URL override for the Vite dev proxy.                               |
 | `POLYMARKET_GAMMA_URL`                  | Gamma API base (default: https://gamma-api.polymarket.com)                      |
 | `POLYMARKET_DATA_URL`                   | Data API base for trades analytics (default: https://data-api.polymarket.com)   |
-| `KALSHI_API_URL`                        | Kalshi API base                                                                 |
+| `KALSHI_API_URL`                        | Kalshi API base (recommended: `https://api.elections.kalshi.com/trade-api/v2`)  |
 | `KALSHI_API_KEY`                        | Required for Kalshi endpoints                                                   |
+|                                         | Note: trade/fill history endpoints may require signed Kalshi auth headers       |
 | `ANTHROPIC_API_KEY`                     | Required for chatbot                                                            |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Optional, for future storage                                                    |
 
