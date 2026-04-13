@@ -40,7 +40,8 @@ export function LandingPage({ onEnterDashboard }: LandingPageProps) {
               Open dashboard
             </button>
             <p className="landing-cta-hint">
-              No signup—jump straight into the data.
+              By opening the dashboard, you confirm that you understand this
+              site is for research purposes only and not financial advice.
             </p>
           </div>
         </div>
