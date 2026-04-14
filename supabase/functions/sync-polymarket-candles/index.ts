@@ -13,7 +13,11 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
  *
  * Troubleshooting “no rows in Supabase”:
  * - Invoke the function (cron or POST). It does not run until called.
- * - If SYNC_CRON_SECRET is set, send header x-sync-secret with the same value (401 = blocked).
+ * - Hosted schedule: migrations `20260413120000_polymarket_sync_pg_cron.sql` + follow-ups (pg_cron + pg_net) plus Vault
+ *   secrets `invoke_sync_polymarket_candles_url` and `invoke_sync_polymarket_candles_authorization`; then `supabase db push`.
+ *   Vault auth value: legacy JWT (eyJ...) uses Bearer+apikey; new keys (sb_publishable_/sb_secret_) use apikey header only.
+ * - If SYNC_CRON_SECRET is set, send header x-sync-secret with the same value (401 = blocked); mirror in Vault as
+ *   `invoke_sync_polymarket_candles_x_sync_secret` for cron.
  * - Apply DB migrations (markets, market_price_candles, sync_state).
  * - Check Edge Function Logs for JSON error body; redeploy after code changes.
  */
@@ -163,9 +167,11 @@ function num(v: unknown): number {
 }
 
 function checkCronSecret(req: Request): Response | null {
-  const secret = Deno.env.get("SYNC_CRON_SECRET");
+  const secretRaw = Deno.env.get("SYNC_CRON_SECRET");
+  const secret = secretRaw?.trim();
   if (!secret) return null;
-  if (req.headers.get("x-sync-secret") !== secret) {
+  const hdr = req.headers.get("x-sync-secret")?.trim() ?? "";
+  if (hdr !== secret) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
   return null;
