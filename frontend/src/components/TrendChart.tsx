@@ -10,6 +10,7 @@ import {
   Cell,
 } from "recharts";
 import type { SuspicionLevel } from "./suspicion";
+import { NotionalVolumeTermHelp } from "./dashboardTermHelp";
 import "./TrendChart.css";
 
 export interface TrendChartRow {
@@ -189,6 +190,17 @@ export function TrendChart({
               fontSize: "0.8rem",
               paddingBottom: 4,
             }}
+            content={() => (
+              <div className="trend-chart-custom-legend">
+                <span
+                  className="trend-chart-custom-legend-swatch"
+                  style={{ background: BAR_COLOR }}
+                  aria-hidden
+                />
+                <span>Notional volume (USD)</span>
+                <NotionalVolumeTermHelp />
+              </div>
+            )}
           />
           <Bar
             name="Notional volume (USD)"

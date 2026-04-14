@@ -15,6 +15,7 @@ import { TradesTimeSeriesChart } from "./TradesTimeSeriesChart";
 import { PreDeadlineChart } from "./PreDeadlineChart";
 import { WhaleAddressesPanel } from "./WhaleAddressesPanel";
 import { SuspicionSignalLegend } from "./SuspicionSignalLegend";
+import { SuspicionTermHelp, WhalesTermHelp } from "./dashboardTermHelp";
 import { computeEventSuspicion, type SuspicionLevel } from "./suspicion";
 import {
   loadTrimmedCashflowBuckets,
@@ -959,8 +960,9 @@ export function Dashboard({
           role="group"
           aria-label="Suspicion signal"
         >
-          <span className="dashboard-suspicion-filter-label">
+          <span className="dashboard-suspicion-filter-label term-help-inline">
             Suspicion signal
+            <SuspicionTermHelp />
           </span>
           {(
             [
@@ -1133,8 +1135,12 @@ export function Dashboard({
                 Trending markets
               </h2>
               <p className="dashboard-trending-sub">
-                Top events by volume · suspicion signal on each bar · click to
-                focus the rest of the dashboard
+                Top events by volume ·{" "}
+                <span className="term-help-inline">
+                  suspicion signal
+                  <SuspicionTermHelp />
+                </span>{" "}
+                on each bar · click to focus the rest of the dashboard
               </p>
             </div>
             {focusedEventId && (
@@ -1181,7 +1187,10 @@ export function Dashboard({
 
       {mainTab === "whale" && (
         <section className="dashboard-section dashboard-section-full">
-          <h2 className="dashboard-trending-title">Whale activity</h2>
+          <h2 className="dashboard-trending-title dashboard-heading-with-help">
+            Whale activity
+            <WhalesTermHelp />
+          </h2>
           <p className="dashboard-trending-sub">
             Addresses and pre-deadline concentration for the current scope (
             {cashflowWindowLabel}
@@ -1193,7 +1202,10 @@ export function Dashboard({
           {focusedTradesError && <p className="hint">{focusedTradesError}</p>}
           <div className="dashboard-whale-tab-grid">
             <div className="analytics-panel">
-              <h3 className="analytics-subtitle">Whale addresses</h3>
+              <h3 className="analytics-subtitle dashboard-heading-with-help">
+                Whale addresses
+                <WhalesTermHelp />
+              </h3>
               {cashFlowChartLoading || globalTradesPending ? (
                 <div
                   className="chart-panel-skeleton trend-chart-loading"
@@ -1279,8 +1291,11 @@ export function Dashboard({
 
         {showDeepAnalysis && (
           <div className="dashboard-deep-panels">
-            <h2 className="dashboard-deep-heading">
-              Trading activity &amp; whales ({cashflowWindowLabel})
+            <h2 className="dashboard-deep-heading dashboard-heading-with-help">
+              <span>
+                Trading activity &amp; whales ({cashflowWindowLabel})
+              </span>
+              <WhalesTermHelp />
             </h2>
             {tradesError && (
               <p className="hint">
@@ -1312,8 +1327,9 @@ export function Dashboard({
                     aria-controls="deep-whale-accordion-panel"
                     onClick={() => setWhaleAccordionOpen((o) => !o)}
                   >
-                    <span className="dashboard-deep-accordion-title">
+                    <span className="dashboard-deep-accordion-title dashboard-heading-with-help">
                       Whale addresses
+                      <WhalesTermHelp />
                     </span>
                     <span
                       className="dashboard-deep-accordion-chevron"

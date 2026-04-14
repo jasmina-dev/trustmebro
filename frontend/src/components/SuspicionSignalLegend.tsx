@@ -1,4 +1,5 @@
 import { SUSPICION_SIGNAL_DISCLAIMER } from "./suspicion";
+import { SuspicionTermHelp } from "./dashboardTermHelp";
 import "./SuspicionSignalLegend.css";
 
 /** Key for 🔴/🟡/🟢 labels on each trending bar (sits directly under the bar chart). */
@@ -8,7 +9,10 @@ export function SuspicionSignalLegend() {
       className="suspicion-signal-legend"
       aria-label="Suspicion signal levels for trending market bars"
     >
-      <p className="suspicion-signal-legend-title">Suspicion signal key</p>
+      <p className="suspicion-signal-legend-title suspicion-signal-legend-title-row">
+        <span>Suspicion signal key</span>
+        <SuspicionTermHelp />
+      </p>
       <ul className="suspicion-signal-legend-items">
         <li>
           <span className="suspicion-signal-legend-pill suspicion-signal-high">
