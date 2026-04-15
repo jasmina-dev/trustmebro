@@ -1,4 +1,5 @@
 import unittest
+import os
 from unittest.mock import patch
 
 import requests
@@ -89,6 +90,69 @@ class ApiRoutesTests(unittest.TestCase):
         payload = res.get_json()
         self.assertIn("analytics", payload)
         self.assertIn("count", payload)
+        self.assertIn("byTime", payload["analytics"])
+        self.assertIn("preDeadlineWindow", payload["analytics"])
+
+    @patch("app.routes.markets.requests.get")
+    def test_kalshi_markets_route_returns_normalized_markets(self, mock_get):
+        mock_get.side_effect = [
+            _MockResponse(
+                [
+                    {
+                        "ticker": "KX-TEST-MKT",
+                        "event_ticker": "KX-TEST",
+                        "title": "yes weird contract leg",
+                        "volume": 2500,
+                        "yes_ask": "0.63",
+                    }
+                ]
+            ),
+            _MockResponse(
+                {
+                    "event": {
+                        "event_ticker": "KX-TEST",
+                        "title": "Will inflation rise in 2026?",
+                        "sub_title": "By year-end",
+                        "category": "Economy",
+                    }
+                }
+            ),
+        ]
+
+        with patch.dict(os.environ, {"KALSHI_API_KEY": "test-key"}):
+            res = self.client.get("/api/markets/markets?limit=1&source=kalshi")
+
+        self.assertEqual(res.status_code, 200)
+        payload = res.get_json()
+        self.assertEqual(payload[0]["source"], "kalshi")
+        self.assertEqual(payload[0]["conditionId"], "KX-TEST")
+        self.assertEqual(payload[0]["question"], "Will inflation rise in 2026?")
+
+    @patch("app.routes.markets.requests.get")
+    def test_kalshi_trades_analytics_route_returns_analytics_shape(self, mock_get):
+        mock_get.return_value = _MockResponse(
+            [
+                {
+                    "trade_id": "t1",
+                    "ticker": "KX-TEST",
+                    "user": "0xabc",
+                    "count": 12,
+                    "yes_price": 63,
+                    "created_time": "2026-04-13T12:00:00Z",
+                }
+            ]
+        )
+
+        with patch.dict(os.environ, {"KALSHI_API_KEY": "test-key"}):
+            res = self.client.get(
+                "/api/markets/trades-analytics?windowHours=24&source=kalshi"
+            )
+
+        self.assertEqual(res.status_code, 200)
+        payload = res.get_json()
+        self.assertIn("analytics", payload)
+        self.assertGreaterEqual(payload["count"], 1)
+        self.assertGreater(payload["analytics"]["totalVolume"], 0)
         self.assertIn("byTime", payload["analytics"])
         self.assertIn("preDeadlineWindow", payload["analytics"])
 

@@ -41,14 +41,18 @@ describe("App", () => {
   it("renders header and default filter", async () => {
     render(<App />);
     expect(
-      screen.getByRole("heading", { name: /don't trust the vibe/i })
+      screen.getByRole("heading", { name: /don't trust the vibe/i }),
     ).toBeInTheDocument();
     await goToDashboard();
-    expect(screen.getByRole("heading", { name: /trustmebro analytics/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /trustmebro analytics/i }),
+    ).toBeInTheDocument();
     const categorySelect = screen.getByRole("combobox", { name: /category/i });
     expect(categorySelect).toHaveValue("all");
     await waitFor(() => {
-      expect(screen.queryByText(/loading market data/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/loading market data/i),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -57,7 +61,9 @@ describe("App", () => {
     render(<App />);
     await goToDashboard();
     await waitFor(() => {
-      expect(screen.queryByText(/loading market data/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/loading market data/i),
+      ).not.toBeInTheDocument();
     });
     const categorySelect = screen.getByRole("combobox", { name: /category/i });
     await user.selectOptions(categorySelect, "politics");
@@ -70,11 +76,19 @@ describe("App", () => {
     render(<App />);
     await goToDashboard();
     await waitFor(() => {
-      expect(screen.queryByText(/loading market data/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/loading market data/i),
+      ).not.toBeInTheDocument();
     });
     await user.click(screen.getByRole("button", { name: /open chatbot/i }));
-    expect(screen.getByRole("dialog", { name: /ai assistant chat/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^Close chat$/i }));
-    expect(screen.queryByRole("dialog", { name: /ai assistant chat/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: /ai assistant chat/i }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getAllByRole("button", { name: /^Close chat$/i })[0],
+    );
+    expect(
+      screen.queryByRole("dialog", { name: /ai assistant chat/i }),
+    ).not.toBeInTheDocument();
   });
 });

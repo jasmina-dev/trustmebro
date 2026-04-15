@@ -1,4 +1,4 @@
-import type { PolymarketEvent } from "../api/client";
+import { getSourceEventUrl, type PolymarketEvent } from "../api/client";
 import "./MarketList.css";
 
 /** Matches nav order so multi-tag rows read consistently. */
@@ -40,13 +40,6 @@ function tagsForEventCard(event: PolymarketEvent): string[] {
 
 interface MarketListProps {
   events: PolymarketEvent[];
-}
-
-const POLYMARKET_BASE_URL = "https://polymarket.com";
-
-function eventUrl(event: PolymarketEvent): string | undefined {
-  const slug = event.slug?.trim();
-  return slug ? `${POLYMARKET_BASE_URL}/event/${slug}` : undefined;
 }
 
 function formatVolume(v: number | undefined): string {
@@ -126,6 +119,7 @@ export function MarketList({ events }: MarketListProps) {
   return (
     <ul className="market-list">
       {events.slice(0, 50).map((event) => {
+        const source = event.source ?? "polymarket";
         const volume =
           event.markets?.reduce(
             (s, m) => s + (m.volumeNum ?? (m.volume as number) ?? 0),
@@ -136,7 +130,7 @@ export function MarketList({ events }: MarketListProps) {
           pYes != null ? `${(pYes <= 1 ? pYes * 100 : pYes).toFixed(0)}¢` : "—";
 
         const tags = tagsForEventCard(event);
-        const url = eventUrl(event);
+        const url = getSourceEventUrl(source, event);
 
         return (
           <li key={event.id} className="market-card">
