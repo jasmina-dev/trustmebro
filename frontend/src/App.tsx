@@ -1,6 +1,6 @@
 // utilized github copilot
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { Chatbot } from "./components/Chatbot";
 import { LandingPage } from "./components/LandingPage";
@@ -47,6 +47,26 @@ export default function App() {
     { id: "kalshi", label: "Kalshi" },
   ];
 
+  const sourceGroupRef = useRef<HTMLDivElement>(null);
+
+  const handleSourceKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const idx = sourceOptions.findIndex((o) => o.id === source);
+    let next = idx;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      next = (idx + 1) % sourceOptions.length;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      next = (idx - 1 + sourceOptions.length) % sourceOptions.length;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    setSource(sourceOptions[next].id);
+    const buttons = sourceGroupRef.current?.querySelectorAll<HTMLButtonElement>(
+      '[role="radio"]',
+    );
+    buttons?.[next]?.focus();
+  };
+
   const activeSourceLabel =
     sourceOptions.find((option) => option.id === source)?.label ?? source;
 
@@ -78,7 +98,7 @@ export default function App() {
       </header>
 
       <nav className="filters source-switcher" aria-label="Market source">
-        <div className="filters-inner" role="radiogroup" aria-label="Select market source">
+        <div className="filters-inner" role="radiogroup" aria-label="Select market source" ref={sourceGroupRef}>
           <span className="source-switcher-label">Source</span>
           {sourceOptions.map((option) => (
             <button
@@ -86,8 +106,10 @@ export default function App() {
               type="button"
               role="radio"
               aria-checked={source === option.id}
+              tabIndex={source === option.id ? 0 : -1}
               className={`filter-btn ${source === option.id ? "active" : ""}`}
               onClick={() => setSource(option.id)}
+              onKeyDown={handleSourceKeyDown}
             >
               {option.label}
             </button>

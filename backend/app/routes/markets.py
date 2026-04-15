@@ -1,7 +1,8 @@
 """Market data API routes - Polymarket & Kalshi proxy."""
 import os
+import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
 from flask import current_app, jsonify, request
@@ -16,6 +17,10 @@ KALSHI_BASE = os.environ.get("KALSHI_API_URL", "https://api.elections.kalshi.com
 
 MARKET_SOURCE_POLYMARKET = "polymarket"
 MARKET_SOURCE_KALSHI = "kalshi"
+
+# Simple TTL cache for Kalshi event titles to reduce upstream fan-out.
+_kalshi_event_cache: Dict[str, Tuple[float, Dict[str, str]]] = {}
+_KALSHI_EVENT_CACHE_TTL = 300  # seconds
 
 
 def _one_year_ago_iso() -> str:
@@ -74,6 +79,15 @@ def _requested_source() -> str:
     return MARKET_SOURCE_KALSHI if source == MARKET_SOURCE_KALSHI else MARKET_SOURCE_POLYMARKET
 
 
+def _safe_int(value: Any, default: int, upper: int = 200) -> int:
+    """Parse *value* as int, clamped to ``[0, upper]``, falling back to *default*."""
+    try:
+        parsed = int(value or default)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(0, min(parsed, upper))
+
+
 def _as_list_payload(data: Any, *keys: str) -> List[Dict[str, Any]]:
     if isinstance(data, list):
         return [x for x in data if isinstance(x, dict)]
@@ -112,17 +126,51 @@ def _kalshi_event_id(raw: Dict[str, Any], market_id: str) -> str:
     ) or market_id
 
 
-def _kalshi_market_rows() -> List[Dict[str, Any]]:
+def _kalshi_market_rows(limit: Optional[int] = None) -> List[Dict[str, Any]]:
     api_key = os.environ.get("KALSHI_API_KEY")
     if not api_key:
         raise requests.RequestException("Kalshi API key not configured")
-    r = requests.get(
-        f"{KALSHI_BASE}/markets",
-        headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
-        timeout=10,
-    )
-    r.raise_for_status()
-    return _as_list_payload(r.json(), "markets", "data", "results")
+
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    rows: List[Dict[str, Any]] = []
+    cursor: Optional[str] = None
+
+    while True:
+        params: Dict[str, Any] = {}
+        if limit is not None:
+            remaining = max(limit - len(rows), 0)
+            if remaining == 0:
+                break
+            params["limit"] = remaining
+        if cursor:
+            params["cursor"] = cursor
+
+        r = requests.get(
+            f"{KALSHI_BASE}/markets",
+            headers=headers,
+            params=params,
+            timeout=10,
+        )
+        r.raise_for_status()
+
+        payload = r.json()
+        batch = _as_list_payload(payload, "markets", "data", "results")
+        if not batch:
+            break
+        rows.extend(batch)
+
+        if limit is not None and len(rows) >= limit:
+            return rows[:limit]
+
+        cursor = None
+        if isinstance(payload, dict):
+            next_cursor = payload.get("cursor") or payload.get("next_cursor") or payload.get("nextCursor")
+            if next_cursor:
+                cursor = str(next_cursor)
+        if not cursor:
+            break
+
+    return rows
 
 
 def _kalshi_event_title_map_for_markets(markets: List[Dict[str, Any]]) -> Dict[str, Dict[str, str]]:
@@ -142,8 +190,18 @@ def _kalshi_event_title_map_for_markets(markets: List[Dict[str, Any]]) -> Dict[s
         if len(tickers) >= 120:
             break
 
+    now = time.monotonic()
     out: Dict[str, Dict[str, str]] = {}
+    fetch_tickers: List[str] = []
+
     for ticker in tickers:
+        cached = _kalshi_event_cache.get(ticker)
+        if cached and (now - cached[0]) < _KALSHI_EVENT_CACHE_TTL:
+            out[ticker] = cached[1]
+        else:
+            fetch_tickers.append(ticker)
+
+    for ticker in fetch_tickers:
         try:
             r = requests.get(
                 f"{KALSHI_BASE}/events/{ticker}",
@@ -158,11 +216,13 @@ def _kalshi_event_title_map_for_markets(markets: List[Dict[str, Any]]) -> Dict[s
                 event = {}
             if not isinstance(event, dict):
                 continue
-            out[ticker] = {
+            info = {
                 "title": _text_field(event, "title") or ticker,
                 "sub_title": _text_field(event, "sub_title", "subTitle") or "",
                 "category": _text_field(event, "category") or "",
             }
+            _kalshi_event_cache[ticker] = (now, info)
+            out[ticker] = info
         except requests.RequestException:
             continue
 
@@ -210,11 +270,13 @@ def _normalize_kalshi_market(
     }
 
 
-def _kalshi_events_from_markets(markets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    event_titles = _kalshi_event_title_map_for_markets(markets)
+def _kalshi_events_from_normalized(
+    normalized_markets: List[Dict[str, Any]],
+    event_titles: Dict[str, Dict[str, str]],
+) -> List[Dict[str, Any]]:
+    """Group already-normalized Kalshi markets into event dicts."""
     grouped: Dict[str, Dict[str, Any]] = {}
-    for index, raw in enumerate(markets):
-        normalized_market = _normalize_kalshi_market(raw, index, event_titles)
+    for normalized_market in normalized_markets:
         event_id = normalized_market["conditionId"]
         event = grouped.get(event_id)
         if not event:
@@ -234,13 +296,19 @@ def _kalshi_events_from_markets(markets: List[Dict[str, Any]]) -> List[Dict[str,
     return list(grouped.values())
 
 
-def _kalshi_markets_response() -> List[Dict[str, Any]]:
-    rows = _kalshi_market_rows()
+def _kalshi_markets_response(limit: Optional[int] = None) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, str]]]:
+    """Fetch, normalize, and return Kalshi markets plus event titles.
+
+    Returns a tuple of (normalized_markets, event_titles) so callers
+    that also need events can reuse the data without extra requests.
+    """
+    rows = _kalshi_market_rows(limit=limit)
     event_titles = _kalshi_event_title_map_for_markets(rows)
-    return [
+    normalized = [
         _normalize_kalshi_market(raw, index, event_titles)
         for index, raw in enumerate(rows)
     ]
+    return normalized, event_titles
 
 
 def _to_unix_seconds(value: Any) -> Optional[int]:
@@ -544,9 +612,10 @@ def get_events():
     closed = request.args.get("closed", "false")
 
     if source == MARKET_SOURCE_KALSHI:
+        parsed_limit = _safe_int(limit, 20, 200)
         try:
-            markets = _kalshi_markets_response()
-            return jsonify(_kalshi_events_from_markets(markets)[: int(limit or "20")])
+            markets, event_titles = _kalshi_markets_response(limit=parsed_limit)
+            return jsonify(_kalshi_events_from_normalized(markets, event_titles)[:parsed_limit])
         except requests.RequestException as e:
             current_app.logger.warning("Kalshi events request failed: %s", e)
             return jsonify({"error": "Failed to fetch Kalshi events", "events": []}), 502
@@ -601,9 +670,10 @@ def get_markets():
     source = _requested_source()
 
     if source == MARKET_SOURCE_KALSHI:
+        parsed_limit = _safe_int(limit, 50, 200)
         try:
-            markets = _kalshi_markets_response()
-            return jsonify(markets[: int(limit or "50")])
+            markets, _titles = _kalshi_markets_response(limit=parsed_limit)
+            return jsonify(markets[:parsed_limit])
         except requests.RequestException as e:
             current_app.logger.warning("Kalshi markets request failed: %s", e)
             return jsonify({"error": "Failed to fetch Kalshi markets", "markets": []}), 502
@@ -637,8 +707,11 @@ def get_markets():
 @bp.route("/markets/kalshi/markets", methods=["GET"])
 def get_kalshi_markets():
     """Fetch Kalshi markets (public endpoint when available)."""
+    if not os.environ.get("KALSHI_API_KEY"):
+        return jsonify({"error": "Kalshi API key not configured", "markets": []}), 503
     try:
-        return jsonify(_kalshi_markets_response())
+        markets, _titles = _kalshi_markets_response()
+        return jsonify(markets)
     except requests.RequestException as e:
         current_app.logger.warning("Kalshi markets request failed: %s", e)
         return jsonify({"error": "Failed to fetch Kalshi markets", "markets": []}), 502
