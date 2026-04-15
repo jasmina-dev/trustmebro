@@ -9,8 +9,8 @@ const SOURCE_BASE_URLS: Record<MarketSource, string> = {
   kalshi: "https://kalshi.com",
 };
 
-function sourcePath(source: MarketSource): string {
-  return source === "kalshi" ? "/api/markets" : "/api/markets";
+function sourcePath(_source: MarketSource): string {
+  return `${API_BASE}/markets`;
 }
 
 function readTextField(
