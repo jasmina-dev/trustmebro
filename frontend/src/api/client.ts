@@ -13,32 +13,6 @@ function sourcePath(_source: MarketSource): string {
   return `${API_BASE}/markets`;
 }
 
-function readTextField(
-  obj: Record<string, unknown>,
-  ...keys: string[]
-): string | undefined {
-  for (const key of keys) {
-    const value = obj[key];
-    if (value == null) continue;
-    const text = String(value).trim();
-    if (text) return text;
-  }
-  return undefined;
-}
-
-function readNumberField(
-  obj: Record<string, unknown>,
-  ...keys: string[]
-): number | undefined {
-  for (const key of keys) {
-    const value = obj[key];
-    if (value == null || value === "") continue;
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return undefined;
-}
-
 function asArrayPayload<T>(data: unknown, key: string): T[] {
   if (Array.isArray(data)) return data as T[];
   if (data && typeof data === "object") {
