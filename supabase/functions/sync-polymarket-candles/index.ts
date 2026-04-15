@@ -424,20 +424,20 @@ Deno.serve(async (req) => {
     const byMarketBucket = aggregateHourlyCandles(trades);
 
     const candleKeys = [...byMarketBucket.keys()];
-    let idRows: { id: string; polymarket_id: string }[] | null = null;
-    if (candleKeys.length > 0) {
+    const ID_QUERY_CHUNK = 40;
+    let idRows: { id: string; polymarket_id: string }[] = [];
+    for (let i = 0; i < candleKeys.length; i += ID_QUERY_CHUNK) {
+      const slice = candleKeys.slice(i, i + ID_QUERY_CHUNK);
       const { data, error: idErr } = await supabase
         .from("markets")
         .select("id, polymarket_id")
-        .in("polymarket_id", candleKeys);
+        .in("polymarket_id", slice);
       if (idErr) throw new Error(`markets select: ${idErr.message}`);
-      idRows = data;
-    } else {
-      idRows = [];
+      if (data) idRows = idRows.concat(data);
     }
 
     const idByCondition = new Map<string, string>();
-    for (const row of idRows ?? []) {
+    for (const row of idRows) {
       if (row.polymarket_id && row.id) {
         idByCondition.set(String(row.polymarket_id), String(row.id));
       }
