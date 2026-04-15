@@ -445,13 +445,11 @@ def _collect_kalshi_trades_for_analytics_window(
 
 
 # --- Polymarket Data API /trades: pagination & time window -----------------
-# Public /trades returns newest fills first. offset is capped at 10_000 (OpenAPI),
-# so at most ~20k rows are reachable for a single query shape. For 7d dashboards
-# we page the global feed, then batch-fetch by top-volume conditionIds to widen
-# time coverage (each market has its own recent tail).
+# Public /trades returns newest fills first. In practice, the endpoint currently
+# returns up to 1000 rows per page, so we walk offsets in 1000-row steps.
 
-DATA_TRADES_PAGE_LIMIT = 10_000
-DATA_TRADES_OFFSETS = (0, 10_000)
+DATA_TRADES_PAGE_LIMIT = 1_000
+DATA_TRADES_MAX_PAGES = 40
 DATA_TRADES_REQ_TIMEOUT = 22
 # Batched market= queries for wide windows (conditionIds per request).
 SUPP_MARKET_CHUNK = 8
@@ -488,6 +486,20 @@ def _trade_dedupe_key(trade: Dict[str, Any]) -> tuple:
 def _trades_window_cutoff_ts(window_hours: int) -> int:
     now = int(datetime.now(timezone.utc).timestamp())
     return now - max(1, int(window_hours)) * 3600
+
+
+def _batch_oldest_ts(batch: List[Dict[str, Any]]) -> Optional[int]:
+    """Return the oldest parseable timestamp in a trades page."""
+    oldest: Optional[int] = None
+    for trade in batch:
+        if not isinstance(trade, dict):
+            continue
+        ts = _trade_ts_seconds(trade)
+        if ts is None:
+            continue
+        if oldest is None or ts < oldest:
+            oldest = ts
+    return oldest
 
 
 def _fetch_data_api_trades_page(params: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -549,6 +561,7 @@ def _gamma_top_condition_ids(limit_markets: int = 160) -> List[str]:
 def _collect_trades_for_analytics_window(
     window_hours: int,
     passthrough: Dict[str, Any],
+    debug: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """Pull trades from Data API and keep only those inside [now - window, now]."""
     cutoff_ts = _trades_window_cutoff_ts(window_hours)
@@ -559,33 +572,91 @@ def _collect_trades_for_analytics_window(
     has_event = bool(passthrough.get("eventId"))
     has_user = bool(passthrough.get("user"))
 
+    if debug is not None:
+        debug.update(
+            {
+                "source": MARKET_SOURCE_POLYMARKET,
+                "windowHours": window_hours,
+                "cutoffTs": cutoff_ts,
+                "globalPaging": {
+                    "pageLimit": DATA_TRADES_PAGE_LIMIT,
+                    "maxPages": DATA_TRADES_MAX_PAGES,
+                    "offsets": [],
+                    "pagesFetched": 0,
+                    "rowsFetched": 0,
+                    "stopReason": "",
+                },
+                "supplementary": {
+                    "enabled": False,
+                    "requestedChunks": 0,
+                    "rowsFetched": 0,
+                },
+            }
+        )
+
     def pull_offset_pages(base: Dict[str, Any]) -> None:
-        for off in DATA_TRADES_OFFSETS:
+        global_debug = debug.get("globalPaging") if isinstance(debug, dict) else None
+        for page in range(DATA_TRADES_MAX_PAGES):
+            off = page * DATA_TRADES_PAGE_LIMIT
+            if isinstance(global_debug, dict):
+                global_debug.setdefault("offsets", []).append(off)
+                global_debug["pagesFetched"] = int(global_debug.get("pagesFetched", 0)) + 1
             params = {
                 **base,
                 "limit": DATA_TRADES_PAGE_LIMIT,
                 "offset": off,
             }
-            batch = _fetch_data_api_trades_page(params)
+            try:
+                batch = _fetch_data_api_trades_page(params)
+            except requests.HTTPError as e:
+                status = getattr(getattr(e, "response", None), "status_code", None)
+                # Data API may reject high offsets with 400; treat as end-of-pagination.
+                if status == 400 and off > 0:
+                    if isinstance(global_debug, dict):
+                        global_debug["stopReason"] = "offset_rejected"
+                    break
+                raise
+            if not batch:
+                if isinstance(global_debug, dict):
+                    global_debug["stopReason"] = "empty_page"
+                break
+            if isinstance(global_debug, dict):
+                global_debug["rowsFetched"] = int(global_debug.get("rowsFetched", 0)) + len(batch)
             _merge_trades_in_window(trades, seen, batch, cutoff_ts)
             if len(batch) < DATA_TRADES_PAGE_LIMIT:
+                if isinstance(global_debug, dict):
+                    global_debug["stopReason"] = "short_page"
                 break
+            oldest_ts = _batch_oldest_ts(batch)
+            if oldest_ts is not None and oldest_ts < cutoff_ts:
+                # Newest-first ordering means later pages are even older.
+                if isinstance(global_debug, dict):
+                    global_debug["stopReason"] = "crossed_cutoff"
+                break
+        if isinstance(global_debug, dict) and not global_debug.get("stopReason"):
+            global_debug["stopReason"] = "max_pages_reached"
 
     def pull_first_page_only(base: Dict[str, Any]) -> None:
+        supp_debug = debug.get("supplementary") if isinstance(debug, dict) else None
         params = {
             **base,
             "limit": DATA_TRADES_PAGE_LIMIT,
             "offset": 0,
         }
         batch = _fetch_data_api_trades_page(params)
+        if isinstance(supp_debug, dict):
+            supp_debug["requestedChunks"] = int(supp_debug.get("requestedChunks", 0)) + 1
+            supp_debug["rowsFetched"] = int(supp_debug.get("rowsFetched", 0)) + len(batch)
         _merge_trades_in_window(trades, seen, batch, cutoff_ts)
 
     pull_offset_pages(dict(passthrough))
 
-    # Widen coverage when the client asks for multi-day windows and the query is
-    # still the global feed (no market / event / user filter).
-    wide = window_hours >= 24 * 7
+    # Widen coverage for unfiltered 24h+ windows: global /trades can under-sample
+    # active fills, so add top-volume market slices.
+    wide = window_hours >= 24
     if wide and not (has_market or has_event or has_user):
+        if isinstance(debug, dict) and isinstance(debug.get("supplementary"), dict):
+            debug["supplementary"]["enabled"] = True
         base_pt = {k: v for k, v in passthrough.items() if k != "market"}
         cond_ids = _gamma_top_condition_ids(200)
         max_ids = SUPP_MARKET_CHUNK * SUPP_MARKET_MAX_CHUNKS
@@ -595,6 +666,21 @@ def _collect_trades_for_analytics_window(
                 break
             # One page per chunk keeps latency tolerable; global feed uses both offsets.
             pull_first_page_only({**base_pt, "market": ",".join(chunk)})
+
+    if isinstance(debug, dict):
+        debug["tradesInWindow"] = len(trades)
+        ts_values = [
+            ts for ts in (_trade_ts_seconds(t) for t in trades) if ts is not None
+        ]
+        if ts_values:
+            debug["timeRange"] = {
+                "oldestTs": min(ts_values),
+                "newestTs": max(ts_values),
+                "oldestIso": datetime.fromtimestamp(min(ts_values), tz=timezone.utc).isoformat(),
+                "newestIso": datetime.fromtimestamp(max(ts_values), tz=timezone.utc).isoformat(),
+            }
+        else:
+            debug["timeRange"] = None
 
     return trades
 
@@ -878,10 +964,10 @@ def _compute_trades_analytics(trades: List[Dict[str, Any]], window_hours: int) -
 def get_trades_analytics():
     """Aggregate Polymarket trade data into analytics-friendly metrics.
 
-    Fetches from the public Data API ``/trades`` (newest-first, ``limit``/``offset``).
-    For wide ``windowHours`` values the server pages the global feed (offsets 0 and
-    10_000 per OpenAPI) and, when unfiltered, batches additional requests by
-    top-volume ``conditionId`` so hourly charts can span multiple days.
+    Fetches from the public Data API ``/trades`` (newest-first, paged by offset).
+    For wider ``windowHours`` values the server pages the global feed and, when
+    unfiltered, batches additional requests by top-volume ``conditionId`` so
+    hourly charts can span a broader set of active markets.
 
     Query parameters (subset of the Polymarket Data API):
     - market: comma-separated condition IDs (Hash64).
@@ -908,6 +994,12 @@ def get_trades_analytics():
         window_hours = int(window_hours_raw)
     except (TypeError, ValueError):
         window_hours = 24
+    debug_enabled = str(request.args.get("debug") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
     try:
         if source == MARKET_SOURCE_KALSHI:
@@ -918,14 +1010,20 @@ def get_trades_analytics():
             analytics = _compute_trades_analytics(trades, window_hours)
             return jsonify({"analytics": analytics, "count": len(trades)})
 
-        trades = _collect_trades_for_analytics_window(window_hours, passthrough)
-        analytics = _compute_trades_analytics(trades, window_hours)
-        return jsonify(
-            {
-                "analytics": analytics,
-                "count": len(trades),
-            }
+        intake_debug: Optional[Dict[str, Any]] = {} if debug_enabled else None
+        trades = _collect_trades_for_analytics_window(
+            window_hours,
+            passthrough,
+            debug=intake_debug,
         )
+        analytics = _compute_trades_analytics(trades, window_hours)
+        payload: Dict[str, Any] = {
+            "analytics": analytics,
+            "count": len(trades),
+        }
+        if debug_enabled:
+            payload["debug"] = intake_debug
+        return jsonify(payload)
     except requests.RequestException as e:
         current_app.logger.warning("%s trades request failed: %s", source.capitalize(), e)
         empty_analytics = _compute_trades_analytics([], window_hours)

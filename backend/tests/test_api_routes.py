@@ -1,6 +1,7 @@
 import unittest
 import os
 from unittest.mock import patch
+from datetime import datetime, timezone
 
 import requests
 
@@ -18,6 +19,12 @@ class _MockResponse:
     def raise_for_status(self):
         if self.status_code >= 400:
             raise requests.HTTPError(response=self)
+
+
+def _http_error(status_code: int) -> requests.HTTPError:
+    response = requests.Response()
+    response.status_code = status_code
+    return requests.HTTPError(response=response)
 
 
 class ApiRoutesTests(unittest.TestCase):
@@ -94,6 +101,129 @@ class ApiRoutesTests(unittest.TestCase):
         self.assertIn("preDeadlineWindow", payload["analytics"])
 
     @patch("app.routes.markets.requests.get")
+    def test_trades_analytics_pages_offsets_by_1000(self, mock_get):
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        page_one = [
+            {
+                "transactionHash": f"tx-{i}",
+                "size": "1",
+                "price": "0.5",
+                "timestamp": now_ts - 60,
+                "proxyWallet": "A",
+                "conditionId": "M1",
+            }
+            for i in range(1000)
+        ]
+        page_two = [
+            {
+                "transactionHash": "tx-1000",
+                "size": "1",
+                "price": "0.5",
+                "timestamp": now_ts - 120,
+                "proxyWallet": "B",
+                "conditionId": "M2",
+            }
+        ]
+        mock_get.side_effect = [
+            _MockResponse(page_one),
+            _MockResponse(page_two),
+        ]
+
+        res = self.client.get("/api/markets/trades-analytics?windowHours=24&user=0xabc")
+        self.assertEqual(res.status_code, 200)
+        payload = res.get_json()
+        self.assertEqual(payload["count"], 1001)
+        self.assertEqual(payload["analytics"]["totalTrades"], 1001)
+
+        offsets = []
+        for call in mock_get.call_args_list:
+            params = call.kwargs.get("params") or {}
+            if "offset" in params:
+                offsets.append(int(params["offset"]))
+
+        self.assertGreaterEqual(len(offsets), 2)
+        self.assertEqual(offsets[0], 0)
+        self.assertEqual(offsets[1], 1000)
+
+    @patch("app.routes.markets.requests.get")
+    def test_trades_analytics_debug_payload_contains_intake_diagnostics(self, mock_get):
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        mock_get.side_effect = [
+            _MockResponse(
+                [
+                    {
+                        "transactionHash": "tx-1",
+                        "size": "3",
+                        "price": "0.4",
+                        "timestamp": now_ts - 30,
+                        "proxyWallet": "A",
+                        "conditionId": "M1",
+                    }
+                ]
+            )
+        ]
+
+        res = self.client.get(
+            "/api/markets/trades-analytics?windowHours=24&debug=1&user=0xabc"
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.get_json()
+
+        self.assertIn("debug", payload)
+        debug = payload["debug"]
+        self.assertEqual(debug["source"], "polymarket")
+        self.assertEqual(debug["windowHours"], 24)
+        self.assertEqual(debug["tradesInWindow"], 1)
+        self.assertIn("globalPaging", debug)
+        self.assertEqual(debug["globalPaging"]["offsets"][0], 0)
+        self.assertEqual(debug["globalPaging"]["pagesFetched"], 1)
+        self.assertEqual(debug["globalPaging"]["rowsFetched"], 1)
+        self.assertEqual(debug["globalPaging"]["stopReason"], "short_page")
+        self.assertIn("timeRange", debug)
+        self.assertIsNotNone(debug["timeRange"])
+
+    @patch("app.routes.markets.requests.get")
+    def test_trades_analytics_ignores_offset_rejected_page(self, mock_get):
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        page_one = [
+            {
+                "transactionHash": f"tx-{i}",
+                "size": "1",
+                "price": "0.5",
+                "timestamp": now_ts - 60,
+                "proxyWallet": "A",
+                "conditionId": "M1",
+            }
+            for i in range(1000)
+        ]
+        page_two = [
+            {
+                "transactionHash": f"tx2-{i}",
+                "size": "1",
+                "price": "0.5",
+                "timestamp": now_ts - 120,
+                "proxyWallet": "B",
+                "conditionId": "M2",
+            }
+            for i in range(1000)
+        ]
+
+        mock_get.side_effect = [
+            _MockResponse(page_one),
+            _MockResponse(page_two),
+            _http_error(400),
+        ]
+
+        res = self.client.get(
+            "/api/markets/trades-analytics?windowHours=24&debug=1&user=0xabc"
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.get_json()
+        self.assertEqual(payload["count"], 2000)
+        self.assertEqual(payload["analytics"]["totalTrades"], 2000)
+        self.assertEqual(payload["debug"]["globalPaging"]["stopReason"], "offset_rejected")
+
+    @patch("app.routes.markets.requests.get")
     def test_kalshi_markets_route_returns_normalized_markets(self, mock_get):
         mock_get.side_effect = [
             _MockResponse(
@@ -130,6 +260,7 @@ class ApiRoutesTests(unittest.TestCase):
 
     @patch("app.routes.markets.requests.get")
     def test_kalshi_trades_analytics_route_returns_analytics_shape(self, mock_get):
+        recent_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         mock_get.return_value = _MockResponse(
             [
                 {
@@ -138,7 +269,7 @@ class ApiRoutesTests(unittest.TestCase):
                     "user": "0xabc",
                     "count": 12,
                     "yes_price": 63,
-                    "created_time": "2026-04-13T12:00:00Z",
+                    "created_time": recent_iso,
                 }
             ]
         )

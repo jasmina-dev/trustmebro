@@ -285,37 +285,6 @@ export function Dashboard({
     }
 
     async function loadCashflowSeries() {
-      if (
-        source === "polymarket" &&
-        isSupabaseChartsConfigured() &&
-        !cancelled
-      ) {
-        const since = new Date(
-          Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
-        ).toISOString();
-        const fromDb = await fetchGlobalHourlyCashflowFromSupabase(since);
-        if (cancelled) return;
-        if (fromDb.length > 0) {
-          setPersistedSeries((prev) => {
-            const merged = trimBucketsToLookback(
-              mergeBucketSeries(prev, fromDb),
-              CASHFLOW_PERSIST_LOOKBACK_HOURS,
-            );
-            saveStoredBuckets(merged);
-            queueMicrotask(() => {
-              if (cancelled) return;
-              setGlobalTradesRaw(
-                buildMinimalAnalytics(merged, CASHFLOW_PERSIST_LOOKBACK_HOURS),
-              );
-              setTradesError(null);
-            });
-            return merged;
-          });
-          return;
-        }
-      }
-
-      if (cancelled) return;
       try {
         const res = await fetchTradesAnalytics({
           windowHours: CASHFLOW_PERSIST_LOOKBACK_HOURS,
@@ -325,11 +294,43 @@ export function Dashboard({
         applyPolymarketApiSeries(res.analytics);
       } catch (err) {
         if (cancelled) return;
-        fallbackPersistedOnError(
+        const apiMessage =
           err instanceof Error
             ? err.message
-            : "Failed to load trades analytics",
-        );
+            : "Failed to load trades analytics";
+
+        if (source === "polymarket" && isSupabaseChartsConfigured()) {
+          const since = new Date(
+            Date.now() - CASHFLOW_PERSIST_LOOKBACK_HOURS * 3_600_000,
+          ).toISOString();
+          const fromDb = await fetchGlobalHourlyCashflowFromSupabase(since);
+          if (cancelled) return;
+          if (fromDb.length > 0) {
+            setPersistedSeries((prev) => {
+              const merged = trimBucketsToLookback(
+                mergeBucketSeries(prev, fromDb),
+                CASHFLOW_PERSIST_LOOKBACK_HOURS,
+              );
+              saveStoredBuckets(merged);
+              queueMicrotask(() => {
+                if (cancelled) return;
+                setGlobalTradesRaw(
+                  buildMinimalAnalytics(
+                    merged,
+                    CASHFLOW_PERSIST_LOOKBACK_HOURS,
+                  ),
+                );
+                setTradesError(
+                  `${apiMessage}. Using cached Supabase aggregate buckets.`,
+                );
+              });
+              return merged;
+            });
+            return;
+          }
+        }
+
+        fallbackPersistedOnError(apiMessage);
       }
     }
 
@@ -1322,9 +1323,7 @@ export function Dashboard({
         {showDeepAnalysis && (
           <div className="dashboard-deep-panels">
             <h2 className="dashboard-deep-heading dashboard-heading-with-help">
-              <span>
-                Trading activity &amp; whales ({cashflowWindowLabel})
-              </span>
+              <span>Trading activity &amp; whales ({cashflowWindowLabel})</span>
               <WhalesTermHelp />
             </h2>
             {tradesError && (
