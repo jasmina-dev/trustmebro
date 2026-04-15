@@ -78,7 +78,7 @@ export default function App() {
       </header>
 
       <nav className="filters source-switcher" aria-label="Market source">
-        <div className="filters-inner" role="radiogroup" aria-label="Market source">
+        <div className="filters-inner" role="radiogroup" aria-label="Select market source">
           <span className="source-switcher-label">Source</span>
           {sourceOptions.map((option) => (
             <button
