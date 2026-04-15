@@ -80,7 +80,7 @@ describe("App", () => {
         screen.queryByText(/loading market data/i),
       ).not.toBeInTheDocument();
     });
-    await user.click(screen.getByRole("button", { name: /open chatbot/i }));
+    await user.click(screen.getByRole("button", { name: /ask ai/i }));
     expect(
       screen.getByRole("dialog", { name: /ai assistant chat/i }),
     ).toBeInTheDocument();

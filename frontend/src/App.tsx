@@ -26,6 +26,7 @@ export default function App() {
   const [category, setCategory] = useState<string>("all");
   const [chatOpen, setChatOpen] = useState(false);
   const [dashboardContext, setDashboardContext] = useState<string | null>(null);
+  const sourceGroupRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (stored === "light" || stored === "dark") return stored;
@@ -38,16 +39,10 @@ export default function App() {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
-  if (!showDashboard) {
-    return <LandingPage onEnterDashboard={() => setShowDashboard(true)} />;
-  }
-
   const sourceOptions: { id: MarketSource; label: string }[] = [
     { id: "polymarket", label: "Polymarket" },
     { id: "kalshi", label: "Kalshi" },
   ];
-
-  const sourceGroupRef = useRef<HTMLDivElement>(null);
 
   const handleSourceKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     const idx = sourceOptions.findIndex((o) => o.id === source);
@@ -61,11 +56,16 @@ export default function App() {
     }
     e.preventDefault();
     setSource(sourceOptions[next].id);
-    const buttons = sourceGroupRef.current?.querySelectorAll<HTMLButtonElement>(
-      '[role="radio"]',
-    );
+    const buttons =
+      sourceGroupRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="radio"]',
+      );
     buttons?.[next]?.focus();
   };
+
+  if (!showDashboard) {
+    return <LandingPage onEnterDashboard={() => setShowDashboard(true)} />;
+  }
 
   const activeSourceLabel =
     sourceOptions.find((option) => option.id === source)?.label ?? source;
@@ -98,7 +98,12 @@ export default function App() {
       </header>
 
       <nav className="filters source-switcher" aria-label="Market source">
-        <div className="filters-inner" role="radiogroup" aria-label="Select market source" ref={sourceGroupRef}>
+        <div
+          className="filters-inner"
+          role="radiogroup"
+          aria-label="Select market source"
+          ref={sourceGroupRef}
+        >
           <span className="source-switcher-label">Source</span>
           {sourceOptions.map((option) => (
             <button
