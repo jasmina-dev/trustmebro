@@ -78,12 +78,14 @@ export default function App() {
       </header>
 
       <nav className="filters source-switcher" aria-label="Market source">
-        <div className="filters-inner">
+        <div className="filters-inner" role="radiogroup" aria-label="Market source">
           <span className="source-switcher-label">Source</span>
           {sourceOptions.map((option) => (
             <button
               key={option.id}
               type="button"
+              role="radio"
+              aria-checked={source === option.id}
               className={`filter-btn ${source === option.id ? "active" : ""}`}
               onClick={() => setSource(option.id)}
             >
