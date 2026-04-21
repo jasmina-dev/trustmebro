@@ -4,7 +4,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 
 def create_app(config=None):
-    app = Flask(__name__, static_folder='dist', static_url_path='')
+    app = Flask(__name__, static_folder='dist', static_url_path='/static-files')
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-change-in-production"),
     )
