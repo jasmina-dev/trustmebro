@@ -71,6 +71,8 @@ desktop.ini
 *.log
 logs/
 *.log.*
+*.pid
+backend.pid
 
 # Temporary files
 *.tmp

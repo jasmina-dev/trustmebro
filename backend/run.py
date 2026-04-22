@@ -17,7 +17,7 @@ from app import create_app
 app = create_app()
 
 if __name__ == "__main__":
-    port_value = os.environ.get("API_PORT") or "5001"
+    port_value = os.environ.get("API_PORT") or os.environ.get("PORT") or "5001"
     try:
         port = int(port_value)
     except (TypeError, ValueError):
