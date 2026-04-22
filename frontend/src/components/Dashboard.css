@@ -1181,6 +1181,52 @@
   grid-column: 1 / -1;
 }
 
+.dashboard-first-time-user {
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.dashboard-first-time-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .dashboard-first-time-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-first-time-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 1rem 1rem 0.9rem;
+}
+
+.dashboard-first-time-card h3 {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dashboard-first-time-card ul,
+.dashboard-first-time-card ol {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.dashboard-first-time-card .hint {
+  margin: 0.7rem 0 0;
+}
+
 @keyframes heroHeadlineIn {
   from {
     opacity: 0;

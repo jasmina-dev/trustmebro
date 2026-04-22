@@ -45,7 +45,8 @@ type DashboardMainTab =
   | "tradeFlow"
   | "newsSentiment"
   | "whale"
-  | "researchNotes";
+  | "researchNotes"
+  | "firstTimeUser";
 
 interface DashboardProps {
   source: MarketSource;
@@ -61,6 +62,7 @@ const MAIN_TABS: { id: DashboardMainTab; label: string }[] = [
   { id: "newsSentiment", label: "News & sentiment" },
   { id: "whale", label: "Whale activity" },
   { id: "researchNotes", label: "Research notes" },
+  { id: "firstTimeUser", label: "First time user" },
 ];
 
 type VolumeFilterId = "any" | "100k" | "1m" | "10m";
@@ -1293,6 +1295,101 @@ export function Dashboard({
             Use this area for hypotheses, follow-ups, and desk notes tied to the
             current session.
           </p>
+        </section>
+      )}
+
+      {mainTab === "firstTimeUser" && (
+        <section className="dashboard-section dashboard-section-full dashboard-first-time-user">
+          <h2 className="dashboard-trending-title">First time user guide</h2>
+          <p className="dashboard-trending-sub">
+            New here? This page explains what to click, what each chart is
+            showing, and how to get useful answers quickly.
+          </p>
+          <div className="dashboard-first-time-grid">
+            <article className="dashboard-first-time-card">
+              <h3>Start here</h3>
+              <ol>
+                <li>
+                  Choose a category and time range at the top so you only see what
+                  matters to you.
+                </li>
+                <li>
+                  Open <strong>Markets</strong> to see what people are paying the
+                  most attention to right now. Markets are the individual events or questions that people are betting on. 
+                  Top markets are the ones with the most volume. You can click on a market to see more details about it.
+                </li>
+                <li>
+                  Check <strong>Trade flow</strong> and{" "}
+                  <strong>Whale activity</strong> to see whether interest comes
+                  from many people or just a few big players. 
+                  Whale activity is a measure of the concentration of trading activity among a small number of large accounts. 
+                  Trade flow, or cash flow, is a measure of the overall volume of trading activity.
+                </li>
+                <li>
+                  Save your thoughts in <strong>Research notes</strong>, then ask
+                  the chatbot to explain anything that is unclear. 
+                  The chatbot is a helpful assistant that can answer questions and help you understand the data.
+                  The chatbot is not a financial advisor and does not give financial advice or tell you to place bets.
+                </li>
+              </ol>
+            </article>
+
+            <article className="dashboard-first-time-card">
+              <h3>How to read the key graphs</h3>
+              <ul>
+                <li>
+                  <strong>Top markets / trending:</strong> bigger bars mean more
+                  activity. Click one to make the rest of the page focus on that
+                  topic.
+                </li>
+                <li>
+                  <strong>Cash flow over time:</strong> when the line goes up,
+                  more money is being traded. Big jumps often mean something new
+                  happened.
+                </li>
+                <li>
+                  <strong>Whale addresses:</strong> shows whether a few very large
+                  accounts are doing most of the trading.
+                </li>
+                <li>
+                  <strong>Pre-deadline spike:</strong> shows if trading suddenly
+                  increases near the end, when people may be reacting last minute. 
+                  Pre-deadline spike is a measure of the volume of trading activity near the end of the trading period.
+                </li>
+              </ul>
+            </article>
+
+            <article className="dashboard-first-time-card">
+              <h3>How to use suspicion signal</h3>
+              <ul>
+                <li>
+                  <strong>High:</strong> this item looks unusual and may be worth
+                  a closer look. High suspicion is a measure of the concentration of trading activity among a small number of large accounts.
+                </li>
+                <li>
+                  <strong>Med:</strong> some unusual signs, but not enough to be
+                  sure. Medium suspicion is a measure of the concentration of trading activity among a small number of large accounts.
+                </li>
+                <li>
+                  <strong>Low:</strong> looks more normal right now. Low suspicion is a measure of the concentration of trading activity among a small number of large accounts.
+                </li>
+              </ul>
+              <p className="hint">
+                These labels are warning hints, not proof that anyone did
+                something wrong.
+              </p>
+            </article>
+
+            <article className="dashboard-first-time-card">
+              <h3>Good first questions to ask</h3>
+              <ul>
+                <li>What topic is getting the most attention today?</li>
+                <li>Is this trend coming from lots of people or a few big traders?</li>
+                <li>Did anything change a lot near the end of trading?</li>
+                <li>What should I check again later today?</li>
+              </ul>
+            </article>
+          </div>
         </section>
       )}
 
