@@ -41,7 +41,6 @@ export default function App() {
 
   const sourceOptions: { id: MarketSource; label: string }[] = [
     { id: "polymarket", label: "Polymarket" },
-    { id: "kalshi", label: "Kalshi" },
   ];
 
   const handleSourceKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {

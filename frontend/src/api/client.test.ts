@@ -26,37 +26,6 @@ describe("api client", () => {
       );
     });
 
-    it("adds the source query when requesting Kalshi data", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(
-          jsonResponse(
-            [
-              {
-                id: "k1",
-                source: "kalshi",
-                title: "Kalshi market",
-                markets: [],
-              },
-            ],
-            true,
-          ),
-        ),
-      );
-
-      const result = await fetchEvents(5, false, "kalshi");
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        id: "k1",
-        source: "kalshi",
-        title: "Kalshi market",
-      });
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/markets/events?limit=5&closed=false&source=kalshi",
-      );
-    });
-
     it("returns events array from error body when not ok", async () => {
       vi.stubGlobal(
         "fetch",
@@ -82,16 +51,14 @@ describe("api client", () => {
           .fn()
           .mockResolvedValue(
             jsonResponse(
-              { error: "Failed to fetch Kalshi events", events: [] },
+              { error: "Failed to fetch events", events: [] },
               false,
               502,
             ),
           ),
       );
 
-      await expect(fetchEvents(20, false, "kalshi")).rejects.toThrow(
-        "Failed to fetch Kalshi events",
-      );
+      await expect(fetchEvents(20, false)).rejects.toThrow("Failed to fetch events");
     });
   });
 
@@ -121,45 +88,14 @@ describe("api client", () => {
           .fn()
           .mockResolvedValue(
             jsonResponse(
-              { error: "Failed to fetch Kalshi markets", markets: [] },
+              { error: "Failed to fetch markets", markets: [] },
               false,
               502,
             ),
           ),
       );
 
-      await expect(fetchMarkets(10, "kalshi")).rejects.toThrow(
-        "Failed to fetch Kalshi markets",
-      );
-    });
-
-    it("adds the source query when requesting Kalshi markets", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(
-          jsonResponse(
-            [
-              {
-                id: "k1",
-                source: "kalshi",
-                question: "Kalshi market",
-              },
-            ],
-            true,
-          ),
-        ),
-      );
-
-      const result = await fetchMarkets(10, "kalshi");
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        id: "k1",
-        source: "kalshi",
-      });
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/markets/markets?limit=10&source=kalshi",
-      );
+      await expect(fetchMarkets(10)).rejects.toThrow("Failed to fetch markets");
     });
   });
 
@@ -176,7 +112,7 @@ describe("api client", () => {
       await expect(fetchTradesAnalytics({})).rejects.toThrow("Rate limited");
     });
 
-    it("adds the source query for Kalshi analytics", async () => {
+    it("passes windowHours query when provided", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue(
@@ -207,10 +143,10 @@ describe("api client", () => {
         ),
       );
 
-      await fetchTradesAnalytics({ source: "kalshi", windowHours: 24 });
+      await fetchTradesAnalytics({ windowHours: 24 });
 
       expect(fetch).toHaveBeenCalledWith(
-        "/api/markets/trades-analytics?windowHours=24&source=kalshi",
+        "/api/markets/trades-analytics?windowHours=24",
       );
     });
   });

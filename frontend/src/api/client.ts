@@ -2,11 +2,10 @@
 
 const API_BASE = "/api";
 
-export type MarketSource = "polymarket" | "kalshi";
+export type MarketSource = "polymarket";
 
 const SOURCE_BASE_URLS: Record<MarketSource, string> = {
   polymarket: "https://polymarket.com",
-  kalshi: "https://kalshi.com",
 };
 
 function sourcePath(_source: MarketSource): string {
@@ -26,38 +25,12 @@ export function getSourceBaseUrl(source: MarketSource): string {
   return SOURCE_BASE_URLS[source];
 }
 
-function kalshiWebUrlFromSlug(slug: string): string {
-  const trimmed = slug.trim();
-  if (!trimmed) return `${SOURCE_BASE_URLS.kalshi}/browse`;
-
-  const upper = trimmed.toUpperCase();
-  // Multi-leg products (KXMVE*) frequently don't have canonical direct market pages.
-  if (upper.startsWith("KXMVE")) {
-    return `${SOURCE_BASE_URLS.kalshi}/browse?query=${encodeURIComponent(trimmed)}`;
-  }
-
-  const dashIdx = trimmed.indexOf("-");
-  if (dashIdx > 0) {
-    const series = trimmed.slice(0, dashIdx).toLowerCase();
-    const market = trimmed.toLowerCase();
-    return `${SOURCE_BASE_URLS.kalshi}/markets/${series}/${market}`;
-  }
-
-  return `${SOURCE_BASE_URLS.kalshi}/browse?query=${encodeURIComponent(trimmed)}`;
-}
-
 export function getSourceEventUrl(
   source: MarketSource,
   event: Pick<PolymarketEvent, "id" | "slug"> | undefined,
 ): string | undefined {
-  const slug =
-    source === "kalshi"
-      ? event?.slug?.trim() || event?.id?.trim()
-      : event?.slug?.trim();
+  const slug = event?.slug?.trim();
   if (!slug) return undefined;
-  if (source === "kalshi") {
-    return kalshiWebUrlFromSlug(slug);
-  }
   return `${SOURCE_BASE_URLS.polymarket}/event/${slug}`;
 }
 
@@ -73,9 +46,6 @@ export function getSourceMarketUrl(
     market?.ticker?.trim() ||
     market?.id?.trim();
   if (!slug) return undefined;
-  if (source === "kalshi") {
-    return kalshiWebUrlFromSlug(slug);
-  }
   return `${SOURCE_BASE_URLS.polymarket}/market/${slug}`;
 }
 
@@ -87,7 +57,6 @@ export async function fetchEvents(
   const search = new URLSearchParams();
   search.set("limit", String(limit));
   search.set("closed", String(closed));
-  if (source !== "polymarket") search.set("source", source);
 
   const res = await fetch(`${sourcePath(source)}/events?${search.toString()}`);
   if (!res.ok) {
@@ -106,7 +75,6 @@ export async function fetchMarkets(
 ): Promise<PolymarketMarket[]> {
   const search = new URLSearchParams();
   search.set("limit", String(limit));
-  if (source !== "polymarket") search.set("source", source);
 
   const res = await fetch(`${sourcePath(source)}/markets?${search.toString()}`);
   if (!res.ok) {
@@ -186,9 +154,6 @@ export async function fetchTradesAnalytics(
   if (params.side) search.set("side", params.side);
   if (params.windowHours != null) {
     search.set("windowHours", String(params.windowHours));
-  }
-  if (params.source && params.source !== "polymarket") {
-    search.set("source", params.source);
   }
   // Backend pages the Data API internally; limit/offset are not used for analytics.
 
