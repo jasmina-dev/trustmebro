@@ -173,7 +173,7 @@ export function Dashboard({
   categoryOptions,
   onContextChange,
 }: DashboardProps) {
-  const sourceLabel = source === "kalshi" ? "Kalshi" : "Polymarket";
+  const sourceLabel = "Polymarket";
   const [events, setEvents] = useState<PolymarketEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

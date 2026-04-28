@@ -34,34 +34,6 @@ describe("MarketList", () => {
     expect(titleLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("renders a Kalshi event link when the source is kalshi", () => {
-    const events: PolymarketEvent[] = [
-      {
-        id: "kalshi-1",
-        source: "kalshi",
-        slug: "KALSHI-ABC",
-        title: "Will unemployment rise?",
-        markets: [
-          {
-            id: "KALSHI-ABC",
-            question: "Will unemployment rise?",
-            source: "kalshi",
-          },
-        ],
-      },
-    ];
-
-    render(<MarketList events={events} />);
-
-    const titleLink = screen.getByRole("link", {
-      name: /will unemployment rise\?/i,
-    });
-    expect(titleLink).toHaveAttribute(
-      "href",
-      "https://kalshi.com/markets/kalshi/kalshi-abc",
-    );
-  });
-
   it("renders plain title text when slug is missing", () => {
     const events: PolymarketEvent[] = [
       {

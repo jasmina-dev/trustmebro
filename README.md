@@ -1,12 +1,12 @@
 # TrustMeBro Analytics
 
-**Betting Markets Dashboard and Chatbot** — A data-driven dashboard and AI assistant for the Polymarket and Kalshi prediction markets. Built for the Lafayette College Policy Studies Department (client: Christo Maheras).
+**Betting Markets Dashboard and Chatbot** — A data-driven dashboard and AI assistant for Polymarket prediction markets. Built for the Lafayette College Policy Studies Department (client: Christo Maheras).
 
 ## Overview
 
 - **Dashboard**: Live and historical views of the top Polymarket events/markets, with category filters (Politics, Economy, Entertainment, etc.) and volume charts.
 - **AI Chatbot**: Integrated assistant (Claude) that explains trends and possible inefficiencies. Educational only — no financial advice or bet placement.
-- **Stack**: React + TypeScript (Vite) frontend, Flask backend, Polymarket Gamma API, optional Kalshi and Anthropic Claude.
+- **Stack**: React + TypeScript (Vite) frontend, Flask backend, Polymarket Gamma API, and Anthropic Claude.
 
 ## Quick Start
 
@@ -49,9 +49,6 @@ App runs at **http://localhost:5173** and proxies `/api` to the backend on port 
 | `VITE_API_URL`                          | Full backend URL override for the Vite dev proxy.                               |
 | `POLYMARKET_GAMMA_URL`                  | Gamma API base (default: https://gamma-api.polymarket.com)                      |
 | `POLYMARKET_DATA_URL`                   | Data API base for trades analytics (default: https://data-api.polymarket.com)   |
-| `KALSHI_API_URL`                        | Kalshi API base (recommended: `https://api.elections.kalshi.com/trade-api/v2`)  |
-| `KALSHI_API_KEY`                        | Required for Kalshi endpoints                                                   |
-|                                         | Note: trade/fill history endpoints may require signed Kalshi auth headers       |
 | `ANTHROPIC_API_KEY`                     | Required for chatbot                                                            |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Optional, for future storage                                                    |
 
