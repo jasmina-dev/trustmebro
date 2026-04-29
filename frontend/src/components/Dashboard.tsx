@@ -1,4 +1,4 @@
-// utilized github copilot
+// utilized github copilot + cursor
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
@@ -1310,26 +1310,31 @@ export function Dashboard({
               <h3>Start here</h3>
               <ol>
                 <li>
-                  Choose a category and time range at the top so you only see what
-                  matters to you.
+                  Choose a category and time range at the top so you only see
+                  what matters to you.
                 </li>
                 <li>
-                  Open <strong>Markets</strong> to see what people are paying the
-                  most attention to right now. Markets are the individual events or questions that people are betting on. 
-                  Top markets are the ones with the most volume. You can click on a market to see more details about it.
+                  Open <strong>Markets</strong> to see what people are paying
+                  the most attention to right now. Markets are the individual
+                  events or questions that people are betting on. Top markets
+                  are the ones with the most volume. You can click on a market
+                  to see more details about it.
                 </li>
                 <li>
                   Check <strong>Trade flow</strong> and{" "}
                   <strong>Whale activity</strong> to see whether interest comes
-                  from many people or just a few big players. 
-                  Whale activity is a measure of the concentration of trading activity among a small number of large accounts. 
-                  Trade flow, or cash flow, is a measure of the overall volume of trading activity.
+                  from many people or just a few big players. Whale activity is
+                  a measure of the concentration of trading activity among a
+                  small number of large accounts. Trade flow, or cash flow, is a
+                  measure of the overall volume of trading activity.
                 </li>
                 <li>
-                  Save your thoughts in <strong>Research notes</strong>, then ask
-                  the chatbot to explain anything that is unclear. 
-                  The chatbot is a helpful assistant that can answer questions and help you understand the data.
-                  The chatbot is not a financial advisor and does not give financial advice or tell you to place bets.
+                  Save your thoughts in <strong>Research notes</strong>, then
+                  ask the chatbot to explain anything that is unclear. The
+                  chatbot is a helpful assistant that can answer questions and
+                  help you understand the data. The chatbot is not a financial
+                  advisor and does not give financial advice or tell you to
+                  place bets.
                 </li>
               </ol>
             </article>
@@ -1348,13 +1353,14 @@ export function Dashboard({
                   happened.
                 </li>
                 <li>
-                  <strong>Whale addresses:</strong> shows whether a few very large
-                  accounts are doing most of the trading.
+                  <strong>Whale addresses:</strong> shows whether a few very
+                  large accounts are doing most of the trading.
                 </li>
                 <li>
                   <strong>Pre-deadline spike:</strong> shows if trading suddenly
-                  increases near the end, when people may be reacting last minute. 
-                  Pre-deadline spike is a measure of the volume of trading activity near the end of the trading period.
+                  increases near the end, when people may be reacting last
+                  minute. Pre-deadline spike is a measure of the volume of
+                  trading activity near the end of the trading period.
                 </li>
               </ul>
             </article>
@@ -1363,15 +1369,20 @@ export function Dashboard({
               <h3>How to use suspicion signal</h3>
               <ul>
                 <li>
-                  <strong>High:</strong> this item looks unusual and may be worth
-                  a closer look. High suspicion is a measure of the concentration of trading activity among a small number of large accounts.
+                  <strong>High:</strong> this item looks unusual and may be
+                  worth a closer look. High suspicion is a measure of the
+                  concentration of trading activity among a small number of
+                  large accounts.
                 </li>
                 <li>
                   <strong>Med:</strong> some unusual signs, but not enough to be
-                  sure. Medium suspicion is a measure of the concentration of trading activity among a small number of large accounts.
+                  sure. Medium suspicion is a measure of the concentration of
+                  trading activity among a small number of large accounts.
                 </li>
                 <li>
-                  <strong>Low:</strong> looks more normal right now. Low suspicion is a measure of the concentration of trading activity among a small number of large accounts.
+                  <strong>Low:</strong> looks more normal right now. Low
+                  suspicion is a measure of the concentration of trading
+                  activity among a small number of large accounts.
                 </li>
               </ul>
               <p className="hint">
@@ -1384,7 +1395,9 @@ export function Dashboard({
               <h3>Good first questions to ask</h3>
               <ul>
                 <li>What topic is getting the most attention today?</li>
-                <li>Is this trend coming from lots of people or a few big traders?</li>
+                <li>
+                  Is this trend coming from lots of people or a few big traders?
+                </li>
                 <li>Did anything change a lot near the end of trading?</li>
                 <li>What should I check again later today?</li>
               </ul>
@@ -1419,9 +1432,7 @@ export function Dashboard({
         {showDeepAnalysis && (
           <div className="dashboard-deep-panels">
             <h2 className="dashboard-deep-heading dashboard-heading-with-help">
-              <span>
-                Trading activity &amp; whales ({cashflowWindowLabel})
-              </span>
+              <span>Trading activity &amp; whales ({cashflowWindowLabel})</span>
               <WhalesTermHelp />
             </h2>
             {tradesError && (
@@ -1560,7 +1571,7 @@ export function Dashboard({
           aria-labelledby="events-markets-accordion-trigger"
           className={`accordion-content ${marketsAccordionOpen ? "open" : ""}`}
           aria-hidden={!marketsAccordionOpen}
-          {...(!marketsAccordionOpen ? { inert: true } : {})}
+          {...(!marketsAccordionOpen ? { inert: "" } : {})}
         >
           <MarketList events={eventsForList} />
         </div>
