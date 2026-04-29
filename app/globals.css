@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  @apply bg-bg text-fg antialiased;
+  min-height: 100vh;
+}
+
+/* Subtle grid background for the dashboard surface */
+.bg-grid {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Skeleton shimmer */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    theme('colors.bg.card') 0%,
+    theme('colors.bg.hover') 50%,
+    theme('colors.bg.card') 100%
+  );
+  background-size: 200% 100%;
+  @apply animate-shimmer;
+}
+
+/* Focus states */
+*:focus-visible {
+  @apply outline-none ring-2 ring-accent/60 ring-offset-2 ring-offset-bg;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: theme('colors.border.strong');
+  border-radius: 999px;
+  border: 2px solid theme('colors.bg.DEFAULT');
+}
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.fg.subtle');
+}
+
+/* Recharts tooltip overrides */
+.recharts-default-tooltip {
+  background: theme('colors.bg.card') !important;
+  border: 1px solid theme('colors.border.DEFAULT') !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+.recharts-tooltip-label,
+.recharts-tooltip-item {
+  color: theme('colors.fg.DEFAULT') !important;
+}
+
+/* Prose-ish chat message formatting */
+.chat-prose p {
+  @apply mb-2 leading-relaxed;
+}
+.chat-prose ul {
+  @apply mb-2 ml-4 list-disc space-y-1;
+}
+.chat-prose code {
+  @apply rounded bg-bg-hover px-1 py-0.5 font-mono text-xs text-accent-hover;
+}
+.chat-prose strong {
+  @apply font-semibold text-fg;
+}
