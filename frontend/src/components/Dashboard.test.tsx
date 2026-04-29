@@ -225,7 +225,7 @@ describe("Dashboard", () => {
 
     expect(await screen.findByText("API down")).toBeInTheDocument();
     expect(
-      screen.getByText(/ensure the backend is running on port 5000/i),
+      screen.getByText(/ensure the backend is running \(default: port 5001\)/i),
     ).toBeInTheDocument();
   });
 

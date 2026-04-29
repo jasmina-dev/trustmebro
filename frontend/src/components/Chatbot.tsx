@@ -228,9 +228,29 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
     setMessages([INITIAL_ASSISTANT_MESSAGE]);
   }
 
+  function handleExportConversation() {
+    const transcript = messages
+      .filter((m) => m.content.trim().length > 0)
+      .map((m) => `${m.role === "user" ? "You" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+
+    const blob = new Blob([transcript], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "trustmebro-chat-export.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   const canClearChat =
     messages.length > 1 ||
     messages[0]?.content !== INITIAL_ASSISTANT_MESSAGE.content;
+  const canExportConversation = !loading && messages.some(
+    (m, i) => m.role === "assistant" && i > 0 && m.content.trim().length > 0,
+  );
 
   return (
     <div
@@ -249,6 +269,15 @@ export function Chatbot({ onClose, dashboardContext }: ChatbotProps) {
             aria-label="Clear chat"
           >
             Clear
+          </button>
+          <button
+            type="button"
+            className="chatbot-export"
+            onClick={handleExportConversation}
+            disabled={!canExportConversation}
+            aria-label="Export conversation"
+          >
+            Export
           </button>
           <button
             type="button"

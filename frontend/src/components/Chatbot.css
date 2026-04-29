@@ -43,7 +43,8 @@
   gap: 0.5rem;
 }
 
-.chatbot-clear {
+.chatbot-clear,
+.chatbot-export {
   padding: 0.35rem 0.55rem;
   border: 1px solid var(--border);
   background: transparent;
@@ -52,17 +53,20 @@
   border-radius: 6px;
 }
 
-.chatbot-clear:hover {
+.chatbot-clear:hover,
+.chatbot-export:hover {
   background: var(--surface-hover);
   color: var(--text);
 }
 
-.chatbot-clear:disabled {
+.chatbot-clear:disabled,
+.chatbot-export:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.chatbot-clear:disabled:hover {
+.chatbot-clear:disabled:hover,
+.chatbot-export:disabled:hover {
   background: transparent;
   color: var(--text-muted);
 }

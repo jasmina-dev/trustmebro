@@ -791,7 +791,9 @@ export function Dashboard({
     return (
       <div className="dashboard dashboard-error">
         <p>{error}</p>
-        <p className="hint">Ensure the backend is running on port 5000.</p>
+        <p className="hint">
+          Ensure the backend is running (default: port 5001).
+        </p>
       </div>
     );
   }

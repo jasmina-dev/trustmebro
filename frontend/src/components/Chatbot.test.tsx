@@ -29,6 +29,9 @@ describe("Chatbot", () => {
     expect(
       screen.getByRole("button", { name: /^clear chat$/i }),
     ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /^export conversation$/i }),
+    ).toBeDisabled();
     expect(screen.getByRole("button", { name: /^send$/i })).toBeDisabled();
   });
 
@@ -243,5 +246,50 @@ describe("Chatbot", () => {
 
     expect(capturedSignal?.aborted).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("enables export after first assistant reply and downloads transcript", async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => "blob:chat-export");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", {
+      value: createObjectURL,
+      configurable: true,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      value: revokeObjectURL,
+      configurable: true,
+    });
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    streamChatMessageMock.mockImplementation(async (_message, onChunk) => {
+      onChunk("Response from assistant.");
+    });
+
+    render(<Chatbot onClose={vi.fn()} dashboardContext={null} />);
+
+    const exportButton = screen.getByRole("button", {
+      name: /^export conversation$/i,
+    });
+    expect(exportButton).toBeDisabled();
+
+    await user.type(
+      screen.getByRole("textbox", { name: /chat message/i }),
+      "Hello there",
+    );
+    await user.click(screen.getByRole("button", { name: /^send$/i }));
+
+    await waitFor(() => {
+      expect(exportButton).toBeEnabled();
+    });
+
+    await user.click(exportButton);
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:chat-export");
+    clickSpy.mockRestore();
   });
 });

@@ -1,5 +1,7 @@
 """Market data API routes - Polymarket proxy."""
+import copy
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set
 
@@ -69,6 +71,57 @@ DATA_TRADES_REQ_TIMEOUT = 22
 # Batched market= queries for wide windows (conditionIds per request).
 SUPP_MARKET_CHUNK = 8
 SUPP_MARKET_MAX_CHUNKS = 8
+CACHE_TTL_SECONDS = int(os.environ.get("UPSTREAM_CACHE_TTL_SECONDS", "120"))
+_UPSTREAM_LIST_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def _cache_key(prefix: str, params: Dict[str, Any]) -> str:
+    parts = [prefix]
+    for k, v in sorted(params.items()):
+        parts.append(f"{k}={v}")
+    return "|".join(parts)
+
+
+def _cache_get(key: str) -> Optional[List[Dict[str, Any]]]:
+    hit = _UPSTREAM_LIST_CACHE.get(key)
+    if not hit:
+        return None
+    if (time.time() - hit["stored_at"]) > CACHE_TTL_SECONDS:
+        _UPSTREAM_LIST_CACHE.pop(key, None)
+        return None
+    return copy.deepcopy(hit["data"])
+
+
+def _cache_set(key: str, data: List[Dict[str, Any]]) -> None:
+    _UPSTREAM_LIST_CACHE[key] = {
+        "stored_at": time.time(),
+        "data": copy.deepcopy(data),
+    }
+
+
+def _get_json_with_retries(
+    url: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+    timeout: int = 10,
+    retries: int = 2,
+    backoff_seconds: float = 0.35,
+) -> Any:
+    """GET JSON with small retry/backoff for transient upstream failures."""
+    last_error: Optional[requests.RequestException] = None
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(url, params=params, timeout=timeout)
+            r.raise_for_status()
+            return r.json()
+        except requests.RequestException as e:
+            last_error = e
+            if attempt >= retries:
+                break
+            time.sleep(backoff_seconds * (attempt + 1))
+    raise last_error if last_error is not None else requests.RequestException(
+        "Unknown upstream request failure"
+    )
 
 
 def _trade_ts_seconds(trade: Dict[str, Any]) -> Optional[int]:
@@ -104,13 +157,11 @@ def _trades_window_cutoff_ts(window_hours: int) -> int:
 
 
 def _fetch_data_api_trades_page(params: Dict[str, Any]) -> List[Dict[str, Any]]:
-    r = requests.get(
+    data = _get_json_with_retries(
         f"{POLYMARKET_DATA}/trades",
         params=params,
         timeout=DATA_TRADES_REQ_TIMEOUT,
     )
-    r.raise_for_status()
-    data = r.json()
     return data if isinstance(data, list) else []
 
 
@@ -144,9 +195,11 @@ def _gamma_top_condition_ids(limit_markets: int = 160) -> List[str]:
             "order": "volume",
             "ascending": "false",
         }
-        r = requests.get(f"{POLYMARKET_GAMMA}/markets", params=params, timeout=15)
-        r.raise_for_status()
-        data = r.json()
+        data = _get_json_with_retries(
+            f"{POLYMARKET_GAMMA}/markets",
+            params=params,
+            timeout=15,
+        )
         if not isinstance(data, list):
             return []
         out: List[str] = []
@@ -233,11 +286,14 @@ def get_events():
     }
     if str(closed).lower() in ("", "false", "0"):
         params["active"] = "true"
+    cache_key = _cache_key("events", params)
 
     try:
-        r = requests.get(f"{POLYMARKET_GAMMA}/events", params=params, timeout=10)
-        r.raise_for_status()
-        data = r.json()
+        data = _get_json_with_retries(
+            f"{POLYMARKET_GAMMA}/events",
+            params=params,
+            timeout=10,
+        )
 
         # Gamma /events returns a list; preserve shape for the frontend.
         if isinstance(data, list):
@@ -247,10 +303,16 @@ def get_events():
             for item in data:
                 if isinstance(item, dict):
                     item["source"] = MARKET_SOURCE_POLYMARKET
+            _cache_set(cache_key, data)
 
         return jsonify(data)
     except requests.RequestException as e:
         current_app.logger.warning("Polymarket events request failed: %s", e)
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            resp = jsonify(cached)
+            resp.headers["X-Upstream-Cache"] = "HIT"
+            return resp
         return jsonify({"error": "Failed to fetch events", "events": []}), 502
 
 
@@ -258,9 +320,11 @@ def get_events():
 def get_event_by_id(event_id):
     """Fetch a single Polymarket event by id."""
     try:
-        r = requests.get(f"{POLYMARKET_GAMMA}/events/{event_id}", timeout=10)
-        r.raise_for_status()
-        return jsonify(r.json())
+        data = _get_json_with_retries(
+            f"{POLYMARKET_GAMMA}/events/{event_id}",
+            timeout=10,
+        )
+        return jsonify(data)
     except requests.RequestException as e:
         current_app.logger.warning("Polymarket event request failed: %s", e)
         return jsonify({"error": "Event not found"}), 502
@@ -280,9 +344,12 @@ def get_markets():
             "order": "volume",
             "ascending": "false",
         }
-        r = requests.get(f"{POLYMARKET_GAMMA}/markets", params=params, timeout=10)
-        r.raise_for_status()
-        data = r.json()
+        cache_key = _cache_key("markets", params)
+        data = _get_json_with_retries(
+            f"{POLYMARKET_GAMMA}/markets",
+            params=params,
+            timeout=10,
+        )
 
         if isinstance(data, list):
             data = sorted(data, key=_market_volume_key, reverse=True)
@@ -290,10 +357,16 @@ def get_markets():
             for item in data:
                 if isinstance(item, dict):
                     item["source"] = MARKET_SOURCE_POLYMARKET
+            _cache_set(cache_key, data)
 
         return jsonify(data)
     except requests.RequestException as e:
         current_app.logger.warning("Polymarket markets request failed: %s", e)
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            resp = jsonify(cached)
+            resp.headers["X-Upstream-Cache"] = "HIT"
+            return resp
         return jsonify({"error": "Failed to fetch markets", "markets": []}), 502
 
 

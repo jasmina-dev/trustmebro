@@ -65,3 +65,60 @@ def test_get_events_upstream_error_returns_502(mock_get, client):
     assert res.status_code == 502
     body = res.get_json()
     assert body.get("events") == []
+
+
+@patch("app.routes.markets.requests.get")
+def test_get_events_uses_cached_payload_when_upstream_temporarily_fails(
+    mock_get, client
+):
+    ok_resp = MagicMock()
+    ok_resp.raise_for_status = MagicMock()
+    ok_resp.json.return_value = [
+        {
+            "id": "evt-1",
+            "title": "Fed interest rate decision",
+            "startDate": "2026-01-15T12:00:00Z",
+            "tags": [],
+        }
+    ]
+    mock_get.side_effect = [
+        ok_resp,
+        requests.RequestException("network"),
+        requests.RequestException("network"),
+        requests.RequestException("network"),
+    ]
+
+    first = client.get("/api/markets/events?limit=5&closed=false")
+    assert first.status_code == 200
+    second = client.get("/api/markets/events?limit=5&closed=false")
+    assert second.status_code == 200
+    assert second.headers.get("X-Upstream-Cache") == "HIT"
+    assert isinstance(second.get_json(), list)
+
+
+@patch("app.routes.markets.requests.get")
+def test_get_markets_uses_cached_payload_when_upstream_temporarily_fails(
+    mock_get, client
+):
+    ok_resp = MagicMock()
+    ok_resp.raise_for_status = MagicMock()
+    ok_resp.json.return_value = [
+        {
+            "id": "mkt-1",
+            "question": "Will inflation drop below 3%?",
+            "tags": [],
+        }
+    ]
+    mock_get.side_effect = [
+        ok_resp,
+        requests.RequestException("network"),
+        requests.RequestException("network"),
+        requests.RequestException("network"),
+    ]
+
+    first = client.get("/api/markets/markets?limit=5")
+    assert first.status_code == 200
+    second = client.get("/api/markets/markets?limit=5")
+    assert second.status_code == 200
+    assert second.headers.get("X-Upstream-Cache") == "HIT"
+    assert isinstance(second.get_json(), list)
