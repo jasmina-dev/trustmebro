@@ -36,7 +36,7 @@ import type { Exchange } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = ["Sports", "Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 const BUCKET_TTL = 3600; // resolved markets don't change
 
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
       targets.map(({ exchange, category }) =>
         timed(`bias:${exchange}:${category}`, async () => {
           const { value, state } = await cached(
-            `resolution-bias:${exchange}:${category}`,
+            `resolution-bias:v4:${exchange}:${category}`,
             BUCKET_TTL,
             async () => {
               const { markets } = await fetchAllMarkets({

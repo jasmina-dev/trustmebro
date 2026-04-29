@@ -3,11 +3,13 @@
  * handler and the `/api/warmup` prewarmer so both take the same path.
  *
  * Philosophy:
- *   • A market "counts" only when it's genuinely resolved — status in
- *     {resolved,closed,settled} AND one outcome's final price ≥ 0.8.
- *   • We decide YES vs NO by the winning outcome's label, not just by
- *     price. Multi-outcome markets (team names, candidates) land in
- *     `ambiguous` and don't pollute the binary bias rate.
+ *   • Only binary markets count — exactly 2 outcomes where one side is
+ *     identifiable as YES ("Yes", "Yes …", custom label) and the other as NO
+ *     ("No", "Not …", "No …"). Multi-choice markets (team names, etc.) are
+ *     excluded entirely.
+ *   • Resolution is confirmed by price ≥ 0.8 on the winning side. We don't
+ *     check market status strings — the API already filters with closed=true
+ *     and venue status strings vary ("resolved", "settled", "finalized", …).
  */
 
 import { proportionZ } from "./utils";
@@ -18,15 +20,47 @@ export const FLAG_NO_RATE = 0.65;
 
 export function classifyWinnerLabel(label: string): "yes" | "no" | "ambiguous" {
   const l = label.trim().toLowerCase();
+  // Exact match
   if (l === "yes") return "yes";
   if (l === "no") return "no";
-  if (l.startsWith("not ") || / no /.test(` ${l} `)) return "no";
+  // "Yes"-prefixed variants (e.g. "Yes, before 12/31", "Yes (conditional)")
+  if (l.startsWith("yes ") || l.startsWith("yes,")) return "yes";
+  // "No"-prefixed or "Not"-prefixed (e.g. "No, or after", "Not April 30")
+  if (l.startsWith("no ") || l.startsWith("no,") || l.startsWith("not ")) return "no";
+  // " no " as a standalone word anywhere in the label
+  if (/ no /.test(` ${l} `)) return "no";
   return "ambiguous";
 }
 
-function isResolvedLike(m: UnifiedMarket): boolean {
-  const s = (m.status ?? "").toLowerCase();
-  return s === "resolved" || s === "closed" || s === "settled";
+/**
+ * Identify which of two outcomes is the YES side and which is the NO side.
+ *
+ * Handles two common patterns:
+ *   1. Explicit labels — "Yes" / "No" (Kalshi, some Polymarket)
+ *   2. "X" / "Not X"  — e.g. "April 30" / "Not April 30" (Polymarket event
+ *      markets). Here the "Not …" / "No …" side is the NO outcome and the
+ *      other side is YES.
+ *
+ * Returns null when neither side can be identified (multi-choice markets
+ * like "Trump" / "Harris" / "Other" — they should not count toward binary
+ * resolution bias).
+ */
+function resolveBinarySides(
+  outcomes: UnifiedMarket["outcomes"],
+): { yesOut: UnifiedMarket["outcomes"][0]; noOut: UnifiedMarket["outcomes"][0] } | null {
+  if (outcomes.length !== 2) return null;
+  const [a, b] = outcomes;
+  const aClass = classifyWinnerLabel(a.label);
+  const bClass = classifyWinnerLabel(b.label);
+
+  // Both ambiguous → neither is identifiable as YES or NO (e.g. team names)
+  if (aClass === "ambiguous" && bClass === "ambiguous") return null;
+  // Both mapped to the same side → malformed market, skip
+  if (aClass === bClass) return null;
+
+  if (aClass === "yes" || bClass === "no") return { yesOut: a, noOut: b };
+  if (bClass === "yes" || aClass === "no") return { yesOut: b, noOut: a };
+  return null;
 }
 
 export function computeBiasBucket(
@@ -39,27 +73,30 @@ export function computeBiasBucket(
   let ambiguous = 0;
 
   for (const m of markets) {
-    if (!isResolvedLike(m)) continue;
-    if (m.outcomes.length === 0) continue;
+    if (m.outcomes.length < 2) continue;
 
-    const winner = m.outcomes.reduce(
-      (a, b) => (a.price > b.price ? a : b),
-      m.outcomes[0],
-    );
+    const sides = resolveBinarySides(m.outcomes);
+    if (!sides) {
+      ambiguous += 1;
+      continue;
+    }
+
+    const { yesOut, noOut } = sides;
+
+    // Decisive-resolution guard: the winning side must be priced ≥ 0.8.
+    // We rely on this instead of a status-string check — the API already
+    // filters with closed=true, and venue status strings vary ("resolved",
+    // "settled", "finalized", …).
+    const winner = yesOut.price >= noOut.price ? yesOut : noOut;
     if (winner.price < 0.8) {
       ambiguous += 1;
       continue;
     }
 
-    switch (classifyWinnerLabel(winner.label)) {
-      case "yes":
-        yesWins += 1;
-        break;
-      case "no":
-        noWins += 1;
-        break;
-      default:
-        ambiguous += 1;
+    if (winner === yesOut) {
+      yesWins += 1;
+    } else {
+      noWins += 1;
     }
   }
 

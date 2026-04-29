@@ -24,7 +24,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const CATEGORIES = ["Sports", "Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 
 export async function GET() {
@@ -63,7 +63,7 @@ export async function GET() {
     CATEGORIES.map((cat) =>
       track(`bias:${ex}:${cat}`, () =>
         cached(
-          `resolution-bias:${ex}:${cat}`,
+          `resolution-bias:v4:${ex}:${cat}`,
           3600,
           async () => {
             const { markets } = await fetchAllMarkets({

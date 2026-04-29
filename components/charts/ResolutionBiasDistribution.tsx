@@ -82,11 +82,6 @@ export function ResolutionBiasDistribution() {
       <CardHeader
         title="Resolution-rate distribution"
         subtitle={`NO-rate histogram across all closed markets${activeCategory !== "All" ? ` in ${activeCategory}` : ""}. Normal(μ=${(mu * 100).toFixed(0)}%, σ=${(sigma * 100).toFixed(1)}%) overlay.`}
-        right={
-          <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-            {data?.cache ?? "…"}
-          </span>
-        }
       />
       <CardBody className="h-[300px] pl-2 pr-4">
         <ResponsiveContainer width="100%" height="100%">

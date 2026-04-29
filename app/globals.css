@@ -8,8 +8,9 @@
 
 html,
 body {
-  @apply bg-bg text-fg antialiased;
+  @apply bg-bg font-sans text-fg antialiased;
   min-height: 100vh;
+  line-height: 1.5;
 }
 
 /* Subtle grid background for the dashboard surface */
@@ -22,10 +23,10 @@ body {
 /* Skeleton shimmer */
 .shimmer {
   background: linear-gradient(
-    90deg,
+    105deg,
     theme('colors.bg.card') 0%,
-    theme('colors.bg.hover') 50%,
-    theme('colors.bg.card') 100%
+    theme('colors.bg.hover') 45%,
+    theme('colors.bg.card') 90%
   );
   background-size: 200% 100%;
   @apply animate-shimmer;
@@ -55,14 +56,22 @@ body {
 
 /* Recharts tooltip overrides */
 .recharts-default-tooltip {
-  background: theme('colors.bg.card') !important;
+  background: theme('colors.bg.hover') !important;
   border: 1px solid theme('colors.border.DEFAULT') !important;
-  border-radius: 8px !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 .recharts-tooltip-label,
 .recharts-tooltip-item {
   color: theme('colors.fg.DEFAULT') !important;
+}
+
+.recharts-cartesian-axis-tick-value,
+.recharts-label,
+.recharts-tooltip-label,
+.recharts-tooltip-item-value {
+  font-family: var(--font-dm-sans), system-ui, sans-serif !important;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Prose-ish chat message formatting */

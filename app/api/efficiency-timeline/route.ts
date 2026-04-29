@@ -29,7 +29,7 @@ import type {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = ["Sports", "Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 const TTL = 3600;
 const MIN_MARKETS_PER_MONTH = 5;

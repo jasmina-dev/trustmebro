@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-bg-card/80 shadow-lg shadow-black/20 backdrop-blur-sm",
+        "rounded-tmb border border-border bg-bg-card",
         className,
       )}
       {...props}
@@ -28,14 +28,18 @@ export function CardHeader({
   right?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
+    <div className="flex items-start justify-between gap-tmb5 border-b border-border px-tmb6 py-tmb5">
       <div>
-        <h3 className="text-sm font-semibold tracking-tight text-fg">{title}</h3>
+        <h3 className="text-lg font-semibold tracking-tight text-fg">{title}</h3>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-fg-muted">{subtitle}</p>
+          <p className="mt-tmb1 text-sm leading-normal text-fg-muted">
+            {subtitle}
+          </p>
         )}
       </div>
-      {right && <div className="flex shrink-0 items-center gap-2">{right}</div>}
+      {right && (
+        <div className="flex shrink-0 items-center gap-tmb2">{right}</div>
+      )}
     </div>
   );
 }
@@ -47,5 +51,5 @@ export function CardBody({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn("px-5 py-4", className)}>{children}</div>;
+  return <div className={cn("px-tmb6 py-tmb5", className)}>{children}</div>;
 }

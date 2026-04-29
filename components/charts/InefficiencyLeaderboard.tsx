@@ -42,7 +42,7 @@ export function InefficiencyLeaderboard() {
   const [filter, setFilter] = useState<InefficiencyType | "all">("all");
   const [detail, setDetail] = useState<InefficiencyScore | null>(null);
 
-  const updateChartContext = useDashboard((s) => s.updateChartContext);
+  const { activeVenue, updateChartContext } = useDashboard();
   useEffect(() => {
     if (data?.data) {
       updateChartContext("inefficiency-leaderboard", {
@@ -52,9 +52,12 @@ export function InefficiencyLeaderboard() {
   }, [data?.data, updateChartContext]);
 
   const rows = useMemo(() => {
-    const list = (data?.data ?? []).filter(
-      (r) => filter === "all" || r.type === filter,
-    );
+    const list = (data?.data ?? []).filter((r) => {
+      if (filter !== "all" && r.type !== filter) return false;
+      // cross_venue_divergence spans both exchanges — always include it
+      if (activeVenue !== "all" && r.type !== "cross_venue_divergence" && r.exchange !== activeVenue) return false;
+      return true;
+    });
     return [...list].sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
       const av = a[sortKey];
@@ -92,9 +95,6 @@ export function InefficiencyLeaderboard() {
               <option value="liquidity_gap">Liquidity gap</option>
               <option value="late_breaking_mismatch">Late-breaking mismatch</option>
             </select>
-            <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-              {data?.cache ?? "…"}
-            </span>
           </div>
         }
       />
@@ -162,7 +162,19 @@ export function InefficiencyLeaderboard() {
                     </span>
                   </td>
                   <td className="max-w-[340px] truncate px-4 py-2 text-fg">
-                    {r.title}
+                    {r.url ? (
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="block truncate underline-offset-2 hover:text-accent hover:underline"
+                      >
+                        {r.title}
+                      </a>
+                    ) : (
+                      r.title
+                    )}
                   </td>
                   <td className="px-4 py-2 capitalize text-fg-muted">
                     {r.exchange}
@@ -234,7 +246,20 @@ function DetailModal({
             >
               {TYPE_LABEL[detail.type]}
             </div>
-            <h3 className="mt-2 text-base font-semibold">{detail.title}</h3>
+            <h3 className="mt-2 text-base font-semibold">
+              {detail.url ? (
+                <a
+                  href={detail.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline-offset-2 hover:text-accent hover:underline"
+                >
+                  {detail.title}
+                </a>
+              ) : (
+                detail.title
+              )}
+            </h3>
             <p className="mt-1 text-xs text-fg-muted">
               {detail.exchange} · {detail.category}
             </p>

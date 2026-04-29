@@ -14,7 +14,7 @@ import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { useDashboard } from "@/lib/store";
 import type { PriceCandle, UnifiedMarket } from "@/lib/types";
-import { isResolved, yesOutcome } from "@/lib/utils";
+import { isResolved, normalizeCategory, yesOutcome } from "@/lib/utils";
 
 /**
  * Final 72h price movement for a resolved market, with a vertical line at
@@ -41,6 +41,7 @@ export function PriceVsResolution() {
   const markets = useMemo(() => {
     const now = Date.now();
     return (closedMarkets?.data ?? []).filter((m) => {
+      if (normalizeCategory(m.category) === "Sports") return false;
       const yes = yesOutcome(m);
       if (!yes) return false;
       const hasWinner = m.outcomes.some((o) => o.price >= 0.98);

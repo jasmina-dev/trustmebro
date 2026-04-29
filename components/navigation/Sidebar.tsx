@@ -60,20 +60,20 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-bg-elev/50 transition-all duration-200 md:block",
-        collapsed ? "w-14" : "w-60",
+        "sticky top-tmb-nav hidden h-tmb-sidebar shrink-0 border-r border-border bg-bg transition-all duration-200 md:block",
+        collapsed ? "w-tmb-sidebar-collapsed" : "w-tmb-sidebar",
       )}
     >
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between px-3 py-3">
+        <div className="flex items-center justify-between border-b border-border px-tmb4 py-tmb4">
           {!collapsed && (
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-fg-muted">
+            <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">
               Jump to
             </span>
           )}
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="rounded-md border border-border bg-bg-card p-1 text-fg-muted hover:text-fg"
+            className="rounded-tmb border border-border bg-bg-card p-tmb2 text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <svg
@@ -90,7 +90,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-2 pb-4">
+        <nav className="flex-1 space-y-tmb1 overflow-y-auto px-tmb2 py-tmb4">
           {SECTIONS.map((s) => {
             const active = activeChart === s.id;
             return (
@@ -103,18 +103,18 @@ export function Sidebar() {
                     ?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
                 className={cn(
-                  "group flex w-full flex-col items-start rounded-lg border border-transparent px-3 py-2 text-left text-xs transition-colors",
+                  "group flex w-full flex-col items-start rounded-tmb border px-tmb4 py-tmb3 text-left transition-colors",
                   active
-                    ? "border-border bg-bg-card text-fg"
-                    : "text-fg-muted hover:bg-bg-card/60 hover:text-fg",
+                    ? "border-accent bg-accent/10 text-fg"
+                    : "border-border bg-bg-card text-fg hover:bg-bg-hover",
                 )}
                 title={collapsed ? s.label : undefined}
               >
-                <span className="truncate font-medium">
+                <span className="truncate text-sm font-semibold leading-snug">
                   {collapsed ? s.label.slice(0, 2) : s.label}
                 </span>
                 {!collapsed && (
-                  <span className="mt-0.5 truncate text-[10px] text-fg-subtle group-hover:text-fg-muted">
+                  <span className="mt-1 truncate text-xs leading-snug text-fg-muted">
                     {s.description}
                   </span>
                 )}
@@ -124,12 +124,14 @@ export function Sidebar() {
         </nav>
 
         {!collapsed && (
-          <div className="border-t border-border-subtle p-3 text-[10px] leading-relaxed text-fg-subtle">
-            <div className="mb-1 font-medium text-fg-muted">Cache</div>
-            <div>Live · 60s</div>
-            <div>Resolved · 1h</div>
-            <div>Inefficiencies · 5m</div>
-            <div>Archive · 24h</div>
+          <div className="border-t border-border p-tmb4 text-xs leading-relaxed text-fg-muted">
+            <div className="mb-tmb1 font-bold uppercase tracking-wider text-fg-muted">
+              Cache
+            </div>
+            <div className="font-number tabular-nums">Live · 60s</div>
+            <div className="font-number tabular-nums">Resolved · 1h</div>
+            <div className="font-number tabular-nums">Inefficiencies · 5m</div>
+            <div className="font-number tabular-nums">Archive · 24h</div>
           </div>
         )}
       </div>

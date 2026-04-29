@@ -27,6 +27,7 @@ import type {
   UnifiedMarket,
   UnifiedOutcome,
 } from "./types";
+import { marketExchange } from "./utils";
 
 const PMXT_BASE = "https://api.pmxt.dev";
 
@@ -87,12 +88,11 @@ export const router = {
       );
     }
     const json = (await res.json()) as RouterResponse<UnifiedMarket>;
-    // Stamp each market with the `exchange` it came from when the router
-    // doesn't set it itself. When `exchange` was a query filter, we know it;
-    // otherwise we leave the field unset and let downstream code tag it from
-    // the slug / venue metadata.
-    if (params.exchange) {
-      for (const m of json.data) m.exchange = params.exchange;
+    // PMXT Router marks canonical venue as `sourceExchange`; the `exchange`
+    // query param is not reliable enough to stamp rows from the request.
+    for (const m of json.data) {
+      const exchange = marketExchange(m);
+      if (exchange) m.exchange = exchange;
     }
     return json;
   },

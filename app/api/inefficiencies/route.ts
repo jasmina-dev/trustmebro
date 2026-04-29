@@ -22,11 +22,13 @@ import { fetchOhlcv, hasPmxtKey, resolveOhlcvId, router } from "@/lib/pmxt";
 import { mockMarkets, assignResolutionLabels, mockOhlcv } from "@/lib/mock";
 import {
   isResolved,
+  marketExchange,
   mean,
   normalizeCategory,
   proportionZ,
   stddev,
   titleSimilarity,
+  venueMarketUrl,
   yesOutcome,
 } from "@/lib/utils";
 import type {
@@ -45,7 +47,7 @@ const MAX_LATE_BREAKING_PROBES = 8; // OHLCV calls are expensive — cap per run
 
 export async function GET() {
   try {
-    const { value, state } = await cached("inefficiencies:all", 300, async () => {
+    const { value, state } = await cached("inefficiencies:v3:all", 300, async () => {
       if (!hasPmxtKey()) {
         const active = mockMarkets({});
         const resolved = assignResolutionLabels(mockMarkets({ closed: true }));
@@ -55,23 +57,21 @@ export async function GET() {
         };
       }
 
-      const [polyActive, kalshiActive, polyClosed, kalshiClosed] =
-        await Promise.all([
-          router.markets({ exchange: "polymarket", limit: 500 }),
-          router.markets({ exchange: "kalshi", limit: 500 }),
-          router.markets({ exchange: "polymarket", closed: true, limit: 500 }),
-          router.markets({ exchange: "kalshi", closed: true, limit: 500 }),
-        ]);
+      const [activeRaw, resolvedRaw] = await Promise.all([
+        router.markets({ limit: 500 }),
+        router.markets({ closed: true, limit: 500 }),
+      ]);
 
-      const tag = (ex: Exchange) => (m: UnifiedMarket) => ({ ...m, exchange: ex });
-      const active = [
-        ...polyActive.data.map(tag("polymarket")),
-        ...kalshiActive.data.map(tag("kalshi")),
-      ];
-      const resolved = [
-        ...polyClosed.data.map(tag("polymarket")),
-        ...kalshiClosed.data.map(tag("kalshi")),
-      ];
+      const normalizeMarket = (m: UnifiedMarket): UnifiedMarket => ({
+        ...m,
+        exchange: marketExchange(m),
+      });
+      const active = activeRaw.data
+        .filter((m) => marketExchange(m) && normalizeCategory(m.category) !== "Sports")
+        .map(normalizeMarket);
+      const resolved = resolvedRaw.data
+        .filter((m) => marketExchange(m) && normalizeCategory(m.category) !== "Sports")
+        .map(normalizeMarket);
 
       return {
         source: "pmxt" as const,
@@ -81,7 +81,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        data: value.scores,
+        data: value.scores.map((s) => ({ ...s, url: venueMarketUrl(s) })),
         cache: state,
         fetchedAt: new Date().toISOString(),
         source: value.source,
@@ -213,6 +213,7 @@ function crossVenueDivergenceSignals(
       id: `div-${p.marketId}-${bestMatch.k.marketId}`,
       marketId: p.marketId,
       title: p.title,
+      url: venueMarketUrl(p),
       exchange: "polymarket",
       category: normalizeCategory(p.category),
       type: "cross_venue_divergence",
@@ -248,6 +249,7 @@ function liquidityGapSignals(active: UnifiedMarket[]): InefficiencyScore[] {
       id: `liq-${mk.marketId}`,
       marketId: mk.marketId,
       title: mk.title,
+      url: venueMarketUrl(mk),
       exchange: (mk.exchange ?? "polymarket") as Exchange,
       category: normalizeCategory(mk.category),
       type: "liquidity_gap",
@@ -306,6 +308,7 @@ async function lateBreakingMismatchSignals(
         id: `late-${m.marketId}`,
         marketId: m.marketId,
         title: m.title,
+        url: venueMarketUrl(m),
         exchange,
         category: normalizeCategory(m.category),
         type: "late_breaking_mismatch",

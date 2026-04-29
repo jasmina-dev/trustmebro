@@ -18,7 +18,7 @@ import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import type { CalibrationSeries } from "@/lib/types";
 
-const CATEGORIES = ["All", "Sports", "Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = ["All", "Politics", "Crypto", "Finance", "Other"];
 const VENUE_COLOR: Record<string, string> = {
   polymarket: "#2d9cdb",
   kalshi: "#10b981",
@@ -140,9 +140,6 @@ export function CalibrationCurve() {
                 </option>
               ))}
             </select>
-            <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-              {data?.cache ?? "…"}
-            </span>
           </div>
         }
       />

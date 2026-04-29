@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
-const CATEGORIES = ["Sports", "Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES = ["polymarket", "kalshi"] as const;
 const LOW_SAMPLE = 30;
 
@@ -83,11 +83,6 @@ export function ResolutionBiasHeatmap() {
       <CardHeader
         title="Resolution bias heatmap"
         subtitle={`NO-resolution rate per category × venue · ${flaggedCount} flagged`}
-        right={
-          <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-            {data?.cache ?? "…"}
-          </span>
-        }
       />
       <CardBody>
         <div className="flex flex-col gap-2">

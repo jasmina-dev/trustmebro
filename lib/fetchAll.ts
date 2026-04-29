@@ -12,6 +12,7 @@
 
 import { cached } from "./redis";
 import { router } from "./pmxt";
+import { marketExchange } from "./utils";
 import type { Exchange, UnifiedMarket } from "./types";
 
 const PAGE_SIZE = 500;
@@ -54,6 +55,7 @@ export async function fetchAllMarkets(
   for (let page = 0; page < maxPages; page++) {
     const key = [
       "raw",
+      "v2",
       closed ? "closed" : "live",
       exchange,
       category ?? "-",
@@ -70,11 +72,13 @@ export async function fetchAllMarkets(
         limit: PAGE_SIZE,
         offset,
       });
-      return res.data.map((m) => ({
-        ...m,
-        exchange,
-        category: m.category ?? category ?? null,
-      }));
+      return res.data
+        .map((m) => ({
+          ...m,
+          exchange: marketExchange(m),
+          category: m.category ?? category ?? null,
+        }))
+        .filter((m) => marketExchange(m) === exchange);
     });
 
     pagesFetched += 1;

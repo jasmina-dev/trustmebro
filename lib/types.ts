@@ -49,6 +49,7 @@ export interface UnifiedMarket {
    */
   status?: string | null;
   contractAddress?: string | null;
+  sourceExchange?: string;
   exchange?: Exchange;
   outcomes: UnifiedOutcome[];
 }
@@ -81,6 +82,7 @@ export interface InefficiencyScore {
   id: string;
   marketId: string;
   title: string;
+  url?: string | null;
   exchange: Exchange;
   category: string;
   type: InefficiencyType;

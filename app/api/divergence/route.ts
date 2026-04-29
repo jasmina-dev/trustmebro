@@ -18,7 +18,8 @@
  *   - limit     max pairs returned (default 100)
  *
  * Cache key: divergence:<category>
- * TTL:       300s (5 min) — spreads move, but not every second.
+ * TTL:       600s (10 min) — 2× the warmup cron interval so there's always a
+ *             buffer before expiry, preventing race-condition misses.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -38,8 +39,8 @@ import type { DivergentPair } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = ["Sports", "Politics", "Crypto", "Finance", "Other"];
-const TTL_SECONDS = 300;
+const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
+const TTL_SECONDS = 600;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;

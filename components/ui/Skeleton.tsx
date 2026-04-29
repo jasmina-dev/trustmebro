@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("shimmer rounded-md", className)}
+      className={cn("shimmer rounded-tmb", className)}
       aria-hidden="true"
       {...props}
     />
@@ -12,9 +12,9 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 
 export function ChartSkeleton({ label }: { label?: string }) {
   return (
-    <div className="flex h-full min-h-[260px] flex-col gap-3 p-4">
+    <div className="flex h-full min-h-tmb-chart flex-col gap-tmb4 p-tmb6">
       {label && (
-        <div className="text-xs font-medium uppercase tracking-widest text-fg-muted">
+        <div className="text-xs font-bold uppercase tracking-wider text-fg-muted">
           {label}
         </div>
       )}

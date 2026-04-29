@@ -34,7 +34,7 @@ import type {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = ["Sports", "Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 const BUCKETS = 10;
 const TTL = 3600;

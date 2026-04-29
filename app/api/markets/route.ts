@@ -20,11 +20,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { cached } from "@/lib/redis";
 import { hasPmxtKey, router } from "@/lib/pmxt";
 import { mockMarkets, assignResolutionLabels } from "@/lib/mock";
-import { normalizeCategory } from "@/lib/utils";
+import { marketExchange, normalizeCategory, venueMarketUrl } from "@/lib/utils";
 import type { Exchange, UnifiedMarket } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const ROUTER_CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -36,6 +38,7 @@ export async function GET(req: NextRequest) {
 
   const key = [
     "markets",
+    "v3",
     exchange ?? "all",
     category ?? "all",
     closed ? "closed" : "live",
@@ -60,21 +63,20 @@ export async function GET(req: NextRequest) {
         };
       }
 
-      // Router doesn't require an exchange filter, but when both venues are
-      // wanted we want to tag rows with their exchange. Simplest approach:
-      // run two calls when `exchange` isn't specified.
-      const exchanges: Exchange[] = exchange
-        ? [exchange]
-        : ["polymarket", "kalshi"];
-
+      const categories = category ? [category] : ROUTER_CATEGORIES;
       const results = await Promise.all(
-        exchanges.map((ex) =>
-          router.markets({ exchange: ex, category, closed, query, limit }),
+        categories.map((cat) =>
+          router.markets({ category: cat, closed, query, limit }),
         ),
       );
-      const markets = results.flatMap((r, i) =>
-        r.data.map((m) => ({ ...m, exchange: exchanges[i] })),
-      );
+      const markets = results
+        .flatMap((r) => r.data)
+        .filter((m) => {
+          const source = marketExchange(m);
+          return source && (!exchange || source === exchange);
+        })
+        .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
+        .slice(0, limit);
       return { source: "pmxt" as const, markets };
     });
 
@@ -82,7 +84,9 @@ export async function GET(req: NextRequest) {
     // without having to know every venue's taxonomy quirks.
     const normalized: UnifiedMarket[] = value.markets.map((m) => ({
       ...m,
+      exchange: marketExchange(m),
       category: normalizeCategory(m.category ?? null),
+      url: venueMarketUrl(m),
     }));
 
     console.log(

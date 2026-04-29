@@ -4,6 +4,7 @@
 
 import type {
   DistributionBucket,
+  Exchange,
   UnifiedMarket,
   UnifiedOutcome,
 } from "./types";
@@ -128,6 +129,78 @@ export function noOutcome(m: UnifiedMarket): UnifiedOutcome | undefined {
 export function isResolved(m: UnifiedMarket): boolean {
   const s = (m.status ?? "").toLowerCase();
   return s === "resolved" || s === "closed" || s === "settled";
+}
+
+export function marketExchange(
+  market: Pick<UnifiedMarket, "exchange" | "sourceExchange">,
+): Exchange | undefined {
+  return normalizeExchange(market.sourceExchange) ?? normalizeExchange(market.exchange);
+}
+
+function normalizeExchange(value: unknown): Exchange | undefined {
+  if (typeof value !== "string") return undefined;
+  const lc = value.toLowerCase();
+  if (lc === "polymarket") return "polymarket";
+  if (lc === "kalshi") return "kalshi";
+  return undefined;
+}
+
+export function venueMarketUrl(
+  market: {
+    exchange?: Exchange;
+    sourceExchange?: string;
+    marketId: string;
+    title?: string;
+    slug?: string | null;
+    url?: string | null;
+  },
+): string | null {
+  const exchange = marketExchange(market);
+  const raw = market.url?.trim() || null;
+
+  if (raw && exchange && urlMatchesExchange(raw, exchange)) return raw;
+
+  if (exchange === "polymarket") {
+    if (market.slug) return `https://polymarket.com/event/${market.slug}`;
+    return venueSearchUrl("polymarket", market.title);
+  }
+
+  if (exchange === "kalshi") {
+    if (raw && urlMatchesExchange(raw, "kalshi")) return raw;
+    if (isKalshiTicker(market.marketId)) {
+      return `https://kalshi.com/markets/${market.marketId}`;
+    }
+    return venueSearchUrl("kalshi", market.title);
+  }
+
+  return raw && !exchange ? raw : null;
+}
+
+function isKalshiTicker(value: string): boolean {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    return false;
+  }
+
+  return /^[A-Z][A-Z0-9]+(?:[.-][A-Z0-9]+)+$/.test(value);
+}
+
+function venueSearchUrl(exchange: Exchange, title: string | undefined): string | null {
+  if (!title?.trim()) return null;
+  const q = encodeURIComponent(title.trim());
+  return exchange === "polymarket"
+    ? `https://polymarket.com/search?search=${q}`
+    : `https://kalshi.com/search?search=${q}`;
+}
+
+function urlMatchesExchange(raw: string, exchange: Exchange): boolean {
+  try {
+    const hostname = new URL(raw).hostname.toLowerCase();
+    return exchange === "polymarket"
+      ? hostname.endsWith("polymarket.com")
+      : hostname.endsWith("kalshi.com");
+  } catch {
+    return false;
+  }
 }
 
 /**

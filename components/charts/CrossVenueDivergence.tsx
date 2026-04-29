@@ -22,7 +22,6 @@ import type { DivergentPair } from "@/lib/types";
 
 const CATEGORY_OPTIONS = [
   "All",
-  "Sports",
   "Politics",
   "Crypto",
   "Finance",
@@ -116,9 +115,6 @@ export function CrossVenueDivergence() {
                 </option>
               ))}
             </select>
-            <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-              {data?.cache ?? "…"}
-            </span>
           </div>
         }
       />

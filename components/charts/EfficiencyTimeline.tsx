@@ -59,11 +59,6 @@ export function EfficiencyTimeline() {
             ? "No resolution history available"
             : `Volume-weighted mispricing by resolution month · ${series.length} months · ${usd(totalVolume)} analyzed`
         }
-        right={
-          <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-            {data?.cache ?? "…"}
-          </span>
-        }
       />
       <CardBody className="h-[320px] pl-0 pr-3">
         {isLoading && !data ? (

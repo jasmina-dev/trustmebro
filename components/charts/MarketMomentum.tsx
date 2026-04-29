@@ -1,20 +1,15 @@
 "use client";
 
 import useSWR from "swr";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { cn } from "@/lib/cn";
 import { yesOutcome, usd } from "@/lib/utils";
-import type { ExchangeFilter, UnifiedMarket } from "@/lib/types";
+import { useDashboard } from "@/lib/store";
+import type { UnifiedMarket } from "@/lib/types";
 
-const CATEGORIES = ["All", "Sports", "Politics", "Crypto", "Finance", "Other"];
-const VENUES: Array<{ id: ExchangeFilter; label: string }> = [
-  { id: "all", label: "All venues" },
-  { id: "polymarket", label: "Polymarket" },
-  { id: "kalshi", label: "Kalshi" },
-];
 const TOP_N = 20;
 const BIG_MOVE = 0.1; // 10pp threshold for "late-information event" callout
 
@@ -40,16 +35,15 @@ function momentumColor(change: number): string {
  * venue before the other).
  */
 export function MarketMomentum() {
-  const [venue, setVenue] = useState<ExchangeFilter>("all");
-  const [category, setCategory] = useState<string>("All");
+  const { activeVenue, activeCategory } = useDashboard();
 
   const url = useMemo(() => {
     const qs = new URLSearchParams();
-    if (venue !== "all") qs.set("exchange", venue);
-    if (category !== "All") qs.set("category", category);
+    if (activeVenue !== "all") qs.set("exchange", activeVenue);
+    if (activeCategory !== "All") qs.set("category", activeCategory);
     qs.set("limit", "500");
     return `/api/markets?${qs.toString()}`;
-  }, [venue, category]);
+  }, [activeVenue, activeCategory]);
 
   const { data, isLoading } = useSWR<ApiPayload<UnifiedMarket[]>>(
     url,
@@ -92,35 +86,6 @@ export function MarketMomentum() {
           movers.length === 0
             ? "No 24h movement data available"
             : `Top ${movers.length} movers · ${bigMoveCount} markets > ${BIG_MOVE * 100}pp in 24h`
-        }
-        right={
-          <div className="flex items-center gap-2">
-            <select
-              value={venue}
-              onChange={(e) => setVenue(e.target.value as ExchangeFilter)}
-              className="rounded-md border border-border bg-bg-elev px-2 py-1 text-xs"
-            >
-              {VENUES.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="rounded-md border border-border bg-bg-elev px-2 py-1 text-xs"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-              {data?.cache ?? "…"}
-            </span>
-          </div>
         }
       />
       <CardBody className="px-5 py-4">
@@ -189,12 +154,24 @@ function MomentumRow({ mover, max }: { mover: Mover; max: number }) {
 
         {/* Centre label */}
         <div className="flex flex-col items-center px-2 text-center">
-          <span
-            className="max-w-[220px] truncate text-[11px] font-medium text-fg"
-            title={mover.market.title}
-          >
-            {mover.market.title}
-          </span>
+          {mover.market.url ? (
+            <a
+              href={mover.market.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block max-w-[220px] truncate text-[11px] font-medium text-fg underline-offset-2 hover:text-accent hover:underline"
+              title={mover.market.title}
+            >
+              {mover.market.title}
+            </a>
+          ) : (
+            <span
+              className="max-w-[220px] truncate text-[11px] font-medium text-fg"
+              title={mover.market.title}
+            >
+              {mover.market.title}
+            </span>
+          )}
           <span className="text-[9px] text-fg-subtle">
             <span className="capitalize">{mover.market.exchange}</span> · YES{" "}
             {(mover.yes * 100).toFixed(0)}% · vol {usd(mover.market.volume24h)}

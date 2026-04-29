@@ -49,6 +49,19 @@ export function KPIRow() {
     ...swrOpts,
   });
 
+  // ---------- Derived metrics ----------
+  const totalMarkets = markets?.data?.length ?? 0;
+
+  // Filter inefficiency scores to the active venue.
+  // cross_venue_divergence spans both exchanges, so always include it.
+  const filteredScores = useMemo(() => {
+    if (!scores?.data) return [];
+    if (activeVenue === "all") return scores.data;
+    return scores.data.filter(
+      (s) => s.type === "cross_venue_divergence" || s.exchange === activeVenue,
+    );
+  }, [scores?.data, activeVenue]);
+
   // Push markets + scores into the global dashboard context so the chatbot
   // can answer questions about what's visible.
   const updateChartContext = useDashboard((s) => s.updateChartContext);
@@ -62,12 +75,12 @@ export function KPIRow() {
   }, [markets?.data, updateChartContext]);
 
   useEffect(() => {
-    if (scores?.data) {
+    if (filteredScores.length > 0) {
       updateChartContext("overview", {
-        inefficiencyScores: scores.data,
+        inefficiencyScores: filteredScores,
       });
     }
-  }, [scores?.data, updateChartContext]);
+  }, [filteredScores, updateChartContext]);
 
   useEffect(() => {
     if (resolutionStats) {
@@ -75,14 +88,11 @@ export function KPIRow() {
     }
   }, [resolutionStats, updateChartContext]);
 
-  // ---------- Derived metrics ----------
-  const totalMarkets = markets?.data?.length ?? 0;
-
-  const avgSportsNo = useMemo(() => {
+  const avgPoliticsNo = useMemo(() => {
     if (!resolution?.data) return 0;
-    const sport = resolution.data.filter((b) => b.category === "Sports");
-    if (sport.length === 0) return 0;
-    const totals = sport.reduce(
+    const politics = resolution.data.filter((b) => b.category === "Politics");
+    if (politics.length === 0) return 0;
+    const totals = politics.reduce(
       (acc, b) => {
         acc.total += b.total;
         acc.no += b.noResolved;
@@ -95,32 +105,31 @@ export function KPIRow() {
   }, [resolution?.data]);
 
   const topDivergence = useMemo(() => {
-    if (!scores?.data) return 0;
-    const divs = scores.data.filter(
+    const divs = filteredScores.filter(
       (s) => s.type === "cross_venue_divergence" && typeof s.spread === "number",
     );
     if (divs.length === 0) return 0;
     return Math.max(...divs.map((d) => d.spread ?? 0));
-  }, [scores?.data]);
+  }, [filteredScores]);
 
-  const flaggedCount = scores?.data?.length ?? 0;
+  const flaggedCount = filteredScores.length;
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div className="grid grid-cols-1 gap-x-tmb7 gap-y-tmb6 sm:grid-cols-2 xl:grid-cols-4">
       <KPICard
         label="Markets analyzed"
         value={totalMarkets}
-        hint={markets?.cache ? `cache ${markets.cache}` : undefined}
+
         loading={loadingMarkets}
       />
       <KPICard
-        label="Avg sports NO-rate"
-        value={avgSportsNo}
+        label="Avg politics NO-rate"
+        value={avgPoliticsNo}
         format="percent"
         hint={
-          avgSportsNo > 0.55
+          avgPoliticsNo > 0.55
             ? "biased toward NO"
-            : avgSportsNo > 0
+            : avgPoliticsNo > 0
               ? "within tolerance"
               : "—"
         }

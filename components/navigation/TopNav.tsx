@@ -10,7 +10,7 @@ const VENUES: Array<{ id: ExchangeFilter; label: string }> = [
   { id: "kalshi", label: "Kalshi" },
 ];
 
-const CATEGORIES = ["All", "Sports", "Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = ["All", "Politics", "Crypto", "Finance", "Other"];
 
 export function TopNav() {
   const { activeVenue, setVenue, activeCategory, setCategory, dateRange, setDateRange, setChatOpen, chatOpen } =
@@ -20,43 +20,70 @@ export function TopNav() {
   const endDate = new Date(dateRange.end).toISOString().slice(0, 10);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-bg/80 backdrop-blur-lg">
-      <div className="flex h-14 items-center gap-6 px-4 md:px-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-accent to-info text-xs font-bold text-white">
-            TMB
+    <header className="sticky top-0 z-30 border-b border-border bg-bg">
+      <div className="border-b border-border bg-bg-card px-tmb7 py-tmb5">
+        <div className="mx-auto flex max-w-tmb-header flex-wrap items-start gap-x-tmb8 gap-y-tmb5">
+          <div className="min-w-56">
+            <h1 className="m-0 text-2xl font-bold leading-tight tracking-tight text-fg">
+              TrustMeBro Analytics
+            </h1>
+            <p className="m-0 mt-1 text-sm text-fg-muted">
+              Prediction markets dashboard &amp; research assistant
+            </p>
           </div>
-          <div className="hidden flex-col leading-tight md:flex">
-            <span className="text-sm font-semibold tracking-tight">trustmebro</span>
-            <span className="text-[10px] uppercase tracking-widest text-fg-muted">
-              inefficiency dashboard
-            </span>
+
+          <div className="ml-auto flex items-center gap-3">
+            <a
+              href="https://pmxt.dev"
+              target="_blank"
+              rel="noopener"
+              className="hidden text-sm text-fg-muted hover:text-fg hover:underline md:inline"
+            >
+              data: pmxt.dev ↗
+            </a>
+            <button
+              onClick={() => setChatOpen(!chatOpen)}
+              className={cn(
+                "rounded-tmb px-tmb5 py-tmb4 text-sm font-semibold text-white transition-colors",
+                chatOpen
+                  ? "bg-accent-hover"
+                  : "bg-accent shadow-tmb-chat-toggle hover:bg-accent-hover",
+              )}
+            >
+              {chatOpen ? "Close chat" : "Ask AI"}
+            </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-elev p-1">
+      <nav className="border-b border-border bg-bg px-tmb7 py-tmb4" aria-label="Market filters">
+        <div className="mx-auto flex max-w-tmb-header flex-wrap items-center gap-tmb2">
+          <span className="mr-1 text-xs font-bold uppercase tracking-wider text-fg-muted">
+            Source
+          </span>
           {VENUES.map((v) => (
             <button
               key={v.id}
               onClick={() => setVenue(v.id)}
               className={cn(
-                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                "rounded-tmb border px-tmb5 py-tmb2 text-sm font-medium transition-colors",
                 activeVenue === v.id
-                  ? "bg-bg-card text-fg shadow"
-                  : "text-fg-muted hover:text-fg",
+                  ? "border-accent bg-accent text-white"
+                  : "border-border bg-bg-card text-fg hover:bg-bg-hover",
               )}
             >
               {v.label}
             </button>
           ))}
-        </div>
 
-        <div className="hidden items-center gap-2 lg:flex">
-          <label className="text-xs text-fg-muted">Category</label>
+        <div className="ml-tmb5 hidden items-center gap-tmb2 lg:flex">
+          <label className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+            Category
+          </label>
           <select
             value={activeCategory}
             onChange={(e) => setCategory(e.target.value)}
-            className="rounded-md border border-border bg-bg-elev px-2 py-1 text-xs text-fg focus:border-accent"
+            className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 font-number text-sm font-medium text-fg focus:border-accent"
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -66,7 +93,7 @@ export function TopNav() {
           </select>
         </div>
 
-        <div className="hidden items-center gap-2 xl:flex">
+        <div className="hidden items-center gap-tmb2 xl:flex">
           <input
             type="date"
             value={startDate}
@@ -76,7 +103,7 @@ export function TopNav() {
                 end: dateRange.end,
               })
             }
-            className="rounded-md border border-border bg-bg-elev px-2 py-1 text-xs text-fg focus:border-accent"
+            className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 font-number text-sm font-medium text-fg focus:border-accent"
           />
           <span className="text-xs text-fg-muted">→</span>
           <input
@@ -88,33 +115,11 @@ export function TopNav() {
                 end: new Date(e.target.value).toISOString(),
               })
             }
-            className="rounded-md border border-border bg-bg-elev px-2 py-1 text-xs text-fg focus:border-accent"
+            className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 text-sm font-medium text-fg focus:border-accent"
           />
         </div>
-
-        <div className="ml-auto flex items-center gap-3">
-          <a
-            href="https://pmxt.dev"
-            target="_blank"
-            rel="noopener"
-            className="hidden text-xs text-fg-muted hover:text-fg md:inline"
-          >
-            data: pmxt.dev ↗
-          </a>
-          <button
-            onClick={() => setChatOpen(!chatOpen)}
-            className={cn(
-              "flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
-              chatOpen
-                ? "border-accent bg-accent text-white"
-                : "border-border bg-bg-card text-fg hover:bg-bg-hover",
-            )}
-          >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-            Ask AI
-          </button>
-        </div>
       </div>
+      </nav>
     </header>
   );
 }

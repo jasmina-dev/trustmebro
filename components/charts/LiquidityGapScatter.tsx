@@ -97,11 +97,6 @@ export function LiquidityGapScatter() {
       <CardHeader
         title="Liquidity gap scatter"
         subtitle="Volume vs liquidity depth. Dot size = inefficiency score."
-        right={
-          <span className="rounded-md border border-border bg-bg-elev px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-            {markets?.cache ?? "…"}
-          </span>
-        }
       />
       <CardBody className="h-[320px] pl-0 pr-2">
         <ResponsiveContainer width="100%" height="100%">
