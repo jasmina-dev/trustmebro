@@ -92,12 +92,12 @@ npm start
 
 ## Inefficiency signals
 
-| Signal                       | Source                                   | Flag                          |
-|------------------------------|------------------------------------------|-------------------------------|
-| **Resolution bias**          | `/v0/markets?closed=true&category=…`     | NO-rate > 65 % (with z-score) |
-| **Cross-venue divergence**   | `/v0/markets` fanned across both venues  | \|YES_poly − YES_kalshi\| > 3 pp |
-| **Liquidity gap**            | `/v0/markets` — volume24h / liquidity    | ratio > mean + 2 σ            |
-| **Late-breaking mismatch**   | `/api/:exchange/fetchOHLCV` last hour    | \|close − resolution\| > 15 pp  |
+| Signal                     | Source                                   | Flag                             |
+| -------------------------- | ---------------------------------------- | -------------------------------- |
+| **Resolution bias**        | `/v0/markets?closed=true&category=…`     | NO-rate > 65 % (with z-score)    |
+| **Cross-venue divergence** | `/v0/markets` fanned across both venues  | \|YES_poly − YES_kalshi\| > 3 pp |
+| **Liquidity gap**          | `/v0/markets` — volume24h / liquidity    | ratio > mean + 2 σ               |
+| **Late-breaking mismatch** | `/api/:exchange/fetchOHLCV` last hour    | \|close − resolution\| > 15 pp   |
 
 See [`app/api/inefficiencies/route.ts`](app/api/inefficiencies/route.ts) for
 the full computation, and [`app/api/resolution-bias/route.ts`](app/api/resolution-bias/route.ts)
@@ -115,14 +115,14 @@ Every `/api/*` route goes through `lib/redis.ts::cached()` which:
 4. returns an `{ data, cache, source, fetchedAt }` envelope,
 5. stamps the response with `X-Cache: HIT | MISS | BYPASS`.
 
-| Route                   | TTL     | Why                                          |
-|-------------------------|---------|----------------------------------------------|
-| `/api/markets` (live)   | 60 s    | Live prices move but not faster than 1 min  |
-| `/api/markets?closed`   | 1 hour  | Resolved markets are immutable              |
-| `/api/resolution-bias`  | 1 hour  | Aggregates over immutable data              |
-| `/api/inefficiencies`   | 5 min   | Recomputes four signals; cap PMXT calls     |
-| `/api/ohlcv`            | 5 min   | Hourly candles move once per hour anyway    |
-| `/api/archive`          | 24 h    | Historical data is append-only              |
+| Route                   | TTL    | Why                                         |
+| ----------------------- | ------ | ------------------------------------------- |
+| `/api/markets` (live)   | 60 s   | Live prices move but not faster than 1 min  |
+| `/api/markets?closed`   | 1 hour | Resolved markets are immutable              |
+| `/api/resolution-bias`  | 1 hour | Aggregates over immutable data              |
+| `/api/inefficiencies`   | 5 min  | Recomputes four signals; cap PMXT calls     |
+| `/api/ohlcv`            | 5 min  | Hourly candles move once per hour anyway    |
+| `/api/archive`          | 24 h   | Historical data is append-only              |
 
 Client-side SWR intervals (`lib/api.ts` → `REFRESH`) mirror these TTLs.
 
@@ -152,13 +152,13 @@ Upstash is configured, falls back to an in-memory sliding window otherwise.
 
 > Docs: <https://pmxt.dev/docs>
 
-| Method                                    | Where                                         |
-|-------------------------------------------|-----------------------------------------------|
-| `GET /v0/markets`                         | `lib/pmxt.ts::router.markets`                 |
-| `GET /v0/markets?closed=true`             | same, for resolution bias / price-vs-resolution |
-| `GET /api/polymarket/fetchOHLCV` (SDK)    | `lib/pmxt.ts::fetchOhlcv` via `pmxtjs`        |
-| `GET /api/kalshi/fetchOHLCV` (SDK)        | same                                          |
-| Archive (`archive.pmxt.dev/*`)            | `lib/pmxt.ts::fetchArchive` (sniffs JSON / NDJSON) |
+| Method                                 | Where                                              |
+| -------------------------------------- | -------------------------------------------------- |
+| `GET /v0/markets`                      | `lib/pmxt.ts::router.markets`                      |
+| `GET /v0/markets?closed=true`          | same, for resolution bias / price-vs-resolution    |
+| `GET /api/polymarket/fetchOHLCV` (SDK) | `lib/pmxt.ts::fetchOhlcv` via `pmxtjs`             |
+| `GET /api/kalshi/fetchOHLCV` (SDK)     | same                                               |
+| Archive (`archive.pmxt.dev/*`)         | `lib/pmxt.ts::fetchArchive` (sniffs JSON / NDJSON) |
 
 The [unified schema](https://pmxt.dev/docs/concepts/unified-schema) guarantees
 the same `UnifiedMarket { marketId, title, outcomes[{outcomeId, label, price}], volume24h, liquidity, category, status, … }` shape across both venues, which is what makes cross-venue divergence detection a one-line compare instead of a normalization nightmare.
@@ -188,5 +188,3 @@ npm run typecheck   # tsc --noEmit
 - ✅ Strict TypeScript — `any` only where pmxtjs SDK types are incomplete.
 - ✅ `.env.local.example` documents every key with its source URL.
 - ✅ Graceful degradation: missing `PMXT_API_KEY` / `UPSTASH_*` / `ANTHROPIC_API_KEY` all have clean fallbacks.
-#   t r u s t m e b r o _ v 2  
- 
