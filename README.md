@@ -27,7 +27,7 @@ cp .env.local.example .env.local
 #   ANTHROPIC_API_KEY=sk-ant-…              (https://console.anthropic.com)
 
 # 3. Dev
-npm run dev            # http://localhost:3000
+npm run dev            # http://localhost:3001
 
 # 4. Prod
 npm run build
@@ -168,7 +168,7 @@ the same `UnifiedMarket { marketId, title, outcomes[{outcomeId, label, price}], 
 ## Scripts
 
 ```bash
-npm run dev         # Next.js dev server
+npm run dev         # Next.js dev server (http://localhost:3001)
 npm run build       # Production build (verify before deploying)
 npm start           # Run the built output
 npm run lint        # next lint (ESLint)
