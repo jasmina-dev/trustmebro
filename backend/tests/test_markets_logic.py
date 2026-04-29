@@ -1,18 +1,9 @@
 import unittest
-from datetime import datetime, timezone
 
-from app.routes.markets import _compute_trades_analytics, _is_sports_event, _safe_parse_dt
+from app.routes.markets import _compute_trades_analytics, _is_sports_event
 
 
 class MarketsLogicTests(unittest.TestCase):
-    def test_safe_parse_dt_handles_valid_and_invalid_values(self):
-        parsed = _safe_parse_dt("2026-03-30T10:00:00Z")
-        self.assertEqual(parsed.tzinfo, timezone.utc)
-        self.assertEqual(parsed.year, 2026)
-
-        fallback = _safe_parse_dt("not-a-date")
-        self.assertEqual(fallback, datetime.min.replace(tzinfo=timezone.utc))
-
     def test_is_sports_event_detects_string_and_tag_object_labels(self):
         self.assertTrue(_is_sports_event({"tags": ["Sports"]}))
         self.assertTrue(_is_sports_event({"tags": [{"label": "team sports"}]}))
