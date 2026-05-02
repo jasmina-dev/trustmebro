@@ -17,3 +17,6 @@ Thumbs.db
 next-env.d.ts
 *.tsbuildinfo
 .eslintcache
+
+test-results/
+playwright-report/
