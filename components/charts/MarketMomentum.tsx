@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { cn } from "@/lib/cn";
 import { yesOutcome, usd } from "@/lib/utils";
 import { useDashboard } from "@/lib/store";
@@ -86,6 +87,9 @@ export function MarketMomentum() {
           movers.length === 0
             ? "No 24h movement data available"
             : `Top ${movers.length} movers · ${bigMoveCount} markets > ${BIG_MOVE * 100}pp in 24h`
+        }
+        right={
+          <HelpTooltip content="Rows rank markets by absolute 24h YES-price move. Rightward green bars indicate rising YES probability; leftward red bars indicate falling YES probability." />
         }
       />
       <CardBody className="px-5 py-4">

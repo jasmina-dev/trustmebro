@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { cn } from "@/lib/cn";
 import { useDashboard } from "@/lib/store";
 import type { InefficiencyScore, InefficiencyType } from "@/lib/types";
@@ -95,6 +96,7 @@ export function InefficiencyLeaderboard() {
               <option value="liquidity_gap">Liquidity gap</option>
               <option value="late_breaking_mismatch">Late-breaking mismatch</option>
             </select>
+            <HelpTooltip content="Ranks detected inefficiencies by score. Click a row to open details with signal-specific metrics such as spread, z-score, or liquidity ratio." />
           </div>
         }
       />

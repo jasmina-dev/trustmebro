@@ -16,6 +16,7 @@ import {
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import type { CalibrationSeries } from "@/lib/types";
 
 const CATEGORIES = ["All", "Politics", "Crypto", "Finance", "Other"];
@@ -140,6 +141,7 @@ export function CalibrationCurve() {
                 </option>
               ))}
             </select>
+            <HelpTooltip content="The diagonal is perfect calibration. Points above it mean YES was underpriced; points below it mean YES was overpriced in that probability bucket." />
           </div>
         }
       />

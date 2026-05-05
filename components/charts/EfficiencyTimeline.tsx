@@ -15,6 +15,7 @@ import {
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { usd } from "@/lib/utils";
 import type { EfficiencyMonth } from "@/lib/types";
 
@@ -58,6 +59,9 @@ export function EfficiencyTimeline() {
           series.length === 0
             ? "No resolution history available"
             : `Volume-weighted mispricing by resolution month · ${series.length} months · ${usd(totalVolume)} analyzed`
+        }
+        right={
+          <HelpTooltip content="Tracks monthly mispricing (final price versus resolution). Lower values indicate markets are pricing outcomes more efficiently over time." />
         }
       />
       <CardBody className="h-[320px] pl-0 pr-3">

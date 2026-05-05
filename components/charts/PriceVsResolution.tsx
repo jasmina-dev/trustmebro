@@ -12,6 +12,7 @@ import {
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
 import type { PriceCandle, UnifiedMarket } from "@/lib/types";
 import { isResolved, normalizeCategory, yesOutcome } from "@/lib/utils";
@@ -202,20 +203,23 @@ export function PriceVsResolution() {
                 : "Loading final 72h…"
         }
         right={
-          markets.length > 0 && (
-            <select
-              value={selectedId ?? ""}
-              onChange={(e) => setSelectedId(e.target.value)}
-              className="max-w-[280px] truncate rounded-md border border-border bg-bg-elev px-2 py-1 text-xs"
-            >
-              {markets.slice(0, 50).map((m) => (
-                <option key={m.marketId} value={m.marketId}>
-                  {m.title.slice(0, 56)}
-                  {m.title.length > 56 ? "…" : ""}
-                </option>
-              ))}
-            </select>
-          )
+          <div className="flex items-center gap-2">
+            {markets.length > 0 && (
+              <select
+                value={selectedId ?? ""}
+                onChange={(e) => setSelectedId(e.target.value)}
+                className="max-w-[280px] truncate rounded-md border border-border bg-bg-elev px-2 py-1 text-xs"
+              >
+                {markets.slice(0, 50).map((m) => (
+                  <option key={m.marketId} value={m.marketId}>
+                    {m.title.slice(0, 56)}
+                    {m.title.length > 56 ? "…" : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <HelpTooltip content="Shows the final 72 hours of YES pricing for a resolved market. Compare the ending price with the resolved outcome line to spot late mispricing." />
+          </div>
         }
       />
       <CardBody>

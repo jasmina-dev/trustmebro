@@ -16,6 +16,7 @@ import {
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import type { DivergentPair } from "@/lib/types";
@@ -115,6 +116,7 @@ export function CrossVenueDivergence() {
                 </option>
               ))}
             </select>
+            <HelpTooltip content="This section matches similar markets across Polymarket and Kalshi, then measures YES-price spread. Bigger spread means stronger cross-venue disagreement and potential inefficiency." />
           </div>
         }
       />

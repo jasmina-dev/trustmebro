@@ -16,6 +16,7 @@ import {
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
 import { useState } from "react";
 import type {
@@ -97,6 +98,9 @@ export function LiquidityGapScatter() {
       <CardHeader
         title="Liquidity gap scatter"
         subtitle="Volume vs liquidity depth. Dot size = inefficiency score."
+        right={
+          <HelpTooltip content="Each dot is a market: x-axis is 24h volume, y-axis is liquidity (both log-scaled). Large dots represent higher inefficiency scores." />
+        }
       />
       <CardBody className="h-[320px] pl-0 pr-2">
         <ResponsiveContainer width="100%" height="100%">

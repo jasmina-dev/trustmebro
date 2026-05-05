@@ -4,6 +4,7 @@ import useSWR from "swr";
 import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { useEffect, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import type { ResolutionBiasBucket } from "@/lib/types";
@@ -83,6 +84,9 @@ export function ResolutionBiasHeatmap() {
       <CardHeader
         title="Resolution bias heatmap"
         subtitle={`NO-resolution rate per category × venue · ${flaggedCount} flagged`}
+        right={
+          <HelpTooltip content="Each cell shows how often resolved markets ended NO for a category and venue. Warmer colors mean stronger NO skew; low-sample cells should be treated cautiously." />
+        }
       />
       <CardBody>
         <div className="flex flex-col gap-2">

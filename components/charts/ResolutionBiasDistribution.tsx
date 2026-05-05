@@ -20,6 +20,7 @@ import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { histogram, mean, normalPdf, stddev } from "@/lib/utils";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
+import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
@@ -82,6 +83,9 @@ export function ResolutionBiasDistribution() {
       <CardHeader
         title="Resolution-rate distribution"
         subtitle={`NO-rate histogram across all closed markets${activeCategory !== "All" ? ` in ${activeCategory}` : ""}. Normal(μ=${(mu * 100).toFixed(0)}%, σ=${(sigma * 100).toFixed(1)}%) overlay.`}
+        right={
+          <HelpTooltip content="Bars show how frequently NO-resolution rates appear across buckets. The overlaid curve is a normal-fit reference to help you see skew and fat tails." />
+        }
       />
       <CardBody className="h-[300px] pl-2 pr-4">
         <ResponsiveContainer width="100%" height="100%">

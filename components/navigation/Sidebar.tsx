@@ -50,6 +50,11 @@ const SECTIONS = [
     label: "Leaderboard",
     description: "Sortable score table",
   },
+  {
+    id: "first-time-users",
+    label: "First-time users",
+    description: "How to read and use this dashboard",
+  },
 ];
 
 export function Sidebar() {
