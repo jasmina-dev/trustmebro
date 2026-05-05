@@ -214,11 +214,53 @@ export function resolveOhlcvId(
 // defensively: HEAD first, sniff the content-type, then parse JSON / NDJSON.
 // ---------------------------------------------------------------------------
 
+function pmxtArchiveBase(): URL | null {
+  const raw = process.env.PMXT_ARCHIVE_URL ?? "https://archive.pmxt.dev/";
+  try {
+    const base = new URL(raw);
+    if (base.protocol !== "http:" && base.protocol !== "https:") return null;
+    return base;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolves a path query segment against `PMXT_ARCHIVE_URL` (or the default
+ * archive host). Returns null if the result would not be same-origin with that
+ * base — e.g. absolute http(s) URLs, scheme-relative `//host/…`, or a
+ * malformed base — so we never attach API credentials to arbitrary hosts.
+ */
+export function resolveArchiveRequestUrl(path: string): URL | null {
+  const base = pmxtArchiveBase();
+  if (!base) return null;
+
+  const trimmed = path.trim();
+  if (/[\u0000-\u001f\u007f]/.test(trimmed)) return null;
+
+  let resolved: URL;
+  try {
+    resolved = new URL(trimmed, base);
+  } catch {
+    return null;
+  }
+
+  if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+    return null;
+  }
+  if (resolved.origin !== base.origin) return null;
+  if (resolved.username !== "" || resolved.password !== "") return null;
+
+  return resolved;
+}
+
 export async function fetchArchive(
   path = "",
 ): Promise<{ source: string; rows: unknown[] } | null> {
-  const base = process.env.PMXT_ARCHIVE_URL ?? "https://archive.pmxt.dev/";
-  const url = new URL(path, base).toString();
+  const resolved = resolveArchiveRequestUrl(path);
+  if (!resolved) return null;
+
+  const url = resolved.toString();
 
   try {
     const res = await fetch(url, {
