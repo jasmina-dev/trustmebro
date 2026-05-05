@@ -20,6 +20,7 @@
     "lightweight-charts": "^5.0.7",
     "lodash": "^4.17.21",
     "next": "14.2.30",
+    "pm2": "^6.0.14",
     "pmxtjs": "^2.31.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

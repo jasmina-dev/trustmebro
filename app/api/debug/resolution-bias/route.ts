@@ -10,12 +10,16 @@
  */
 
 import { NextResponse } from "next/server";
+import { requireDebugAuthorized } from "@/lib/internalApiAuth";
 import { hasPmxtKey } from "@/lib/pmxt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = requireDebugAuthorized(request);
+  if (auth) return auth;
+
   if (!hasPmxtKey()) {
     return NextResponse.json(
       { error: "PMXT_API_KEY missing — cannot probe live data" },

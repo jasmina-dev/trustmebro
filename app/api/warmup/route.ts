@@ -6,13 +6,16 @@
  *   • /api/resolution-bias all (venue × category) cells
  *   • /api/divergence      all categories
  *
- * Intended to be hit by a Vercel cron every 5 min (see vercel.json). Calling
- * it manually is also safe — everything is cache-read-through and idempotent.
+ * Intended to be hit by a Vercel cron every 5 min (see vercel.json). Vercel
+ * sends `Authorization: Bearer <CRON_SECRET>` when CRON_SECRET is set in the
+ * project. Manual calls must use the same header. In local dev, omit CRON_SECRET
+ * to allow unauthenticated warmup.
  *
  * Response: { warmed: true, ms, routes: [...] } so you can spot-check timing.
  */
 
 import { NextResponse } from "next/server";
+import { requireCronAuthorized } from "@/lib/internalApiAuth";
 import { cached } from "@/lib/redis";
 import { fetchAllMarkets } from "@/lib/fetchAll";
 import { hasPmxtKey } from "@/lib/pmxt";
@@ -27,8 +30,11 @@ export const maxDuration = 60;
 const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 
-export async function GET() {
+export async function GET(request: Request) {
   const started = Date.now();
+
+  const auth = requireCronAuthorized(request);
+  if (auth) return auth;
 
   if (!hasPmxtKey()) {
     return NextResponse.json({
