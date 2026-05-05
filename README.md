@@ -67,8 +67,8 @@ npm start
      │        ▼                      ▼                         │
      │  ┌──────────────┐    ┌──────────────────────────┐       │
      │  │ lib/redis.ts │    │ ai + @ai-sdk/anthropic   │       │
-     │  │ cached()     │    │ streamText               │       │
-     │  │ 60s/5m/1h/24h│    │ rate limit 10/min/IP     │       │
+  │  │ cached()     │    │ streamText               │       │
+  │  │ 60s/5m/1h/24h│    │ rate limit 20/min/IP*    │       │
      │  └──────┬───────┘    └──────────────────────────┘       │
      │         │ MISS                                          │
      │         ▼                                               │
@@ -92,12 +92,12 @@ npm start
 
 ## Inefficiency signals
 
-| Signal                     | Source                                   | Flag                             |
-| -------------------------- | ---------------------------------------- | -------------------------------- |
-| **Resolution bias**        | `/v0/markets?closed=true&category=…`     | NO-rate > 65 % (with z-score)    |
-| **Cross-venue divergence** | `/v0/markets` fanned across both venues  | \|YES_poly − YES_kalshi\| > 3 pp |
-| **Liquidity gap**          | `/v0/markets` — volume24h / liquidity    | ratio > mean + 2 σ               |
-| **Late-breaking mismatch** | `/api/:exchange/fetchOHLCV` last hour    | \|close − resolution\| > 15 pp   |
+| Signal                     | Source                                  | Flag                             |
+| -------------------------- | --------------------------------------- | -------------------------------- |
+| **Resolution bias**        | `/v0/markets?closed=true&category=…`    | NO-rate > 65 % (with z-score)    |
+| **Cross-venue divergence** | `/v0/markets` fanned across both venues | \|YES_poly − YES_kalshi\| > 3 pp |
+| **Liquidity gap**          | `/v0/markets` — volume24h / liquidity   | ratio > mean + 2 σ               |
+| **Late-breaking mismatch** | `/api/:exchange/fetchOHLCV` last hour   | \|close − resolution\| > 15 pp   |
 
 See [`app/api/inefficiencies/route.ts`](app/api/inefficiencies/route.ts) for
 the full computation, and [`app/api/resolution-bias/route.ts`](app/api/resolution-bias/route.ts)
@@ -115,14 +115,14 @@ Every `/api/*` route goes through `lib/redis.ts::cached()` which:
 4. returns an `{ data, cache, source, fetchedAt }` envelope,
 5. stamps the response with `X-Cache: HIT | MISS | BYPASS`.
 
-| Route                   | TTL    | Why                                         |
-| ----------------------- | ------ | ------------------------------------------- |
-| `/api/markets` (live)   | 60 s   | Live prices move but not faster than 1 min  |
-| `/api/markets?closed`   | 1 hour | Resolved markets are immutable              |
-| `/api/resolution-bias`  | 1 hour | Aggregates over immutable data              |
-| `/api/inefficiencies`   | 5 min  | Recomputes four signals; cap PMXT calls     |
-| `/api/ohlcv`            | 5 min  | Hourly candles move once per hour anyway    |
-| `/api/archive`          | 24 h   | Historical data is append-only              |
+| Route                  | TTL    | Why                                        |
+| ---------------------- | ------ | ------------------------------------------ |
+| `/api/markets` (live)  | 60 s   | Live prices move but not faster than 1 min |
+| `/api/markets?closed`  | 1 hour | Resolved markets are immutable             |
+| `/api/resolution-bias` | 1 hour | Aggregates over immutable data             |
+| `/api/inefficiencies`  | 5 min  | Recomputes four signals; cap PMXT calls    |
+| `/api/ohlcv`           | 5 min  | Hourly candles move once per hour anyway   |
+| `/api/archive`         | 24 h   | Historical data is append-only             |
 
 Client-side SWR intervals (`lib/api.ts` → `REFRESH`) mirror these TTLs.
 
@@ -143,8 +143,10 @@ by default, override with `ANTHROPIC_MODEL`). Every request serializes the
 You can inspect the exact JSON by opening the chat panel and clicking
 **Context**.
 
-Rate-limit: 10 requests / minute / IP — via `@upstash/ratelimit` when
-Upstash is configured, falls back to an in-memory sliding window otherwise.
+Rate-limit: 20 requests / minute / IP by default — via `@upstash/ratelimit`
+when Upstash is configured, falls back to an in-memory sliding window
+otherwise. You can tune it with `CHAT_RATE_LIMIT_MAX` and
+`CHAT_RATE_LIMIT_WINDOW_SECONDS`.
 
 ---
 

@@ -13,8 +13,9 @@
  * cite specific markets, inefficiency scores, and resolution stats that are
  * currently on the user's screen.
  *
- * Rate limit: 10 req/min per IP, via @upstash/ratelimit when Upstash is
- * configured and an in-memory sliding window in dev.
+ * Rate limit: defaults to 20 req/min per IP (configurable via env),
+ * via @upstash/ratelimit when Upstash is configured and an in-memory
+ * sliding window in dev.
  */
 
 import { NextRequest } from "next/server";
@@ -28,6 +29,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
+const DEFAULT_CHAT_RATE_LIMIT = 20;
+const DEFAULT_CHAT_RATE_WINDOW_SECONDS = 60;
 
 function ipOf(req: NextRequest): string {
   return (
@@ -68,7 +71,7 @@ function buildSystemPrompt(ctx: DashboardContextSnapshot): string {
     "- Answer questions about what the user sees. Cite specific data points (market titles, scores, z-scores) by quoting from the JSON above.",
     "- Explain statistical concepts (z-scores, spread, liquidity ratios) accessibly.",
     "- Suggest actionable insights — which markets look inefficient and why.",
-    "- Format rates/prices as percentages (e.g. \"72%\", not \"0.72\").",
+    '- Format rates/prices as percentages (e.g. "72%", not "0.72").',
     "- If the data above is empty, tell the user the dashboard is still loading — do not invent data.",
     "- Keep responses tight and scannable. Use short paragraphs, bullets for lists.",
   ].join("\n");
@@ -76,8 +79,31 @@ function buildSystemPrompt(ctx: DashboardContextSnapshot): string {
 
 export async function POST(req: NextRequest) {
   const ip = ipOf(req);
-  const rl = await checkRateLimit(ip, { limit: 10, windowSeconds: 60 });
+  const limit = Number(
+    process.env.CHAT_RATE_LIMIT_MAX ?? DEFAULT_CHAT_RATE_LIMIT,
+  );
+  const windowSeconds = Number(
+    process.env.CHAT_RATE_LIMIT_WINDOW_SECONDS ??
+      DEFAULT_CHAT_RATE_WINDOW_SECONDS,
+  );
+  const safeLimit =
+    Number.isFinite(limit) && limit > 0
+      ? Math.floor(limit)
+      : DEFAULT_CHAT_RATE_LIMIT;
+  const safeWindowSeconds =
+    Number.isFinite(windowSeconds) && windowSeconds > 0
+      ? Math.floor(windowSeconds)
+      : DEFAULT_CHAT_RATE_WINDOW_SECONDS;
+
+  const rl = await checkRateLimit(`chat:${ip}`, {
+    limit: safeLimit,
+    windowSeconds: safeWindowSeconds,
+  });
   if (!rl.success) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((rl.reset - Date.now()) / 1000),
+    );
     return new Response(
       JSON.stringify({
         error: "Rate limit exceeded. Please wait a moment and try again.",
@@ -89,6 +115,7 @@ export async function POST(req: NextRequest) {
           "Content-Type": "application/json",
           "X-RateLimit-Remaining": String(rl.remaining),
           "X-RateLimit-Reset": String(rl.reset),
+          "Retry-After": String(retryAfterSeconds),
         },
       },
     );

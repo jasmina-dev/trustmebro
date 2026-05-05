@@ -41,6 +41,7 @@ describe("/api/chat POST", () => {
     expect(res.status).toBe(429);
     expect(body.error).toContain("Rate limit exceeded");
     expect(res.headers.get("X-RateLimit-Remaining")).toBe("0");
+    expect(res.headers.get("Retry-After")).toBeTruthy();
   });
 
   test("returns mock text stream when anthropic key is missing", async () => {
@@ -128,6 +129,10 @@ describe("/api/chat POST", () => {
 
       const res = await POST(req);
 
+      expect(checkRateLimit).toHaveBeenCalledWith("chat:anon", {
+        limit: 20,
+        windowSeconds: 60,
+      });
       expect(createAnthropic).toHaveBeenCalledWith({ apiKey: "test-key" });
       expect(streamText).toHaveBeenCalled();
       expect(res.headers.get("X-Chat-Mode")).toBe("live");
@@ -137,6 +142,44 @@ describe("/api/chat POST", () => {
         delete process.env.ANTHROPIC_API_KEY;
       } else {
         process.env.ANTHROPIC_API_KEY = original;
+      }
+    }
+  });
+
+  test("uses env overrides for chat rate limit config", async () => {
+    (checkRateLimit as jest.Mock).mockResolvedValue({
+      success: false,
+      remaining: 0,
+      reset: Date.now() + 15000,
+    });
+    const originalMax = process.env.CHAT_RATE_LIMIT_MAX;
+    const originalWindow = process.env.CHAT_RATE_LIMIT_WINDOW_SECONDS;
+    process.env.CHAT_RATE_LIMIT_MAX = "6";
+    process.env.CHAT_RATE_LIMIT_WINDOW_SECONDS = "30";
+
+    try {
+      const req = new NextRequest("http://localhost:3000/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ messages: [], context: {} }),
+        headers: { "content-type": "application/json" },
+      });
+      const res = await POST(req);
+
+      expect(res.status).toBe(429);
+      expect(checkRateLimit).toHaveBeenCalledWith("chat:anon", {
+        limit: 6,
+        windowSeconds: 30,
+      });
+    } finally {
+      if (originalMax === undefined) {
+        delete process.env.CHAT_RATE_LIMIT_MAX;
+      } else {
+        process.env.CHAT_RATE_LIMIT_MAX = originalMax;
+      }
+      if (originalWindow === undefined) {
+        delete process.env.CHAT_RATE_LIMIT_WINDOW_SECONDS;
+      } else {
+        process.env.CHAT_RATE_LIMIT_WINDOW_SECONDS = originalWindow;
       }
     }
   });
