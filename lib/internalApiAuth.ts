@@ -24,9 +24,7 @@ function secretMatches(expected: string, provided: string | null): boolean {
  * In development, requests are allowed if CRON_SECRET is unset (local convenience).
  * In production, CRON_SECRET must be set and must match.
  */
-export function requireCronAuthorized(
-  request: Request,
-): NextResponse | null {
+export function requireCronAuthorized(request: Request): NextResponse | null {
   const secret = process.env.CRON_SECRET?.trim();
   const prod =
     process.env.NODE_ENV === "production" ||
@@ -36,39 +34,6 @@ export function requireCronAuthorized(
     if (prod) {
       return NextResponse.json(
         { error: "Unauthorized", detail: "CRON_SECRET is not configured" },
-        { status: 401 },
-      );
-    }
-    return null;
-  }
-
-  const token = bearerToken(request);
-  if (!secretMatches(secret, token)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
-/**
- * Debug routes in production require DEBUG_API_SECRET (Bearer).
- * Unset in dev: open for local debugging. Set anywhere: Bearer must match.
- */
-export function requireDebugAuthorized(
-  request: Request,
-): NextResponse | null {
-  const secret = process.env.DEBUG_API_SECRET?.trim();
-  const prod =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL_ENV === "production";
-
-  if (!secret) {
-    if (prod) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          detail:
-            "DEBUG_API_SECRET is not set — debug API is disabled in production",
-        },
         { status: 401 },
       );
     }
