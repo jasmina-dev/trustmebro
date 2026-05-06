@@ -50,6 +50,7 @@ import type {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const CATEGORIES = CALIBRATION_ROW_CATEGORIES;
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];

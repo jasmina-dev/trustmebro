@@ -36,6 +36,7 @@ import type {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 const TTL = 3600;

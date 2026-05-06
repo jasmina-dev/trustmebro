@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
+import { resolutionBiasFetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
@@ -47,7 +47,7 @@ export function CalibrationCurve() {
 
   const { data, isLoading } = useSWR<ApiPayload<CalibrationSeries[]>>(
     "/api/calibration",
-    fetcher,
+    resolutionBiasFetcher,
     {
       refreshInterval: REFRESH.resolution,
       dedupingInterval: 60_000,

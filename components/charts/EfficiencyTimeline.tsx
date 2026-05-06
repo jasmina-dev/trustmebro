@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
+import { resolutionBiasFetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
@@ -31,7 +31,7 @@ import type { EfficiencyMonth } from "@/lib/types";
 export function EfficiencyTimeline() {
   const { data, isLoading } = useSWR<ApiPayload<EfficiencyMonth[]>>(
     "/api/efficiency-timeline",
-    fetcher,
+    resolutionBiasFetcher,
     {
       refreshInterval: REFRESH.resolution,
       dedupingInterval: 60_000,
