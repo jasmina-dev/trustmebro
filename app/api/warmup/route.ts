@@ -3,8 +3,8 @@
  *
  * Prewarms every cache key the dashboard needs on first paint:
  *   • markets:v3:*        same Redis keys as GET /api/markets (live + closed)
- *   • raw:v2:*            paginated slices via fetchAllMarkets (divergence/bias)
- *   • resolution-bias v7  two venue aggregates
+ *   • raw:v5:*            paginated slices via fetchAllMarkets (divergence/bias)
+ *   • resolution-bias v12  two venue aggregates
  *   • divergence:*        per-category pair caches (TTL matches route)
  *
  * Intended to be hit by a Vercel cron every 5 min (see vercel.json). Vercel
@@ -27,7 +27,7 @@ import type { Exchange } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
@@ -70,33 +70,28 @@ export async function GET(request: Request) {
   );
 
   const biasVenues = EXCHANGES.map((ex) =>
-    track(`bias:v7:${ex}`, () => cachedBucketsForExchange(ex)),
+    track(`bias:v12:${ex}`, () => cachedBucketsForExchange(ex)),
   );
 
-  // 3. Divergence per category — shares the `raw:live:*` page cache with (1).
-  // We compute directly instead of self-fetching so the warmer works even on
-  // Vercel deployments that can't resolve their own hostname.
-  const divergenceTasks = CATEGORIES.map((cat) =>
-    track(`divergence:${cat}`, () =>
-      cached(`divergence:${cat}`, 600, async () => {
+  // 3. Divergence per category (sequential — avoids PMXT 429 when stacked with
+  // live + bias). Shares `raw:*:live` page cache with (1b).
+  await Promise.all([marketsV3, ...liveMarkets, ...biasVenues]);
+
+  for (const cat of CATEGORIES) {
+    await track(`divergence:${cat}`, async () => {
+      const { value } = await cached(`divergence:${cat}`, 600, async () => {
         const pairs = await divergentPairsForCategory(cat);
         return pairs.sort((a, b) => b.spread - a.spread);
-      }),
-    ),
-  );
-
-  await Promise.all([
-    marketsV3,
-    ...liveMarkets,
-    ...biasVenues,
-    ...divergenceTasks,
-  ]);
+      });
+      return value;
+    });
+  }
 
   const ms = Date.now() - started;
+  const slowest =
+    timings.length > 0 ? Math.max(...timings.map((t) => t.ms)) : 0;
   console.log(
-    `[/api/warmup] ${timings.length} tasks in ${ms}ms (slowest ${Math.max(
-      ...timings.map((t) => t.ms),
-    )}ms)`,
+    `[/api/warmup] ${timings.length} tasks in ${ms}ms (slowest ${slowest}ms)`,
   );
   return NextResponse.json({
     warmed: true,

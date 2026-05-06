@@ -119,6 +119,22 @@ export function CalibrationCurve() {
     0,
   );
 
+  const basis = (data?.meta?.impliedYesBasis ?? null) as
+    | Record<"pinned" | "mid" | "settlement", number>
+    | null;
+  const basisTotal = basis
+    ? basis.pinned + basis.mid + basis.settlement
+    : 0;
+  const settlementShare = basis && basisTotal > 0 ? basis.settlement / basisTotal : 0;
+  /**
+   * When ≥80% of observations come from terminal/settlement YES prices the
+   * curve is mathematically forced onto the diagonal (priceAtClose ≈
+   * resolution by construction). Surface this so users don't read the chart
+   * as "perfectly calibrated markets" — the real fix is sampling each
+   * market's pre-resolution OHLCV (queued as follow-up).
+   */
+  const showSettlementWarning = basisTotal > 0 && settlementShare >= 0.8;
+
   return (
     <Card>
       <CardHeader
@@ -145,12 +161,30 @@ export function CalibrationCurve() {
           </div>
         }
       />
+      {showSettlementWarning && (
+        <div className="mx-5 mb-2 mt-1 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning">
+          <span className="font-semibold">Limited price source:</span>{" "}
+          {Math.round(settlementShare * 100)}% of observations use the YES
+          outcome&apos;s last (settlement) trade — the Router doesn&apos;t expose
+          a true pre-resolution snapshot. The curve will hug the diagonal until
+          per-market OHLCV sampling is enabled.
+        </div>
+      )}
       <CardBody className="h-[380px] pl-1 pr-3">
         {isLoading && !data ? (
           <ChartSkeleton />
         ) : chartData.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-fg-muted">
-            No resolved markets matched this slice.
+          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-fg-muted">
+            {totalObservations === 0
+              ? "No closed markets matched this slice. Try the All category, or wait for /api/warmup to backfill closed-market history."
+              : `${totalObservations.toLocaleString()} resolved markets in this slice, but every observation collapsed into a single decile bucket — usually because terminal YES prices dominate. Pick a different category to compare.`}
+          </div>
+        ) : chartData.length === 1 ? (
+          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-fg-muted">
+            Only one decile bucket has observations for this slice
+            ({totalObservations.toLocaleString()} markets, all settling at the
+            same end). Switch categories or wait for OHLCV-based pre-resolution
+            sampling to populate intermediate buckets.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

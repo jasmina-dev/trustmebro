@@ -11,8 +11,8 @@
  * even when resolved markets existed.
  *
  * Cache keys:
- *   resolution-bias:v7:<exchange>:aggregated  — buckets per venue (Pol/Crypto/Fin/Sports/Other), 1h TTL
- *   raw:v2:closed:<exchange>:-:-:<offset>     — paginated Router pages (via fetchAllMarkets)
+ *   resolution-bias:v12:<exchange>:aggregated  — buckets per venue (Pol/Crypto/Fin/Sports/Other), 1h TTL
+ *   raw:v5:closed:<exchange>:-:-:<offset>     — paginated Router pages (via fetchAllMarkets)
  *
  * Query params (all optional):
  *   - category   filter to a single normalized category (still reads full venue cache).
@@ -40,6 +40,8 @@ import type { Exchange, ResolutionBiasBucket } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Cold bias recomputes two × 50 paginated Router crawls — needs headroom on Pro. */
+export const maxDuration = 300;
 
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 
@@ -87,14 +89,18 @@ export async function GET(req: NextRequest) {
       Awaited<ReturnType<typeof cachedBucketsForExchange>>
     >();
 
-    await Promise.all(
-      EXCHANGES.map((ex) =>
-        timed(`bias:v7:${ex}`, async () => {
-          const out = await cachedBucketsForExchange(ex);
-          byExchange.set(ex, out);
-        }),
-      ),
-    );
+    // Sequential per venue (mirrors /api/divergence): each venue is itself a
+    // multi-page crawl, so doing them in parallel doubles concurrent QPS to
+    // PMXT and reliably trips the 60 req/min limit on cold MISS, especially
+    // when the dashboard also fans out to divergence/calibration/timeline
+    // simultaneously. The single-flight Redis cache means a HIT is still
+    // ~instant; only the cold path pays the doubled latency.
+    for (const ex of EXCHANGES) {
+      await timed(`bias:v12:${ex}`, async () => {
+        const out = await cachedBucketsForExchange(ex);
+        byExchange.set(ex, out);
+      });
+    }
 
     const cacheHits = EXCHANGES.filter(
       (ex) => byExchange.get(ex)?.state === "HIT",
@@ -102,6 +108,13 @@ export async function GET(req: NextRequest) {
     const allCached =
       cacheHits === EXCHANGES.length && EXCHANGES.length > 0;
     const state: "HIT" | "MISS" = allCached ? "HIT" : "MISS";
+
+    const closedMarketsLoaded = Object.fromEntries(
+      EXCHANGES.map((ex) => [
+        ex,
+        byExchange.get(ex)?.closedMarketsLoaded ?? 0,
+      ]),
+    ) as Record<Exchange, number>;
 
     const buckets = targets.map(({ exchange, category }) => {
       const hit = byExchange.get(exchange)!;
@@ -120,8 +133,10 @@ export async function GET(req: NextRequest) {
     const sampleSize = buckets.reduce((s, b) => s + b.total, 0);
 
     console.log(
-      `[/api/resolution-bias] v7 aggregated, ${targets.length} cells, exchanges cache hits ${cacheHits}/${EXCHANGES.length}, n=${sampleSize}, ${Date.now() - t0}ms`,
+      `[/api/resolution-bias] v12 aggregated, ${targets.length} cells, exchanges cache hits ${cacheHits}/${EXCHANGES.length}, n=${sampleSize}, ${Date.now() - t0}ms`,
     );
+
+    const binaryExcluded = buckets.reduce((s, b) => s + (b.ambiguous ?? 0), 0);
 
     return NextResponse.json(
       {
@@ -132,6 +147,8 @@ export async function GET(req: NextRequest) {
           aggregation: "router-all-closed+resolutionBiasMarketCategory",
           cacheKeys: `${EXCHANGES.length} × venue aggregate`,
           exchangeCacheHits: cacheHits,
+          closedMarketsLoaded,
+          binaryExcluded,
         },
         cache: state,
         fetchedAt: new Date().toISOString(),

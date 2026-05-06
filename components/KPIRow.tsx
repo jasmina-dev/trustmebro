@@ -3,7 +3,7 @@
 import useSWR from "swr";
 import { useEffect, useMemo } from "react";
 import { KPICard } from "./ui/KPICard";
-import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
+import { fetcher, REFRESH, resolutionBiasFetcher, type ApiPayload } from "@/lib/api";
 import { useDashboard } from "@/lib/store";
 import type {
   InefficiencyScore,
@@ -38,7 +38,7 @@ export function KPIRow() {
     activeCategory === "All"
       ? "/api/resolution-bias"
       : `/api/resolution-bias?category=${encodeURIComponent(activeCategory)}`,
-    fetcher,
+    resolutionBiasFetcher,
     { refreshInterval: REFRESH.resolution, ...swrOpts },
   );
 

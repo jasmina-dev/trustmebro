@@ -4,29 +4,43 @@
  * Builds the data for Chart B — "Do markets resolve accurately when the
  * price is stable vs volatile?"
  *
- * For every clearly-resolved binary market we compute:
- *   • implied YES — `preResolutionYesPrice` when present (mock seed); otherwise
- *     the listed YES price only if it is not terminal (~0/~1). Settlement
- *     snapshots encode the outcome and must not be used as "probability".
+ * For every clearly-resolved market we compute:
+ *   • implied YES — `preResolutionYesPrice` when present (mock); else mid-range
+ *     YES `price` when available; else last-trade YES `price` (`settlement`
+ *     basis — see `meta.impliedYesBasis` counts; Router only exposes last trade).
  *   • resolution — 1 when YES won, 0 when NO won (skipped otherwise)
  *
- * We bucket markets into deciles of implied YES (per venue × category)
- * and return the mean YES resolution rate per bucket. Perfect calibration lands
- * on the diagonal (when belief matches frequency — rare with sparse mid-bin data).
+ * Closed markets are loaded like `/api/resolution-bias` (no Router `category=`,
+ * high page cap, local `calibrationRowCategory` taxonomy including Sports→Other).
  *
- * Cache key: calibration:v2
+ * `meta.impliedYesBasis` is forwarded so the chart UI can warn the user when
+ * the curve is dominated by settlement-basis observations (in which case
+ * priceAtClose ≈ resolution by construction → trivial diagonal).
+ *
+ * Cache key: calibration:v7
  * TTL:       3600s — derived exclusively from already-cached closed markets
+ *
+ * v7 — adds `meta.impliedYesBasis` echo + `meta.coverage.totalObservations`
+ *      so the UI can explain why the curve collapses to the diagonal when
+ *      only settlement prices are available (real fix: per-market OHLCV
+ *      sampling for true pre-resolution prices, see follow-up).
  */
 
 import { NextResponse } from "next/server";
 import { CC_HOURLY_AGG, jsonCacheHeaders } from "@/lib/cacheHeaders";
 import { cached } from "@/lib/redis";
-import { fetchAllMarkets } from "@/lib/fetchAll";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets, assignResolutionLabels } from "@/lib/mock";
 import { classifyWinnerLabel } from "@/lib/bias";
-import { impliedYesForCalibration } from "@/lib/calibrationPrice";
-import { normalizeCategory } from "@/lib/utils";
+import {
+  impliedYesForAnalytics,
+  type ImpliedYesBasis,
+} from "@/lib/calibrationPrice";
+import {
+  CALIBRATION_ROW_CATEGORIES,
+  calibrationRowCategory,
+  fetchClosedMarketsForAnalytics,
+} from "@/lib/analyticsClosedMarkets";
 import type {
   CalibrationBucket,
   CalibrationSeries,
@@ -37,7 +51,7 @@ import type {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
+const CATEGORIES = CALIBRATION_ROW_CATEGORIES;
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 const BUCKETS = 10;
 const TTL = 3600;
@@ -47,13 +61,17 @@ interface Observation {
   resolution: 0 | 1;
 }
 
-function extractObservations(markets: UnifiedMarket[]): Observation[] {
-  const obs: Observation[] = [];
+function extractObservations(markets: UnifiedMarket[]): {
+  observations: Observation[];
+  impliedBasis: Record<ImpliedYesBasis, number>;
+} {
+  const impliedBasis: Record<ImpliedYesBasis, number> = {
+    pinned: 0,
+    mid: 0,
+    settlement: 0,
+  };
+  const observations: Observation[] = [];
   for (const m of markets) {
-    const status = (m.status ?? "").toLowerCase();
-    if (status !== "resolved" && status !== "closed" && status !== "settled") {
-      continue;
-    }
     if (m.outcomes.length === 0) continue;
     const winner = m.outcomes.reduce(
       (a, b) => (a.price > b.price ? a : b),
@@ -64,15 +82,25 @@ function extractObservations(markets: UnifiedMarket[]): Observation[] {
     const winnerKind = classifyWinnerLabel(winner.label);
     if (winnerKind === "ambiguous") continue;
 
-    // Resolution is 1 if YES won, 0 if NO won.
     const resolution: 0 | 1 = winnerKind === "yes" ? 1 : 0;
 
-    // Never use terminal YES prices (~0/~1) — they encode the outcome.
-    const priceAtClose = impliedYesForCalibration(m);
-    if (priceAtClose === null || !Number.isFinite(priceAtClose)) continue;
-    obs.push({ priceAtClose, resolution });
+    const { price: priceAtClose, basis } = impliedYesForAnalytics(m);
+    if (priceAtClose === null || basis === null || !Number.isFinite(priceAtClose)) {
+      continue;
+    }
+    impliedBasis[basis] += 1;
+    observations.push({ priceAtClose, resolution });
   }
-  return obs;
+  return { observations, impliedBasis };
+}
+
+function addBasis(
+  a: Record<ImpliedYesBasis, number>,
+  b: Record<ImpliedYesBasis, number>,
+): void {
+  (Object.keys(a) as ImpliedYesBasis[]).forEach((k) => {
+    a[k] += b[k];
+  });
 }
 
 function bucketObservations(obs: Observation[]): CalibrationBucket[] {
@@ -107,24 +135,30 @@ export async function GET() {
     if (!hasPmxtKey()) {
       const markets = assignResolutionLabels(mockMarkets({ closed: true }));
       const series: CalibrationSeries[] = [];
+      const metaBasis: Record<ImpliedYesBasis, number> = {
+        pinned: 0,
+        mid: 0,
+        settlement: 0,
+      };
       for (const ex of EXCHANGES) {
         for (const cat of CATEGORIES) {
           const filtered = markets.filter(
-            (m) =>
-              m.exchange === ex && normalizeCategory(m.category) === cat,
+            (m) => m.exchange === ex && calibrationRowCategory(m) === cat,
           );
-          const obs = extractObservations(filtered);
+          const { observations, impliedBasis } = extractObservations(filtered);
+          addBasis(metaBasis, impliedBasis);
           series.push({
             exchange: ex,
             category: cat,
-            buckets: bucketObservations(obs),
-            totalMarkets: obs.length,
+            buckets: bucketObservations(observations),
+            totalMarkets: observations.length,
           });
         }
       }
       return NextResponse.json(
         {
           data: series,
+          meta: { impliedYesBasis: metaBasis },
           cache: "MISS",
           fetchedAt: new Date().toISOString(),
           source: "mock",
@@ -133,32 +167,47 @@ export async function GET() {
       );
     }
 
-    const { value, state } = await cached("calibration:v2", TTL, async () => {
-      const all = await Promise.all(
-        EXCHANGES.flatMap((ex) =>
-          CATEGORIES.map(async (cat) => {
-            const { markets } = await fetchAllMarkets({
-              exchange: ex,
-              category: cat,
-              closed: true,
-            });
-            const obs = extractObservations(markets);
-            return {
-              exchange: ex,
-              category: cat,
-              buckets: bucketObservations(obs),
-              totalMarkets: obs.length,
-            } satisfies CalibrationSeries;
-          }),
-        ),
+    const { value, state } = await cached("calibration:v7", TTL, async () => {
+      const impliedYesBasis: Record<ImpliedYesBasis, number> = {
+        pinned: 0,
+        mid: 0,
+        settlement: 0,
+      };
+      const series: CalibrationSeries[] = [];
+
+      const byExchange = await Promise.all(
+        EXCHANGES.map(async (exchange) => {
+          const markets = await fetchClosedMarketsForAnalytics(exchange);
+          return { exchange, markets };
+        }),
       );
-      return all;
+
+      for (const { exchange: ex, markets } of byExchange) {
+        for (const cat of CATEGORIES) {
+          const filtered = markets.filter(
+            (m) => m.exchange === ex && calibrationRowCategory(m) === cat,
+          );
+          const { observations, impliedBasis } = extractObservations(filtered);
+          addBasis(impliedYesBasis, impliedBasis);
+          series.push({
+            exchange: ex,
+            category: cat,
+            buckets: bucketObservations(observations),
+            totalMarkets: observations.length,
+          });
+        }
+      }
+      return { series, impliedYesBasis };
     });
 
-    const series = value as CalibrationSeries[];
+    const { series, impliedYesBasis } = value as {
+      series: CalibrationSeries[];
+      impliedYesBasis: Record<ImpliedYesBasis, number>;
+    };
     return NextResponse.json(
       {
         data: series,
+        meta: { impliedYesBasis },
         cache: state,
         fetchedAt: new Date().toISOString(),
         source: "pmxt",

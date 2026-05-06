@@ -10,18 +10,24 @@
  * mispricings weigh more — calibration on a $10M market matters more than
  * calibration on a $500 one.
  *
- * Cache key: efficiency-timeline:v2
+ * Cache key: efficiency-timeline:v7
  * TTL:       3600s
+ *
+ * v7 — lower MIN_MARKETS_PER_MONTH default (5 → 2, env-overridable) so the
+ *      timeline isn't reduced to a single bar when PMXT only fills
+ *      `resolutionDate` on a handful of recent markets per venue/month.
+ *      Also returns coverage diagnostics in `meta.coverage` so the chart
+ *      can explain sparsity to the user.
  */
 
 import { NextResponse } from "next/server";
 import { CC_HOURLY_AGG, jsonCacheHeaders } from "@/lib/cacheHeaders";
 import { cached } from "@/lib/redis";
-import { fetchAllMarkets } from "@/lib/fetchAll";
+import { fetchClosedMarketsForAnalytics } from "@/lib/analyticsClosedMarkets";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets, assignResolutionLabels } from "@/lib/mock";
 import { classifyWinnerLabel } from "@/lib/bias";
-import { impliedYesForCalibration } from "@/lib/calibrationPrice";
+import { impliedYesForAnalytics } from "@/lib/calibrationPrice";
 import type {
   EfficiencyMonth,
   Exchange,
@@ -31,10 +37,22 @@ import type {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const EXCHANGES: Exchange[] = ["polymarket", "kalshi"];
 const TTL = 3600;
-const MIN_MARKETS_PER_MONTH = 5;
+/**
+ * Months below this many resolved markets per venue are dropped to avoid
+ * single-market noise dominating the volume-weighted mean. Default 2 keeps
+ * the timeline visible even when PMXT only populates `resolutionDate` on a
+ * handful of recent markets per month — set `EFFICIENCY_MIN_MARKETS_PER_MONTH`
+ * higher (e.g. 5) once a fuller closed-market backfill is wired up.
+ */
+const MIN_MARKETS_PER_MONTH_ENV = Number(
+  process.env.EFFICIENCY_MIN_MARKETS_PER_MONTH,
+);
+const MIN_MARKETS_PER_MONTH =
+  Number.isFinite(MIN_MARKETS_PER_MONTH_ENV) && MIN_MARKETS_PER_MONTH_ENV >= 1
+    ? Math.floor(MIN_MARKETS_PER_MONTH_ENV)
+    : 2;
 
 function monthKey(iso: string): string | null {
   const ts = Date.parse(iso);
@@ -74,23 +92,23 @@ function processMarket(
   m: UnifiedMarket,
   buckets: Map<string, Accum>,
   volumes: Map<string, number>,
-): void {
-  if (!m.resolutionDate) return;
+): boolean {
+  if (!m.resolutionDate) return false;
   const month = monthKey(m.resolutionDate);
-  if (!month) return;
-  if (m.outcomes.length === 0) return;
+  if (!month) return false;
+  if (m.outcomes.length === 0) return false;
 
   const winner = m.outcomes.reduce(
     (a, b) => (a.price > b.price ? a : b),
     m.outcomes[0],
   );
-  if (winner.price < 0.8) return;
+  if (winner.price < 0.8) return false;
 
   const winnerKind = classifyWinnerLabel(winner.label);
-  if (winnerKind === "ambiguous") return;
+  if (winnerKind === "ambiguous") return false;
 
-  const priceAtClose = impliedYesForCalibration(m);
-  if (priceAtClose === null) return;
+  const { price: priceAtClose } = impliedYesForAnalytics(m);
+  if (priceAtClose === null) return false;
 
   const resolution = winnerKind === "yes" ? 1 : 0;
   const mispricing = Math.abs(priceAtClose - resolution);
@@ -103,24 +121,47 @@ function processMarket(
   const key = `${exchange}|${month}`;
   accumulate(buckets, key, mispricing, weight);
   volumes.set(key, (volumes.get(key) ?? 0) + (m.volume ?? 0));
+  return true;
 }
 
-function buildTimeline(markets: UnifiedMarket[]): EfficiencyMonth[] {
+interface BuildTimelineResult {
+  rows: EfficiencyMonth[];
+  /** All processable markets (had resolutionDate, decisive winner, classifiable). */
+  observed: number;
+  /** Markets skipped because resolutionDate was missing/unparseable. */
+  missingResolutionDate: number;
+  /** Months with < MIN_MARKETS_PER_MONTH per venue (dropped from rows). */
+  monthsBelowFloor: number;
+}
+
+function buildTimeline(markets: UnifiedMarket[]): BuildTimelineResult {
   const buckets = new Map<string, Accum>();
   const volumes = new Map<string, number>();
-  for (const m of markets) processMarket(m, buckets, volumes);
+  let observed = 0;
+  let missingResolutionDate = 0;
+
+  for (const m of markets) {
+    if (!m.resolutionDate || !Number.isFinite(Date.parse(m.resolutionDate))) {
+      missingResolutionDate += 1;
+      continue;
+    }
+    if (processMarket(m, buckets, volumes)) observed += 1;
+  }
 
   const monthsSet = new Set<string>();
   buckets.forEach((_, key) => {
     monthsSet.add(key.split("|")[1]);
   });
   const months = Array.from(monthsSet).sort();
+  let monthsBelowFloor = 0;
 
-  return months.map((month) => {
+  const rows = months.map((month) => {
     const row: EfficiencyMonth = { month };
+    let venuesAccepted = 0;
     for (const ex of EXCHANGES) {
       const bucket = buckets.get(`${ex}|${month}`);
       if (!bucket || bucket.count < MIN_MARKETS_PER_MONTH) continue;
+      venuesAccepted += 1;
       const mispricing =
         Math.round((bucket.weightedMispricing / bucket.totalWeight) * 1000) /
         10;
@@ -132,18 +173,35 @@ function buildTimeline(markets: UnifiedMarket[]): EfficiencyMonth[] {
       w[`${ex}N`] = bucket.count;
       w[`${ex}Volume`] = volumes.get(`${ex}|${month}`) ?? 0;
     }
+    if (venuesAccepted === 0) monthsBelowFloor += 1;
     return row;
   });
+
+  return {
+    rows: rows.filter((r) => Object.keys(r).length > 1),
+    observed,
+    missingResolutionDate,
+    monthsBelowFloor,
+  };
 }
 
 export async function GET() {
   try {
     if (!hasPmxtKey()) {
       const markets = assignResolutionLabels(mockMarkets({ closed: true }));
-      const timeline = buildTimeline(markets);
+      const result = buildTimeline(markets);
       return NextResponse.json(
         {
-          data: timeline,
+          data: result.rows,
+          meta: {
+            coverage: {
+              closedMarketsConsidered: markets.length,
+              missingResolutionDate: result.missingResolutionDate,
+              processedObservations: result.observed,
+              monthsBelowFloor: result.monthsBelowFloor,
+              minMarketsPerMonth: MIN_MARKETS_PER_MONTH,
+            },
+          },
           cache: "MISS",
           fetchedAt: new Date().toISOString(),
           source: "mock",
@@ -152,27 +210,34 @@ export async function GET() {
       );
     }
 
-    const { value, state } = await cached("efficiency-timeline:v2", TTL, async () => {
-      const all: UnifiedMarket[] = [];
-      await Promise.all(
-        EXCHANGES.flatMap((ex) =>
-          CATEGORIES.map(async (cat) => {
-            const { markets } = await fetchAllMarkets({
-              exchange: ex,
-              category: cat,
-              closed: true,
-            });
-            all.push(...markets);
-          }),
-        ),
+    const { value, state } = await cached("efficiency-timeline:v7", TTL, async () => {
+      const chunks = await Promise.all(
+        EXCHANGES.map((ex) => fetchClosedMarketsForAnalytics(ex)),
       );
-      return buildTimeline(all);
+      const all = chunks.flat();
+      const result = buildTimeline(all);
+      return { ...result, closedMarketsConsidered: all.length };
     });
 
-    const timeline = value as EfficiencyMonth[];
+    const result = value as BuildTimelineResult & { closedMarketsConsidered: number };
+    console.log(
+      `[/api/efficiency-timeline] v7 closedMarkets=${result.closedMarketsConsidered}, ` +
+        `processed=${result.observed}, missingResolutionDate=${result.missingResolutionDate}, ` +
+        `months=${result.rows.length}, monthsBelowFloor=${result.monthsBelowFloor}, ` +
+        `minPerMonth=${MIN_MARKETS_PER_MONTH}`,
+    );
     return NextResponse.json(
       {
-        data: timeline,
+        data: result.rows,
+        meta: {
+          coverage: {
+            closedMarketsConsidered: result.closedMarketsConsidered,
+            missingResolutionDate: result.missingResolutionDate,
+            processedObservations: result.observed,
+            monthsBelowFloor: result.monthsBelowFloor,
+            minMarketsPerMonth: MIN_MARKETS_PER_MONTH,
+          },
+        },
         cache: state,
         fetchedAt: new Date().toISOString(),
         source: "pmxt",

@@ -51,6 +51,17 @@ export function EfficiencyTimeline() {
     [series],
   );
 
+  const coverage = (data?.meta?.coverage ?? null) as
+    | {
+        closedMarketsConsidered?: number;
+        missingResolutionDate?: number;
+        processedObservations?: number;
+        monthsBelowFloor?: number;
+        minMarketsPerMonth?: number;
+      }
+    | null;
+  const sparse = series.length > 0 && series.length < 3;
+
   return (
     <Card>
       <CardHeader
@@ -58,18 +69,32 @@ export function EfficiencyTimeline() {
         subtitle={
           series.length === 0
             ? "No resolution history available"
-            : `Volume-weighted mispricing by resolution month · ${series.length} months · ${usd(totalVolume)} analyzed`
+            : `Volume-weighted mispricing by resolution month · ${series.length} month${series.length === 1 ? "" : "s"} · ${usd(totalVolume)} analyzed`
         }
         right={
           <HelpTooltip content="Tracks monthly mispricing (final price versus resolution). Lower values indicate markets are pricing outcomes more efficiently over time." />
         }
       />
+      {sparse && coverage && (
+        <div className="mx-5 mb-2 mt-1 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-[11px] leading-snug text-info">
+          <span className="font-semibold">Sparse coverage:</span>{" "}
+          {coverage.closedMarketsConsidered?.toLocaleString() ?? "?"} closed
+          markets pulled · {coverage.missingResolutionDate?.toLocaleString() ?? "?"}{" "}
+          missing a resolution date ·{" "}
+          {coverage.monthsBelowFloor?.toLocaleString() ?? "?"} months dropped
+          (&lt; {coverage.minMarketsPerMonth ?? 2} markets per venue). Set{" "}
+          <code className="text-fg">RESOLUTION_BIAS_MAX_PAGES</code> higher to
+          backfill older months.
+        </div>
+      )}
       <CardBody className="h-[320px] pl-0 pr-3">
         {isLoading && !data ? (
           <ChartSkeleton />
         ) : series.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-fg-muted">
-            Not enough resolved markets with recorded resolution dates.
+          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-fg-muted">
+            {coverage && (coverage.missingResolutionDate ?? 0) > 0
+              ? `No months met the per-venue floor — ${(coverage.missingResolutionDate ?? 0).toLocaleString()} of ${(coverage.closedMarketsConsidered ?? 0).toLocaleString()} closed markets had no resolution date. Lower EFFICIENCY_MIN_MARKETS_PER_MONTH or wait for /api/warmup to backfill.`
+              : "Not enough resolved markets with recorded resolution dates yet."}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

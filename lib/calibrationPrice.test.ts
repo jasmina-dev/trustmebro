@@ -1,7 +1,11 @@
 /** @jest-environment node */
 
 import type { UnifiedMarket } from "./types";
-import { impliedYesForCalibration } from "./calibrationPrice";
+import {
+  impliedYesForAnalytics,
+  impliedYesForCalibration,
+  impliedYesStrictNoTerminal,
+} from "./calibrationPrice";
 
 function market(partial: Partial<UnifiedMarket> & Pick<UnifiedMarket, "marketId" | "outcomes">): UnifiedMarket {
   return {
@@ -26,7 +30,7 @@ describe("impliedYesForCalibration", () => {
     expect(impliedYesForCalibration(m)).toBeCloseTo(0.62);
   });
 
-  test("returns null for terminal YES outcome without pre-resolution pin", () => {
+  test("uses settlement YES price when pre-resolution pin absent", () => {
     const m = market({
       marketId: "1",
       outcomes: [
@@ -34,7 +38,7 @@ describe("impliedYesForCalibration", () => {
         { outcomeId: "n", marketId: "1", label: "No", price: 0.01 },
       ],
     });
-    expect(impliedYesForCalibration(m)).toBeNull();
+    expect(impliedYesForCalibration(m)).toBeCloseTo(0.99);
   });
 
   test("uses mid-range YES price when no pin", () => {
@@ -46,5 +50,34 @@ describe("impliedYesForCalibration", () => {
       ],
     });
     expect(impliedYesForCalibration(m)).toBeCloseTo(0.55);
+  });
+});
+
+describe("impliedYesStrictNoTerminal", () => {
+  test("returns null for terminal YES outcome without pre-resolution pin", () => {
+    const m = market({
+      marketId: "1",
+      outcomes: [
+        { outcomeId: "y", marketId: "1", label: "Yes", price: 0.99 },
+        { outcomeId: "n", marketId: "1", label: "No", price: 0.01 },
+      ],
+    });
+    expect(impliedYesStrictNoTerminal(m)).toBeNull();
+  });
+});
+
+describe("impliedYesForAnalytics", () => {
+  test("tags settlement basis for terminal prices", () => {
+    const m = market({
+      marketId: "1",
+      outcomes: [
+        { outcomeId: "y", marketId: "1", label: "Yes", price: 0.99 },
+        { outcomeId: "n", marketId: "1", label: "No", price: 0.01 },
+      ],
+    });
+    expect(impliedYesForAnalytics(m)).toEqual({
+      price: 0.99,
+      basis: "settlement",
+    });
   });
 });

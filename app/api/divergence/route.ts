@@ -39,6 +39,7 @@ import type { DivergentPair } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 const TTL_SECONDS = 600;
@@ -85,23 +86,23 @@ export async function GET(req: NextRequest) {
     const categories = categoryFilter ? [categoryFilter] : CATEGORIES;
     const t0 = Date.now();
     let cacheHits = 0;
+    const batches: DivergentPair[][] = [];
 
-    const batches = await Promise.all(
-      categories.map((cat) =>
-        timed(`divergence:${cat}`, async () => {
-          const { value, state } = await cached(
-            `divergence:${cat}`,
-            TTL_SECONDS,
-            async () => {
-              const pairs = await divergentPairsForCategory(cat);
-              return pairs.sort((a, b) => b.spread - a.spread);
-            },
-          );
-          if (state === "HIT") cacheHits += 1;
-          return value as DivergentPair[];
-        }),
-      ),
-    );
+    for (const cat of categories) {
+      const rows = await timed(`divergence:${cat}`, async () => {
+        const { value, state } = await cached(
+          `divergence:${cat}`,
+          TTL_SECONDS,
+          async () => {
+            const pairs = await divergentPairsForCategory(cat);
+            return pairs.sort((a, b) => b.spread - a.spread);
+          },
+        );
+        if (state === "HIT") cacheHits += 1;
+        return value as DivergentPair[];
+      });
+      batches.push(rows);
+    }
 
     const pairs = batches.flat().sort((a, b) => b.spread - a.spread);
     const state: "HIT" | "MISS" =

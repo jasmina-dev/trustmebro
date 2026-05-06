@@ -16,7 +16,7 @@ import {
   ComposedChart,
   Legend,
 } from "recharts";
-import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
+import { REFRESH, resolutionBiasFetcher, type ApiPayload } from "@/lib/api";
 import { histogram, mean, normalPdf, stddev } from "@/lib/utils";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
@@ -31,7 +31,7 @@ export function ResolutionBiasDistribution() {
     activeCategory === "All"
       ? "/api/resolution-bias"
       : `/api/resolution-bias?category=${encodeURIComponent(activeCategory)}`,
-    fetcher,
+    resolutionBiasFetcher,
     {
       refreshInterval: REFRESH.resolution,
       dedupingInterval: 60_000,
@@ -73,7 +73,7 @@ export function ResolutionBiasDistribution() {
     return (
       <Card>
         <CardHeader title="Resolution-rate distribution" />
-        <ChartSkeleton />
+        <ChartSkeleton hint="Sharing the resolution-bias crawl — appears as soon as the heatmap finishes its closed-market scan." />
       </Card>
     );
   }

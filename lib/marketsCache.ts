@@ -1,7 +1,7 @@
 /**
  * Redis-backed aggregates for GET /api/markets (`markets:v3:*` keys).
  *
- * Warmup previously called `fetchAllMarkets` only, which fills `raw:v2:*`
+ * Warmup previously called `fetchAllMarkets` only, which fills `raw:v5:*`
  * pages — those keys are unrelated to `markets:v3`, so every dashboard hit
  * showed MISS until the route populated Redis. This module is shared by the
  * route handler and warmup/boot primers.

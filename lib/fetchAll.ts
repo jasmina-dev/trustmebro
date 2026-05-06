@@ -2,7 +2,8 @@
  * Shared PMXT pagination + timing helpers.
  *
  * `/v0/markets` and `/v0/events` cap at limit=500 per page. To get a complete
- * sample we have to loop with `offset += 500` until `meta.count < limit`.
+ * sample we have to loop with `offset += 500` until a page returns fewer than
+ * `limit` rows.
  *
  * Every call goes through the Upstash cache — resolved markets have a 1h TTL,
  * live markets have 60s. A single market list can span many pages (Sports on
@@ -12,10 +13,15 @@
 
 import { cached } from "./redis";
 import { router } from "./pmxt";
-import { marketExchange } from "./utils";
 import type { Exchange, UnifiedMarket } from "./types";
 
 const PAGE_SIZE = 500;
+
+/** One cached Router page: filtered rows + raw length (pagination must use raw length). */
+interface CachedRawPage {
+  markets: UnifiedMarket[];
+  apiRowCount: number;
+}
 
 export interface FetchAllOptions {
   exchange: Exchange;
@@ -55,7 +61,7 @@ export async function fetchAllMarkets(
   for (let page = 0; page < maxPages; page++) {
     const key = [
       "raw",
-      "v2",
+      "v5",
       closed ? "closed" : "live",
       exchange,
       category ?? "-",
@@ -63,7 +69,7 @@ export async function fetchAllMarkets(
       offset,
     ].join(":");
 
-    const { value: pageData, state } = await cached(key, ttl, async () => {
+    const { value: page, state } = await cached<CachedRawPage>(key, ttl, async () => {
       const res = await router.markets({
         exchange,
         category,
@@ -72,20 +78,24 @@ export async function fetchAllMarkets(
         limit: PAGE_SIZE,
         offset,
       });
-      return res.data
-        .map((m) => ({
-          ...m,
-          exchange: marketExchange(m),
-          category: m.category ?? category ?? null,
-        }))
-        .filter((m) => marketExchange(m) === exchange);
+      const markets = res.data.map((m) => ({
+        ...m,
+        // Router guarantees `exchange=` scoping; venue metadata is sometimes
+        // missing or inconsistent — do not drop rows (see divergence logs:
+        // ~10k raw → ~277 kept when filtering on marketExchange).
+        exchange,
+        category: m.category ?? category ?? null,
+      }));
+      return { markets, apiRowCount: res.data.length };
     });
 
     pagesFetched += 1;
     if (state === "HIT") fromCache += 1;
-    all.push(...pageData);
+    all.push(...page.markets);
 
-    if (pageData.length < PAGE_SIZE) break;
+    // Must use Router row count — a full page can filter down to few rows and
+    // must still advance offset, or we quit early (e.g. 163 “kept” of 500).
+    if (page.apiRowCount < PAGE_SIZE) break;
     offset += PAGE_SIZE;
   }
 

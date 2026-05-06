@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { fetcher, REFRESH, type ApiPayload } from "@/lib/api";
+import { REFRESH, resolutionBiasFetcher, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
@@ -43,9 +43,9 @@ function textOn(bg: string): string {
 }
 
 export function ResolutionBiasHeatmap() {
-  const { data, isLoading } = useSWR<ApiPayload<ResolutionBiasBucket[]>>(
+  const { data, isLoading, error } = useSWR<ApiPayload<ResolutionBiasBucket[]>>(
     "/api/resolution-bias",
-    fetcher,
+    resolutionBiasFetcher,
     {
       refreshInterval: REFRESH.resolution,
       dedupingInterval: 60_000,
@@ -68,7 +68,21 @@ export function ResolutionBiasHeatmap() {
     return (
       <Card>
         <CardHeader title="Resolution bias heatmap" />
-        <ChartSkeleton />
+        <ChartSkeleton hint="Aggregating closed markets across venues — first paint can take ~30–60s on a cold cache while Redis fills." />
+      </Card>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <Card>
+        <CardHeader title="Resolution bias heatmap" />
+        <CardBody className="py-8 text-center text-sm text-fg-muted">
+          Couldn&apos;t load resolution bias yet (server still aggregating closed
+          markets, or request timed out). If you deploy on a short serverless
+          limit, rely on <code className="text-fg">/api/warmup</code> cron or
+          retry in a minute once Redis fills.
+        </CardBody>
       </Card>
     );
   }
@@ -87,6 +101,16 @@ export function ResolutionBiasHeatmap() {
       }, 0),
     0,
   );
+  const closedLoaded = data?.meta?.closedMarketsLoaded as
+    | Record<string, number>
+    | undefined;
+  const closedSum = closedLoaded
+    ? EXCHANGES.reduce((s, ex) => s + (closedLoaded[ex] ?? 0), 0)
+    : null;
+  const binaryExcluded =
+    typeof data?.meta?.binaryExcluded === "number"
+      ? data.meta.binaryExcluded
+      : null;
   const flaggedCount = buckets.filter((b) => b.flagged).length;
 
   return (
@@ -133,7 +157,23 @@ export function ResolutionBiasHeatmap() {
             <LegendSwatch color="#f59e0b" label="55–65%" />
             <LegendSwatch color="#f97316" label="65–75%" />
             <LegendSwatch color="#ef4444" label="≥ 75%" />
-            <div className="ml-auto">sample: {totalN.toLocaleString()}</div>
+            <div className="ml-auto max-w-[min(100%,360px)] text-right leading-snug">
+              <div>
+                Binary sample: {totalN.toLocaleString()}
+                {closedSum != null && closedSum > 0 && (
+                  <span className="text-fg-subtle">
+                    {" "}
+                    · {closedSum.toLocaleString()} closed pulled
+                  </span>
+                )}
+              </div>
+              {binaryExcluded != null && binaryExcluded > 0 && (
+                <div className="text-[9px] text-fg-subtle">
+                  {binaryExcluded.toLocaleString()} closed rows skipped (not
+                  strict Yes/No or unclear winner)
+                </div>
+              )}
+            </div>
           </div>
 
           {hover && <HoverCard bucket={hover} />}

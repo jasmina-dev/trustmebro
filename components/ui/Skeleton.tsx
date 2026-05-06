@@ -10,7 +10,14 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   );
 }
 
-export function ChartSkeleton({ label }: { label?: string }) {
+export function ChartSkeleton({
+  label,
+  hint,
+}: {
+  label?: string;
+  /** Optional secondary line for slow cold-paint routes (e.g. resolution bias). */
+  hint?: string;
+}) {
   return (
     <div className="flex h-full min-h-tmb-chart flex-col gap-tmb4 p-tmb6">
       {label && (
@@ -22,11 +29,15 @@ export function ChartSkeleton({ label }: { label?: string }) {
       <div className="flex-1">
         <Skeleton className="h-full w-full" />
       </div>
-      <div className="flex gap-2">
-        <Skeleton className="h-3 w-12" />
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-3 w-10" />
-      </div>
+      {hint ? (
+        <div className="text-[10px] leading-snug text-fg-subtle">{hint}</div>
+      ) : (
+        <div className="flex gap-2">
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-10" />
+        </div>
+      )}
     </div>
   );
 }

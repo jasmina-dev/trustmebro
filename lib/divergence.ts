@@ -75,13 +75,11 @@ export function pairMarkets(
 export async function divergentPairsForCategory(
   category: string,
 ): Promise<DivergentPair[]> {
-  const [poly, kalshi] = await Promise.all([
-    timed(`divergence:fetch:poly:${category}`, () =>
-      fetchAllMarkets({ exchange: "polymarket", category, closed: false }),
-    ),
-    timed(`divergence:fetch:kalshi:${category}`, () =>
-      fetchAllMarkets({ exchange: "kalshi", category, closed: false }),
-    ),
-  ]);
+  const poly = await timed(`divergence:fetch:poly:${category}`, () =>
+    fetchAllMarkets({ exchange: "polymarket", category, closed: false }),
+  );
+  const kalshi = await timed(`divergence:fetch:kalshi:${category}`, () =>
+    fetchAllMarkets({ exchange: "kalshi", category, closed: false }),
+  );
   return pairMarkets(poly.markets, kalshi.markets, category);
 }

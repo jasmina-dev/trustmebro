@@ -31,6 +31,53 @@ import { marketExchange } from "./utils";
 
 const PMXT_BASE = "https://api.pmxt.dev";
 
+/**
+ * Per-page Router timeout. A 500-row page normally returns in <10s; 45s is
+ * generous slack for transient slowness without making one stuck connection
+ * hold the whole crawl. With up to 4 retry attempts (see `routerFetchMarkets`)
+ * the worst case for a single page is ~3 minutes — long enough to wait out a
+ * 429 cooldown but short enough that a hung socket can't melt a 5-min route.
+ */
+const ROUTER_FETCH_TIMEOUT_MS = 45_000;
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Fetch Router with timeout and limited retries on throttle / gateway errors.
+ */
+async function routerFetchMarkets(url: URL): Promise<Response> {
+  let last: Response | undefined;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${requireKey()}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(ROUTER_FETCH_TIMEOUT_MS),
+    });
+    last = res;
+    if (res.ok) return res;
+
+    const retryable = res.status === 429 || res.status === 502 || res.status === 503 || res.status === 504;
+    if (attempt < 3 && retryable) {
+      const ra = parseInt(res.headers.get("retry-after") ?? "0", 10);
+      const backoffMs =
+        (Number.isFinite(ra) && ra > 0 ? ra * 1000 : 800 * 2 ** attempt) +
+        Math.floor(Math.random() * 400);
+      console.warn(
+        `[pmxt/router] ${res.status} — retry ${attempt + 1}/3 in ${backoffMs}ms (${url.pathname}${url.search})`,
+      );
+      await sleep(backoffMs);
+      continue;
+    }
+    break;
+  }
+  return last as Response;
+}
+
 export function hasPmxtKey(): boolean {
   return Boolean(process.env.PMXT_API_KEY?.startsWith("pmxt_"));
 }
@@ -72,19 +119,16 @@ export const router = {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
     });
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${requireKey()}`,
-        Accept: "application/json",
-      },
-      // Next.js route handlers shouldn't cache PMXT responses themselves —
-      // our Upstash layer owns that. `no-store` prevents the Next fetch cache
-      // from silently holding stale results.
-      cache: "no-store",
-    });
+    const res = await routerFetchMarkets(url);
     if (!res.ok) {
+      let detail = "";
+      try {
+        detail = (await res.text()).slice(0, 500);
+      } catch {
+        /* ignore */
+      }
       throw new Error(
-        `PMXT router markets failed: ${res.status} ${res.statusText}`,
+        `PMXT router markets failed: ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`,
       );
     }
     const json = (await res.json()) as RouterResponse<UnifiedMarket>;
