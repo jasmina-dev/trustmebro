@@ -23,7 +23,7 @@ import { isResolved, normalizeCategory, yesOutcome } from "@/lib/utils";
  */
 export function PriceVsResolution() {
   const { data: closedMarkets } = useSWR<ApiPayload<UnifiedMarket[]>>(
-    "/api/markets?closed=true&limit=50",
+    "/api/markets?closed=true&limit=500",
     fetcher,
     {
       refreshInterval: REFRESH.resolution,
@@ -41,7 +41,8 @@ export function PriceVsResolution() {
   // past resolution date. Markets where both outcomes are 0 are filtered out.
   const markets = useMemo(() => {
     const now = Date.now();
-    return (closedMarkets?.data ?? []).filter((m) => {
+    const pool = closedMarkets?.data ?? [];
+    const filtered = pool.filter((m) => {
       if (normalizeCategory(m.category) === "Sports") return false;
       const yes = yesOutcome(m);
       if (!yes) return false;
@@ -50,6 +51,8 @@ export function PriceVsResolution() {
       const resolvedInPast = res > 0 && res < now;
       return hasWinner && (resolvedInPast || isResolved(m));
     });
+    // Mock closed rows are Sports-first; a tiny limit yields zero candidates after filtering.
+    return filtered.slice(0, 50);
   }, [closedMarkets?.data]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -210,7 +213,7 @@ export function PriceVsResolution() {
                 onChange={(e) => setSelectedId(e.target.value)}
                 className="max-w-[280px] truncate rounded-md border border-border bg-bg-elev px-2 py-1 text-xs"
               >
-                {markets.slice(0, 50).map((m) => (
+                {markets.map((m) => (
                   <option key={m.marketId} value={m.marketId}>
                     {m.title.slice(0, 56)}
                     {m.title.length > 56 ? "…" : ""}

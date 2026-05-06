@@ -17,6 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { CC_OHLCV, jsonCacheHeaders } from "@/lib/cacheHeaders";
 import { cached } from "@/lib/redis";
 import { fetchOhlcv, hasPmxtKey } from "@/lib/pmxt";
 import { mockOhlcv } from "@/lib/mock";
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
         fetchedAt: new Date().toISOString(),
         source: value.source,
       },
-      { headers: { "X-Cache": state, "Cache-Control": "no-store" } },
+      { headers: jsonCacheHeaders(state, CC_OHLCV) },
     );
   } catch (err) {
     console.error("[/api/ohlcv] failure", err);
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
         source: "mock",
         error: (err as Error).message,
       },
-      { status: 200, headers: { "X-Cache": "BYPASS" } },
+      { status: 200, headers: jsonCacheHeaders("BYPASS", "no-store") },
     );
   }
 }

@@ -13,7 +13,8 @@ export interface ApiPayload<T> {
 }
 
 export async function fetcher<T>(url: string): Promise<ApiPayload<T>> {
-  const res = await fetch(url, { cache: "no-store" });
+  /** Respect Cache-Control from our API routes (private max-age + SWR). */
+  const res = await fetch(url);
   if (!res.ok && res.status >= 500) {
     throw new Error(`Request failed: ${res.status}`);
   }

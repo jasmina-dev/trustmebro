@@ -1,3 +1,5 @@
+"use client";
+
 import dynamic from "next/dynamic";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Sidebar } from "@/components/navigation/Sidebar";
@@ -5,6 +7,10 @@ import { KPIRow } from "@/components/KPIRow";
 import { FirstTimeUserGuide } from "@/components/FirstTimeUserGuide";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
+import { DeferChartMount } from "@/components/ui/DeferChartMount";
+
+/** Milliseconds added per chart slice (after viewport enter) — reduces burst fetches/chunk loads. */
+const CHART_STAGGER_MS = 72;
 
 /**
  * All chart modules are lazy-loaded with `next/dynamic` so the initial bundle
@@ -107,50 +113,95 @@ export default function DashboardPage() {
 
             <section id="resolution-bias-heatmap" className="grid gap-4 lg:grid-cols-2">
               <ErrorBoundary fallbackLabel="Resolution bias heatmap">
-                <ResolutionBiasHeatmap />
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 0}
+                  fallback={<ChartSkeleton label="Resolution bias heatmap" />}
+                >
+                  <ResolutionBiasHeatmap />
+                </DeferChartMount>
               </ErrorBoundary>
               <ErrorBoundary fallbackLabel="Resolution distribution">
-                <ResolutionBiasDistribution />
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 1}
+                  fallback={<ChartSkeleton label="Resolution distribution" />}
+                >
+                  <ResolutionBiasDistribution />
+                </DeferChartMount>
               </ErrorBoundary>
             </section>
 
             <section id="cross-venue-divergence" className="grid gap-4">
               <ErrorBoundary fallbackLabel="Cross-venue divergence">
-                <CrossVenueDivergence />
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 2}
+                  fallback={<ChartSkeleton label="Cross-venue divergence" />}
+                >
+                  <CrossVenueDivergence />
+                </DeferChartMount>
               </ErrorBoundary>
             </section>
 
             <section id="market-momentum" className="grid gap-4">
               <ErrorBoundary fallbackLabel="Market momentum">
-                <MarketMomentum />
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 3}
+                  fallback={<ChartSkeleton label="Market momentum" />}
+                >
+                  <MarketMomentum />
+                </DeferChartMount>
               </ErrorBoundary>
             </section>
 
             <section id="calibration" className="grid gap-4 xl:grid-cols-2">
               <ErrorBoundary fallbackLabel="Calibration curve">
-                <CalibrationCurve />
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 4}
+                  fallback={<ChartSkeleton label="Calibration curve" />}
+                >
+                  <CalibrationCurve />
+                </DeferChartMount>
               </ErrorBoundary>
               <ErrorBoundary fallbackLabel="Efficiency timeline">
-                <div id="efficiency-timeline">
-                  <EfficiencyTimeline />
-                </div>
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 5}
+                  fallback={<ChartSkeleton label="Efficiency timeline" />}
+                >
+                  <div id="efficiency-timeline">
+                    <EfficiencyTimeline />
+                  </div>
+                </DeferChartMount>
               </ErrorBoundary>
             </section>
 
             <section id="liquidity-gap" className="grid gap-4 xl:grid-cols-2">
               <ErrorBoundary fallbackLabel="Liquidity gap scatter">
-                <LiquidityGapScatter />
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 6}
+                  fallback={<ChartSkeleton label="Liquidity gap scatter" />}
+                >
+                  <LiquidityGapScatter />
+                </DeferChartMount>
               </ErrorBoundary>
               <ErrorBoundary fallbackLabel="Price vs resolution">
-                <div id="price-vs-resolution">
-                  <PriceVsResolution />
-                </div>
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 7}
+                  fallback={<ChartSkeleton label="Price vs resolution" />}
+                >
+                  <div id="price-vs-resolution">
+                    <PriceVsResolution />
+                  </div>
+                </DeferChartMount>
               </ErrorBoundary>
             </section>
 
             <section id="leaderboard">
               <ErrorBoundary fallbackLabel="Inefficiency leaderboard">
-                <InefficiencyLeaderboard />
+                <DeferChartMount
+                  staggerMs={CHART_STAGGER_MS * 8}
+                  fallback={<ChartSkeleton label="Inefficiency leaderboard" />}
+                >
+                  <InefficiencyLeaderboard />
+                </DeferChartMount>
               </ErrorBoundary>
             </section>
 

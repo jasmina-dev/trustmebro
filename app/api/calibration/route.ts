@@ -5,24 +5,27 @@
  * price is stable vs volatile?"
  *
  * For every clearly-resolved binary market we compute:
- *   • priceAtClose  — the final YES price snapshot (winner.price if YES won,
- *                     else 1 − winner.price)
- *   • resolution    — 1 when YES won, 0 when NO won (skipped otherwise)
+ *   • implied YES — `preResolutionYesPrice` when present (mock seed); otherwise
+ *     the listed YES price only if it is not terminal (~0/~1). Settlement
+ *     snapshots encode the outcome and must not be used as "probability".
+ *   • resolution — 1 when YES won, 0 when NO won (skipped otherwise)
  *
- * We bucket markets into deciles of `priceAtClose` (per venue × category)
- * and return the mean resolution rate per bucket. Perfect calibration lands
- * on the diagonal.
+ * We bucket markets into deciles of implied YES (per venue × category)
+ * and return the mean YES resolution rate per bucket. Perfect calibration lands
+ * on the diagonal (when belief matches frequency — rare with sparse mid-bin data).
  *
- * Cache key: calibration
+ * Cache key: calibration:v2
  * TTL:       3600s — derived exclusively from already-cached closed markets
  */
 
 import { NextResponse } from "next/server";
+import { CC_HOURLY_AGG, jsonCacheHeaders } from "@/lib/cacheHeaders";
 import { cached } from "@/lib/redis";
 import { fetchAllMarkets } from "@/lib/fetchAll";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets, assignResolutionLabels } from "@/lib/mock";
 import { classifyWinnerLabel } from "@/lib/bias";
+import { impliedYesForCalibration } from "@/lib/calibrationPrice";
 import { normalizeCategory } from "@/lib/utils";
 import type {
   CalibrationBucket,
@@ -61,24 +64,12 @@ function extractObservations(markets: UnifiedMarket[]): Observation[] {
     const winnerKind = classifyWinnerLabel(winner.label);
     if (winnerKind === "ambiguous") continue;
 
-    // Find the YES outcome, if any.
-    const yesOut = m.outcomes.find(
-      (o) => classifyWinnerLabel(o.label) === "yes",
-    );
     // Resolution is 1 if YES won, 0 if NO won.
     const resolution: 0 | 1 = winnerKind === "yes" ? 1 : 0;
 
-    // Price at close: what the market thought the YES probability was,
-    // right before resolution. When the winner IS the YES side, that's
-    // just winner.price; otherwise it's 1 − winner.price. If we actually
-    // have a YES outcome handy we prefer its price (more accurate).
-    const priceAtClose = yesOut
-      ? yesOut.price
-      : winnerKind === "yes"
-        ? winner.price
-        : 1 - winner.price;
-
-    if (!Number.isFinite(priceAtClose)) continue;
+    // Never use terminal YES prices (~0/~1) — they encode the outcome.
+    const priceAtClose = impliedYesForCalibration(m);
+    if (priceAtClose === null || !Number.isFinite(priceAtClose)) continue;
     obs.push({ priceAtClose, resolution });
   }
   return obs;
@@ -138,11 +129,11 @@ export async function GET() {
           fetchedAt: new Date().toISOString(),
           source: "mock",
         },
-        { headers: { "X-Cache": "MISS", "Cache-Control": "no-store" } },
+        { headers: jsonCacheHeaders("MISS", CC_HOURLY_AGG) },
       );
     }
 
-    const { value, state } = await cached("calibration", TTL, async () => {
+    const { value, state } = await cached("calibration:v2", TTL, async () => {
       const all = await Promise.all(
         EXCHANGES.flatMap((ex) =>
           CATEGORIES.map(async (cat) => {
@@ -172,7 +163,7 @@ export async function GET() {
         fetchedAt: new Date().toISOString(),
         source: "pmxt",
       },
-      { headers: { "X-Cache": state, "Cache-Control": "no-store" } },
+      { headers: jsonCacheHeaders(state, CC_HOURLY_AGG) },
     );
   } catch (err) {
     console.error("[/api/calibration] failure", err);
@@ -184,7 +175,7 @@ export async function GET() {
         source: "mock",
         error: (err as Error).message,
       },
-      { status: 200, headers: { "X-Cache": "BYPASS" } },
+      { status: 200, headers: jsonCacheHeaders("BYPASS", "no-store") },
     );
   }
 }

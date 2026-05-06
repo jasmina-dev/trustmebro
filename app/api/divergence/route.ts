@@ -23,6 +23,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { CC_DIVERGENCE, jsonCacheHeaders } from "@/lib/cacheHeaders";
 import { cached } from "@/lib/redis";
 import { timed } from "@/lib/fetchAll";
 import { hasPmxtKey } from "@/lib/pmxt";
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
           fetchedAt: new Date().toISOString(),
           source: "mock",
         },
-        { headers: { "X-Cache": "MISS", "Cache-Control": "no-store" } },
+        { headers: jsonCacheHeaders("MISS", CC_DIVERGENCE) },
       );
     }
 
@@ -122,7 +123,7 @@ export async function GET(req: NextRequest) {
         fetchedAt: new Date().toISOString(),
         source: "pmxt",
       },
-      { headers: { "X-Cache": state, "Cache-Control": "no-store" } },
+      { headers: jsonCacheHeaders(state, CC_DIVERGENCE) },
     );
   } catch (err) {
     console.error("[/api/divergence] failure", err);
@@ -134,7 +135,7 @@ export async function GET(req: NextRequest) {
         source: "mock",
         error: (err as Error).message,
       },
-      { status: 200, headers: { "X-Cache": "BYPASS" } },
+      { status: 200, headers: jsonCacheHeaders("BYPASS", "no-store") },
     );
   }
 }

@@ -83,6 +83,9 @@ export interface CachedResult<T> {
   state: CacheState;
 }
 
+/** Single-flight: concurrent MISSes on the same key share one upstream fetch. */
+const inflight = new Map<string, Promise<CachedResult<unknown>>>();
+
 /**
  * Wrap a fetcher with read-through caching.
  *
@@ -104,14 +107,23 @@ export async function cached<T>(
     console.warn(`[cache:${backend.name}] read failed for ${key}`, err);
   }
 
-  const fresh = await fetcher();
+  const pending = inflight.get(key) as Promise<CachedResult<T>> | undefined;
+  if (pending) return pending;
 
-  // Fire-and-forget the write — readers shouldn't block on the cache.
-  backend.set(key, fresh, ttlSeconds).catch((err) => {
-    console.warn(`[cache:${backend.name}] write failed for ${key}`, err);
-  });
+  const promise = (async (): Promise<CachedResult<T>> => {
+    try {
+      const fresh = await fetcher();
+      backend.set(key, fresh, ttlSeconds).catch((err) => {
+        console.warn(`[cache:${backend.name}] write failed for ${key}`, err);
+      });
+      return { value: fresh, state: "MISS" };
+    } finally {
+      inflight.delete(key);
+    }
+  })();
 
-  return { value: fresh, state: "MISS" };
+  inflight.set(key, promise as Promise<CachedResult<unknown>>);
+  return promise;
 }
 
 export async function invalidate(key: string): Promise<void> {

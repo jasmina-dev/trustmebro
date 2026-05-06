@@ -12,21 +12,25 @@
  *   - query     full-text search over title/slug
  *   - closed    boolean — include resolved markets
  *
- * Cache key:  markets:<exchange>:<category>:<closed>:<query>:<limit>
+ * Cache key:  markets:v3:<exchange>:<category>:<closed>:<query>:<limit>
  * TTL:        60s (live) / 3600s (closed)
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { cached } from "@/lib/redis";
-import { hasPmxtKey, router } from "@/lib/pmxt";
-import { mockMarkets, assignResolutionLabels } from "@/lib/mock";
-import { marketExchange, normalizeCategory, venueMarketUrl } from "@/lib/utils";
-import type { Exchange, UnifiedMarket } from "@/lib/types";
+import {
+  getCachedMarketsPayload,
+  marketsRedisKey,
+  normalizeMarketsForApi,
+} from "@/lib/marketsCache";
+import type { Exchange } from "@/lib/types";
+import {
+  CC_MARKETS_CLOSED,
+  CC_MARKETS_LIVE,
+  jsonCacheHeaders,
+} from "@/lib/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const ROUTER_CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -36,62 +40,27 @@ export async function GET(req: NextRequest) {
   const query = searchParams.get("query") ?? undefined;
   const limit = Math.min(500, Number(searchParams.get("limit") ?? 500));
 
-  const key = [
-    "markets",
-    "v3",
-    exchange ?? "all",
-    category ?? "all",
-    closed ? "closed" : "live",
-    query ?? "-",
+  const params = {
+    exchange,
+    category,
+    closed,
+    query,
     limit,
-  ].join(":");
-  const ttl = closed ? 3600 : 60;
+  };
 
+  const key = marketsRedisKey(params);
   const t0 = Date.now();
+
   try {
-    const { value, state } = await cached(key, ttl, async () => {
-      if (!hasPmxtKey()) {
-        const mocks = mockMarkets({
-          exchange: exchange ?? undefined,
-          closed,
-          category,
-          limit,
-        });
-        return {
-          source: "mock" as const,
-          markets: closed ? assignResolutionLabels(mocks) : mocks,
-        };
-      }
-
-      const categories = category ? [category] : ROUTER_CATEGORIES;
-      const results = await Promise.all(
-        categories.map((cat) =>
-          router.markets({ category: cat, closed, query, limit }),
-        ),
-      );
-      const markets = results
-        .flatMap((r) => r.data)
-        .filter((m) => {
-          const source = marketExchange(m);
-          return source && (!exchange || source === exchange);
-        })
-        .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
-        .slice(0, limit);
-      return { source: "pmxt" as const, markets };
-    });
-
-    // Normalize category on the way out so downstream charts can group
-    // without having to know every venue's taxonomy quirks.
-    const normalized: UnifiedMarket[] = value.markets.map((m) => ({
-      ...m,
-      exchange: marketExchange(m),
-      category: normalizeCategory(m.category ?? null),
-      url: venueMarketUrl(m),
-    }));
+    const { value, state } = await getCachedMarketsPayload(params);
+    const normalized = normalizeMarketsForApi(value.markets);
 
     console.log(
       `[/api/markets] key=${key} rows=${normalized.length} ${state} · ${Date.now() - t0}ms`,
     );
+
+    const cc = closed ? CC_MARKETS_CLOSED : CC_MARKETS_LIVE;
+
     return NextResponse.json(
       {
         data: normalized,
@@ -99,7 +68,7 @@ export async function GET(req: NextRequest) {
         fetchedAt: new Date().toISOString(),
         source: value.source,
       },
-      { headers: { "X-Cache": state, "Cache-Control": "no-store" } },
+      { headers: jsonCacheHeaders(state, cc) },
     );
   } catch (err) {
     console.error("[/api/markets] failure", err);
@@ -111,7 +80,7 @@ export async function GET(req: NextRequest) {
         source: "mock",
         error: (err as Error).message,
       },
-      { status: 500, headers: { "X-Cache": "BYPASS" } },
+      { status: 500, headers: jsonCacheHeaders("BYPASS", "no-store") },
     );
   }
 }

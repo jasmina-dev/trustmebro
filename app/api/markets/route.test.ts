@@ -61,6 +61,7 @@ describe("/api/markets GET", () => {
     expect(body.data[0].category).toBe("Sports");
     expect(body.data[0].url).toBe("https://polymarket.com/event/team-a-win");
     expect(res.headers.get("X-Cache")).toBe("MISS");
+    expect(res.headers.get("Cache-Control")).toContain("max-age");
   });
 
   test("uses PMXT router path and filters to requested exchange", async () => {

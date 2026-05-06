@@ -27,7 +27,7 @@ describe("/api/warmup GET", () => {
   test("returns warmed=false when PMXT key is missing", async () => {
     (hasPmxtKey as jest.Mock).mockReturnValue(false);
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/warmup"));
     const body = await res.json();
 
     expect(body.warmed).toBe(false);

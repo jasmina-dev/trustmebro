@@ -35,6 +35,12 @@ function mulberry32(seed: number): () => number {
 
 const CATEGORIES = ["Sports", "Politics", "Crypto", "Finance", "Other"];
 
+/** Live mock grid: 5 categories × 2 venues × this count = 500 (matches `/api/markets` default limit). */
+const MOCK_MARKETS_PER_CELL_LIVE = 50;
+
+/** Closed mock grid: richer samples for resolution-bias / calibration histograms. */
+const MOCK_MARKETS_PER_CELL_CLOSED = 120;
+
 // Bias per (category, exchange). These are the "true" rates we want the
 // resolution-bias analytics to recover — NO-heavy on Sports, balanced on
 // Politics, mildly YES-leaning on Crypto.
@@ -106,11 +112,16 @@ function makeMarket(
   const fairYes = 0.15 + 0.7 * rng();
   const venueSkew = exchange === "polymarket" ? -0.02 : 0.02;
   const noise = (rng() - 0.5) * 0.06;
+  /** Belief before settlement — independent of terminal 0/1 outcome prices. */
+  const preResolutionYesPrice = Math.max(
+    0.06,
+    Math.min(0.94, fairYes + venueSkew + noise),
+  );
   const yesPrice = closed
-    ? Math.random() < TRUE_NO_RATES[category][exchange]
+    ? rng() < TRUE_NO_RATES[category][exchange]
       ? 0.02 + rng() * 0.05
       : 0.95 + rng() * 0.04
-    : Math.max(0.01, Math.min(0.99, fairYes + venueSkew + noise));
+    : preResolutionYesPrice;
 
   const volume24h = Math.round(1_000 + rng() * 400_000);
   const liquidity = Math.round(500 + rng() * 150_000);
@@ -144,6 +155,7 @@ function makeMarket(
     status: closed ? "resolved" : "active",
     contractAddress: null,
     exchange,
+    ...(closed ? { preResolutionYesPrice } : {}),
     outcomes: [
       {
         outcomeId: `${marketId}-yes`,
@@ -173,7 +185,7 @@ export function mockMarkets({
   exchange,
   closed = false,
   category,
-  limit = 500,
+  limit,
 }: {
   exchange?: Exchange;
   closed?: boolean;
@@ -190,9 +202,7 @@ export function mockMarkets({
   for (const cat of categories) {
     const titles = SAMPLE_TITLES[cat] ?? SAMPLE_TITLES.Other;
     for (const ex of exchanges) {
-      // Generate ~35 markets per (category, exchange) pair when active, and
-      // ~120 when closed so the resolution-bias histogram has volume.
-      const count = closed ? 120 : 35;
+      const count = closed ? MOCK_MARKETS_PER_CELL_CLOSED : MOCK_MARKETS_PER_CELL_LIVE;
       for (let i = 0; i < count; i++) {
         const title = titles[i % titles.length];
         rows.push(
@@ -211,7 +221,9 @@ export function mockMarkets({
     }
   }
 
-  return rows.slice(0, limit);
+  const built = rows.length;
+  const cap = limit !== undefined ? Math.min(limit, built) : built;
+  return rows.slice(0, cap);
 }
 
 /**

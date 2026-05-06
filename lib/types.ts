@@ -52,6 +52,12 @@ export interface UnifiedMarket {
   sourceExchange?: string;
   exchange?: Exchange;
   outcomes: UnifiedOutcome[];
+  /**
+   * Implied YES probability before terminal settlement (mock seed / enrichment).
+   * When absent and YES prices are ~0/~1, calibration skips the row — APIs
+   * rarely expose pre-close snapshots on resolved contracts.
+   */
+  preResolutionYesPrice?: number;
 }
 
 export interface PriceCandle {

@@ -20,6 +20,12 @@ jest.mock("@/components/KPIRow", () => ({
   KPIRow: () => <div>KPIRowMock</div>,
 }));
 
+jest.mock("@/components/ui/DeferChartMount", () => ({
+  DeferChartMount: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}));
+
 describe("Dashboard page", () => {
   test("renders dashboard shell and key sections", () => {
     render(<Page />);

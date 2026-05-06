@@ -10,16 +10,18 @@
  * mispricings weigh more — calibration on a $10M market matters more than
  * calibration on a $500 one.
  *
- * Cache key: efficiency-timeline
+ * Cache key: efficiency-timeline:v2
  * TTL:       3600s
  */
 
 import { NextResponse } from "next/server";
+import { CC_HOURLY_AGG, jsonCacheHeaders } from "@/lib/cacheHeaders";
 import { cached } from "@/lib/redis";
 import { fetchAllMarkets } from "@/lib/fetchAll";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets, assignResolutionLabels } from "@/lib/mock";
 import { classifyWinnerLabel } from "@/lib/bias";
+import { impliedYesForCalibration } from "@/lib/calibrationPrice";
 import type {
   EfficiencyMonth,
   Exchange,
@@ -87,14 +89,9 @@ function processMarket(
   const winnerKind = classifyWinnerLabel(winner.label);
   if (winnerKind === "ambiguous") return;
 
-  const yesOut = m.outcomes.find(
-    (o) => classifyWinnerLabel(o.label) === "yes",
-  );
-  const priceAtClose = yesOut
-    ? yesOut.price
-    : winnerKind === "yes"
-      ? winner.price
-      : 1 - winner.price;
+  const priceAtClose = impliedYesForCalibration(m);
+  if (priceAtClose === null) return;
+
   const resolution = winnerKind === "yes" ? 1 : 0;
   const mispricing = Math.abs(priceAtClose - resolution);
 
@@ -142,10 +139,6 @@ function buildTimeline(markets: UnifiedMarket[]): EfficiencyMonth[] {
 export async function GET() {
   try {
     if (!hasPmxtKey()) {
-      // Synthesize a plausible timeline from mock markets — each mock
-      // `resolutionDate` lands somewhere in the last 30 days so the series
-      // will only have one month. We fan it out synthetically so the chart
-      // has something to show in mock mode.
       const markets = assignResolutionLabels(mockMarkets({ closed: true }));
       const timeline = buildTimeline(markets);
       return NextResponse.json(
@@ -155,11 +148,11 @@ export async function GET() {
           fetchedAt: new Date().toISOString(),
           source: "mock",
         },
-        { headers: { "X-Cache": "MISS", "Cache-Control": "no-store" } },
+        { headers: jsonCacheHeaders("MISS", CC_HOURLY_AGG) },
       );
     }
 
-    const { value, state } = await cached("efficiency-timeline", TTL, async () => {
+    const { value, state } = await cached("efficiency-timeline:v2", TTL, async () => {
       const all: UnifiedMarket[] = [];
       await Promise.all(
         EXCHANGES.flatMap((ex) =>
@@ -184,7 +177,7 @@ export async function GET() {
         fetchedAt: new Date().toISOString(),
         source: "pmxt",
       },
-      { headers: { "X-Cache": state, "Cache-Control": "no-store" } },
+      { headers: jsonCacheHeaders(state, CC_HOURLY_AGG) },
     );
   } catch (err) {
     console.error("[/api/efficiency-timeline] failure", err);
@@ -196,7 +189,7 @@ export async function GET() {
         source: "mock",
         error: (err as Error).message,
       },
-      { status: 200, headers: { "X-Cache": "BYPASS" } },
+      { status: 200, headers: jsonCacheHeaders("BYPASS", "no-store") },
     );
   }
 }

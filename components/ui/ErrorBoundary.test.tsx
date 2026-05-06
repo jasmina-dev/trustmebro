@@ -1,7 +1,8 @@
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { ErrorBoundary } from "./ErrorBoundary";
 
-function Crash() {
+function Crash(): ReactNode {
   throw new Error("boom");
 }
 

@@ -26,7 +26,6 @@ export function ChatPanel() {
   } = useDashboard();
 
   const [input, setInput] = useState("");
-  const [showContext, setShowContext] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -127,18 +126,6 @@ export function ChatPanel() {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setShowContext((v) => !v)}
-              className={cn(
-                "rounded-md border border-border px-2 py-1 text-[10px] transition-colors",
-                showContext
-                  ? "bg-accent text-white"
-                  : "bg-bg-card text-fg-muted hover:text-fg",
-              )}
-              title="Show what data is injected into the AI's context"
-            >
-              Context
-            </button>
-            <button
               onClick={clearChat}
               className="rounded-md border border-border bg-bg-card px-2 py-1 text-[10px] text-fg-muted hover:text-fg"
             >
@@ -153,8 +140,6 @@ export function ChatPanel() {
             </button>
           </div>
         </div>
-
-        {showContext && <ContextSnapshot />}
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
           {chatMessages.length === 0 && (
@@ -255,25 +240,6 @@ function TypingIndicator() {
         className="h-1.5 w-1.5 animate-pulse rounded-full bg-fg-muted"
         style={{ animationDelay: "300ms" }}
       />
-    </div>
-  );
-}
-
-function ContextSnapshot() {
-  const snapshot = useDashboard((s) => s.getContextSnapshot());
-  return (
-    <div className="max-h-48 overflow-auto border-b border-border bg-bg px-4 py-3 font-mono text-[10px] leading-relaxed text-fg-muted">
-      <div className="mb-1 flex items-center justify-between text-fg">
-        <span className="font-semibold uppercase tracking-wider">
-          Context snapshot
-        </span>
-        <span className="text-fg-subtle">
-          {snapshot.visibleMarkets.length} markets · {snapshot.inefficiencyScores.length} scores
-        </span>
-      </div>
-      <pre className="whitespace-pre-wrap break-all">
-        {JSON.stringify(snapshot, null, 2)}
-      </pre>
     </div>
   );
 }

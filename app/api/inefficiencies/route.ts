@@ -17,6 +17,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { CC_INEFFICIENCIES, jsonCacheHeaders } from "@/lib/cacheHeaders";
 import { cached } from "@/lib/redis";
 import { fetchOhlcv, hasPmxtKey, resolveOhlcvId, router } from "@/lib/pmxt";
 import { mockMarkets, assignResolutionLabels, mockOhlcv } from "@/lib/mock";
@@ -86,7 +87,7 @@ export async function GET() {
         fetchedAt: new Date().toISOString(),
         source: value.source,
       },
-      { headers: { "X-Cache": state, "Cache-Control": "no-store" } },
+      { headers: jsonCacheHeaders(state, CC_INEFFICIENCIES) },
     );
   } catch (err) {
     console.error("[/api/inefficiencies] failure", err);
@@ -98,7 +99,7 @@ export async function GET() {
         source: "mock",
         error: (err as Error).message,
       },
-      { status: 500, headers: { "X-Cache": "BYPASS" } },
+      { status: 500, headers: jsonCacheHeaders("BYPASS", "no-store") },
     );
   }
 }

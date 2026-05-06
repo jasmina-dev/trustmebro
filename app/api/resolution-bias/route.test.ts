@@ -55,6 +55,31 @@ describe("/api/resolution-bias GET", () => {
     expect(body.data.length).toBeGreaterThan(0);
   });
 
+  test("PMXT aggregation fetches closed markets without Router category filters", async () => {
+    const { fetchAllMarkets } = jest.requireMock("@/lib/fetchAll") as {
+      fetchAllMarkets: jest.Mock;
+    };
+    (hasPmxtKey as jest.Mock).mockReturnValue(true);
+
+    fetchAllMarkets.mockResolvedValue({ markets: [] });
+
+    const req = new NextRequest("http://localhost:3000/api/resolution-bias");
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(body.source).toBe("pmxt");
+    expect(fetchAllMarkets).toHaveBeenCalledTimes(2);
+    for (const [opts] of fetchAllMarkets.mock.calls as [
+      { exchange: string; closed?: boolean; category?: string },
+    ][]) {
+      expect(opts.closed).toBe(true);
+      expect(opts.category).toBeUndefined();
+      expect(opts.exchange === "polymarket" || opts.exchange === "kalshi").toBe(
+        true,
+      );
+    }
+  });
+
   test("falls back to BYPASS payload on errors", async () => {
     (hasPmxtKey as jest.Mock).mockImplementation(() => {
       throw new Error("boom");

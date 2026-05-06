@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { DashboardEnterLink } from "@/components/landing/DashboardEnterLink";
 
 export default function LandingPage() {
   return (
@@ -31,12 +31,9 @@ export default function LandingPage() {
         </div>
 
         <div className="mt-8 flex flex-col items-center">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center rounded-md bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
+          <DashboardEnterLink className="inline-flex items-center rounded-md bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover">
             Open dashboard
-          </Link>
+          </DashboardEnterLink>
           <p className="mt-3 text-xs text-fg-subtle">
             For research and educational use only, not financial advice.
           </p>

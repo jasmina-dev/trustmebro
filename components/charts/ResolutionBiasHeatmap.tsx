@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
-const CATEGORIES = ["Politics", "Crypto", "Finance", "Other"];
+/** Heatmap columns only — API still aggregates Other for KPI / filters. */
+const CATEGORIES = ["Politics", "Crypto", "Finance"];
 const EXCHANGES = ["polymarket", "kalshi"] as const;
 const LOW_SAMPLE = 30;
 
@@ -76,7 +77,16 @@ export function ResolutionBiasHeatmap() {
   const lookup = new Map(
     buckets.map((b) => [`${b.category}|${b.exchange}`, b]),
   );
-  const totalN = buckets.reduce((s, b) => s + b.total, 0);
+  /** Sum binary-resolution counts for displayed columns only (Sports / Other still aggregated server-side). */
+  const totalN = CATEGORIES.reduce(
+    (sum, cat) =>
+      sum +
+      EXCHANGES.reduce((rowSum, ex) => {
+        const cell = lookup.get(`${cat}|${ex}`);
+        return rowSum + (cell?.total ?? 0);
+      }, 0),
+    0,
+  );
   const flaggedCount = buckets.filter((b) => b.flagged).length;
 
   return (

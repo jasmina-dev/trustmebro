@@ -226,10 +226,35 @@ export function normalizeCategory(raw: string | null | undefined): string {
     return "Sports";
   if (/politic|election|senate|house|president|congress/.test(s))
     return "Politics";
-  if (/crypto|bitcoin|ethereum|btc|eth|solana/.test(s)) return "Crypto";
-  if (/finance|fed|gdp|cpi|unemployment|rate|stock|market/.test(s))
+  // Crypto aliases (Kalshi/other venues often use broader labels.)
+  if (
+    /crypto|bitcoin|ethereum|btc|eth|solana|blockchain|defi|nft|token|digital asset|digital-asset|altcoin|stablecoin|web3|proof-of-stake|proof of stake|mining|halving|hashrate/.test(
+      s,
+    )
+  )
+    return "Crypto";
+  // Finance / macro (covers "economics", "treasury", etc.)
+  if (
+    /econom|finance|macro|inflation|banking|business|companies|fed|gdp|cpi|unemployment|jobs report|payroll|rate|stock|market|bond|treasury|commodities|financial|financials|earning|credit|loan|housing|etf|sector|trade|imf|ecb|forex|ipo|dividend|mortgage|recession|nasdaq|s&p|\bdow\b|index futures/.test(
+      s,
+    )
+  )
     return "Finance";
   return "Other";
+}
+
+/**
+ * Bucket label for `/api/resolution-bias` aggregation. Uses venue category
+ * first; when that maps to Other (missing or coarse vertical strings), uses
+ * the title so crypto/finance rows from Kalshi and sparse PMXT tags still
+ * populate the heatmap cells.
+ */
+export function resolutionBiasMarketCategory(
+  m: Pick<UnifiedMarket, "category" | "title">,
+): string {
+  const primary = normalizeCategory(m.category);
+  if (primary !== "Other") return primary;
+  return normalizeCategory(m.title ?? undefined);
 }
 
 /**

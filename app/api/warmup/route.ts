@@ -2,9 +2,10 @@
  * GET /api/warmup
  *
  * Prewarms every cache key the dashboard needs on first paint:
- *   • /api/markets         both venues, live
- *   • /api/resolution-bias all (venue × category) cells
- *   • /api/divergence      all categories
+ *   • markets:v3:*        same Redis keys as GET /api/markets (live + closed)
+ *   • raw:v2:*            paginated slices via fetchAllMarkets (divergence/bias)
+ *   • resolution-bias v7  two venue aggregates
+ *   • divergence:*        per-category pair caches (TTL matches route)
  *
  * Intended to be hit by a Vercel cron every 5 min (see vercel.json). Vercel
  * sends `Authorization: Bearer <CRON_SECRET>` when CRON_SECRET is set in the
@@ -19,8 +20,9 @@ import { requireCronAuthorized } from "@/lib/internalApiAuth";
 import { cached } from "@/lib/redis";
 import { fetchAllMarkets } from "@/lib/fetchAll";
 import { hasPmxtKey } from "@/lib/pmxt";
-import { computeBiasBucket } from "@/lib/bias";
 import { divergentPairsForCategory } from "@/lib/divergence";
+import { cachedBucketsForExchange } from "@/lib/resolutionBiasData";
+import { primeMarketsV3Aggregates } from "@/lib/marketsCache";
 import type { Exchange } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -59,29 +61,16 @@ export async function GET(request: Request) {
     }
   }
 
-  // 1. Live markets per venue (powers KPI + liquidity scatter + momentum chart)
+  // 1a. markets:v3 aggregates (exact keys the HTTP route serves — was missing before)
+  const marketsV3 = track("markets:v3", () => primeMarketsV3Aggregates());
+
+  // 1b. Paginated raw slices — divergence + resolution bias reuse these pages
   const liveMarkets = EXCHANGES.map((ex) =>
-    track(`markets:${ex}:live`, () => fetchAllMarkets({ exchange: ex })),
+    track(`raw:${ex}:live`, () => fetchAllMarkets({ exchange: ex })),
   );
 
-  // 2. Resolution-bias cells — one per (venue, category).
-  const biasCells = EXCHANGES.flatMap((ex) =>
-    CATEGORIES.map((cat) =>
-      track(`bias:${ex}:${cat}`, () =>
-        cached(
-          `resolution-bias:v4:${ex}:${cat}`,
-          3600,
-          async () => {
-            const { markets } = await fetchAllMarkets({
-              exchange: ex,
-              category: cat,
-              closed: true,
-            });
-            return computeBiasBucket(cat, ex, markets);
-          },
-        ),
-      ),
-    ),
+  const biasVenues = EXCHANGES.map((ex) =>
+    track(`bias:v7:${ex}`, () => cachedBucketsForExchange(ex)),
   );
 
   // 3. Divergence per category — shares the `raw:live:*` page cache with (1).
@@ -89,14 +78,19 @@ export async function GET(request: Request) {
   // Vercel deployments that can't resolve their own hostname.
   const divergenceTasks = CATEGORIES.map((cat) =>
     track(`divergence:${cat}`, () =>
-      cached(`divergence:${cat}`, 300, async () => {
+      cached(`divergence:${cat}`, 600, async () => {
         const pairs = await divergentPairsForCategory(cat);
         return pairs.sort((a, b) => b.spread - a.spread);
       }),
     ),
   );
 
-  await Promise.all([...liveMarkets, ...biasCells, ...divergenceTasks]);
+  await Promise.all([
+    marketsV3,
+    ...liveMarkets,
+    ...biasVenues,
+    ...divergenceTasks,
+  ]);
 
   const ms = Date.now() - started;
   console.log(

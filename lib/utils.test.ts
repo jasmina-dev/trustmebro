@@ -7,6 +7,7 @@ import {
   resolvedLabel,
   usd,
   normalizeCategory,
+  resolutionBiasMarketCategory,
   titleSimilarity,
   venueMarketUrl,
   yesOutcome,
@@ -67,6 +68,29 @@ describe("lib/utils", () => {
     expect(normalizeCategory("NFL Playoffs")).toBe("Sports");
     expect(normalizeCategory("US Senate")).toBe("Politics");
     expect(normalizeCategory("Unknown Vertical")).toBe("Other");
+  });
+
+  test("normalizeCategory folds macro and digital-asset tags into Finance / Crypto", () => {
+    expect(normalizeCategory("Economics")).toBe("Finance");
+    expect(normalizeCategory("digital assets")).toBe("Crypto");
+    expect(normalizeCategory("Climate")).toBe("Other");
+    expect(normalizeCategory("Macro")).toBe("Finance");
+    expect(normalizeCategory("Financials")).toBe("Finance");
+  });
+
+  test("resolutionBiasMarketCategory falls back from coarse tags to title", () => {
+    expect(
+      resolutionBiasMarketCategory({
+        category: "KXSERIES",
+        title: "Will BTC close above 100k?",
+      }),
+    ).toBe("Crypto");
+    expect(
+      resolutionBiasMarketCategory({
+        category: null,
+        title: "Will the Fed cut rates in March?",
+      }),
+    ).toBe("Finance");
   });
 
   test("titleSimilarity returns high score for near-identical questions", () => {
