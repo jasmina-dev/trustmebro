@@ -139,7 +139,51 @@ PORT=8002 npx pm2 start npm --name "trustmebro" -- start
 - **Stop app:** `npx pm2 stop trustmebro`
 - **Delete process:** `npx pm2 delete trustmebro`
 
-### 6. Updating the app (redeploy)
+### 6. Scheduled cache warmup (cron)
+
+The route **`GET /api/warmup`** pre-fills Redis with the same cache keys the dashboard charts need (markets aggregates, paginated market slices, divergence categories, resolution bias, and related data). When Redis is warm, real users trigger fewer **misses** and your server stays closer to the PMXT rate limits.
+
+On **Vercel**, [`vercel.json`](../vercel.json) can schedule this route automatically. On a **Linux server you manage yourself**, nothing triggers warmup unless **you** schedule it (for example with `cron`).
+
+**Requirements:**
+
+1. **`CRON_SECRET` in `.env.local`** — use any long random string (generate one locally; it is not issued by a vendor). The Next.js app must see this variable when it runs (`next start` under PM2 loads `.env.local` from the project root).
+
+2. **HTTP header on every cron request** — production requires:
+
+   ```http
+   Authorization: Bearer <same value as CRON_SECRET>
+   ```
+
+**Manual check** (replace port and secret):
+
+```bash
+curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET_HERE" "http://127.0.0.1:8002/api/warmup"
+```
+
+You should get JSON such as `"warmed": true` and timing fields. A JSON error about **`CRON_SECRET`** means the server process does not have the variable set, or the `Bearer` token does not match.
+
+**Example crontab** (every five minutes, aligned with the Vercel schedule in `vercel.json`). Run `crontab -e` and add one line; replace the port with your `PORT` and avoid putting the secret directly in the file if you prefer a small env script:
+
+```cron
+*/5 * * * * . /home/youruser/trustmebro/.cron-env.sh && curl -fsS -m 420 -H "Authorization: Bearer $CRON_SECRET" "http://127.0.0.1:8002/api/warmup" >> /home/youruser/logs/warmup.log 2>&1
+```
+
+Create `.cron-env.sh` next to the project (or under your home directory) with:
+
+```bash
+export CRON_SECRET='your-long-random-secret'
+```
+
+Then restrict permissions: `chmod 600 .cron-env.sh`.
+
+**Flags:**
+
+- **`-m 420`** gives `curl` a seven-minute ceiling so a stuck run does not pile up forever (warmup can legitimately take minutes).
+
+Use **`http://127.0.0.1:PORT`** if the cron runs on the same machine as PM2; use your public `https://` URL only if you intend to hit the site through your reverse proxy.
+
+### 7. Updating the app (redeploy)
 
 To pull new changes from GitHub and refresh the live site:
 
@@ -150,7 +194,7 @@ npm run build    # Rebuild the project
 npx pm2 restart trustmebro
 ```
 
-### 7. Troubleshooting
+### 8. Troubleshooting
 
 - **Port already in use:** If port `8002` is taken, run `lsof -i :8002` (if available) to find the process, stop it with `kill -9 <PID>`, or pick another port in the `PORT=...` command.
 - **Processes die when you disconnect:** If the server kills background jobs when you log out, run your session inside `screen` or `tmux` so PM2 keeps running, or ask your administrator about a proper login service.
