@@ -225,15 +225,36 @@ export async function POST(req: NextRequest) {
       system: buildSystemPrompt(normalizeContext(body.context)),
       messages: body.messages,
       maxTokens: 1024,
-      onError({ error }) {
-        console.error("[api/chat] provider stream error", error);
+    });
+
+    // Wrap the text stream so provider errors during streaming are forwarded
+    // to the client as readable text rather than an abrupt connection close
+    // (which the browser surfaces as an opaque "Failed to fetch" TypeError).
+    const enc = new TextEncoder();
+    const safeStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of result.textStream) {
+            controller.enqueue(enc.encode(chunk));
+          }
+          controller.close();
+        } catch (streamErr) {
+          console.error("[api/chat] provider stream error", streamErr);
+          const msg =
+            streamErr instanceof Error
+              ? streamErr.message
+              : "Unknown provider error";
+          controller.enqueue(
+            enc.encode(`\n\n*AI provider error: ${msg}*`),
+          );
+          controller.close();
+        }
       },
     });
 
-    // Plain text stream — the ChatPanel reads it with a standard ReadableStream
-    // reader loop. Avoids coupling the client to a specific SDK shape.
-    return result.toTextStreamResponse({
+    return new Response(safeStream, {
       headers: {
+        "Content-Type": "text/plain; charset=utf-8",
         "X-RateLimit-Remaining": String(rl.remaining),
         "X-RateLimit-Reset": String(rl.reset),
         "X-Chat-Mode": "live",
