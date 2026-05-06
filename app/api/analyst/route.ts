@@ -31,8 +31,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** Must be a Messages API id (see @ai-sdk/anthropic types). `claude-sonnet-4-5` is not valid and fails in prod. */
-const DEFAULT_MODEL = "claude-3-5-sonnet-latest";
+/** Must be a pinned Messages API id. The `-latest` alias for claude-3-5 was
+ *  retired; use a dated id or override via ANTHROPIC_MODEL in .env.local. */
+const DEFAULT_MODEL = "claude-3-5-sonnet-20241022";
 
 function anthropicApiKey(): string | undefined {
   const raw = process.env.ANTHROPIC_API_KEY;
