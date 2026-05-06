@@ -46,7 +46,16 @@ export function marketsRedisKey(p: MarketsRouteParams): string {
 }
 
 export function marketsTtlSeconds(closed: boolean): number {
-  return closed ? 3600 : 60;
+  if (closed) {
+    const raw = process.env.MARKETS_CLOSED_TTL_SECONDS?.trim();
+    if (!raw) return 3600;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 60 ? Math.min(n, 86_400) : 3600;
+  }
+  const raw = process.env.MARKETS_LIVE_TTL_SECONDS?.trim();
+  if (!raw) return 120;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 30 ? Math.min(n, 3600) : 120;
 }
 
 type CachedMarketsValue = {

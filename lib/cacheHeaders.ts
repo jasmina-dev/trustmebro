@@ -15,9 +15,9 @@ export function jsonCacheHeaders(
   };
 }
 
-/** Redis TTL ~60s for live market slices */
+/** Align with Redis live TTL (~120s default); browsers reuse JSON without re-hit. */
 export const CC_MARKETS_LIVE =
-  "private, max-age=45, stale-while-revalidate=120";
+  "private, max-age=90, stale-while-revalidate=240";
 
 /** Redis TTL 3600s for closed slices */
 export const CC_MARKETS_CLOSED =

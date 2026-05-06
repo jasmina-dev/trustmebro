@@ -5,9 +5,80 @@
  * missing (local dev without a key), we degrade to an in-memory Map cache so
  * the dashboard still works. The `X-Cache` HIT/MISS header always reflects
  * whichever backend we ended up using.
+ *
+ * With Upstash enabled, `cached()` coordinates MISS handling across all Node
+ * processes (`SET NX` lock + poll) so ten simultaneous users do not multiply
+ * PMXT pagination traffic — only one worker repopulates each key at a time.
  */
 
 import { Redis } from "@upstash/redis";
+
+// ---------------------------------------------------------------------------
+// Shared client — one REST pool per process for cache + coordination locks.
+// ---------------------------------------------------------------------------
+
+let _upstashResolved: boolean | undefined;
+let _upstashClient: Redis | null | undefined;
+
+export function getUpstashRedis(): Redis | null {
+  if (_upstashResolved) return _upstashClient ?? null;
+  _upstashResolved = true;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url?.trim() || !token?.trim()) {
+    _upstashClient = null;
+    return null;
+  }
+  _upstashClient = new Redis({ url, token });
+  return _upstashClient;
+}
+
+function coordinateMissEnabled(): boolean {
+  return process.env.UPSTASH_COORDINATE_MISS?.trim() !== "false";
+}
+
+function coordLockSeconds(): number {
+  const raw = process.env.CACHE_COORD_LOCK_SECONDS?.trim();
+  if (!raw) return 600;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 60 ? Math.min(n, 3600) : 600;
+}
+
+function coordMaxWaitMs(): number {
+  const raw = process.env.CACHE_COORD_WAIT_MS?.trim();
+  if (!raw) return 240_000;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 5000 ? Math.min(n, 600_000) : 240_000;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/** SET NX returns `"OK"` when the lock row was created; `null` when held elsewhere. */
+function nxLockSucceeded(result: unknown): boolean {
+  return result === "OK";
+}
+
+async function waitForRedisCacheHit<T>(
+  backend: CacheBackend,
+  key: string,
+  maxMs: number,
+): Promise<CachedResult<T> | null> {
+  const deadline = Date.now() + maxMs;
+  while (Date.now() < deadline) {
+    await sleep(250);
+    try {
+      const hit = (await backend.get(key)) as T | null;
+      if (hit !== null && hit !== undefined) {
+        return { value: hit, state: "HIT" };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Backend selection
@@ -25,15 +96,12 @@ let _backend: CacheBackend | null = null;
 function getBackend(): CacheBackend {
   if (_backend) return _backend;
 
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const client = getUpstashRedis();
 
-  if (url && token) {
-    const client = new Redis({ url, token });
+  if (client) {
     _backend = {
       name: "upstash",
       get: async (key) => {
-        // Upstash auto-deserializes JSON values it previously stored.
         return (await client.get(key)) as unknown;
       },
       set: async (key, value, ttlSeconds) => {
@@ -90,7 +158,8 @@ const inflight = new Map<string, Promise<CachedResult<unknown>>>();
  * Wrap a fetcher with read-through caching.
  *
  * Guarantees we never call `fetcher()` when a fresh value is in cache —
- * essential for staying under the PMXT 60 req/min & 25 000 req/month budget.
+ * essential for staying under the PMXT per-minute quota. Cross-process MISS
+ * coordination avoids duplicate pagination when many users load at once.
  */
 export async function cached<T>(
   key: string,
@@ -110,14 +179,57 @@ export async function cached<T>(
   const pending = inflight.get(key) as Promise<CachedResult<T>> | undefined;
   if (pending) return pending;
 
+  const redis = getUpstashRedis();
+  const useCoord =
+    Boolean(redis) &&
+    coordinateMissEnabled() &&
+    backend.name === "upstash";
+
+  const lockKey = `coord:${key}`;
+  const lockEx = coordLockSeconds();
+  let holdCoordLock = false;
+
+  if (useCoord && redis) {
+    const acquired = await redis.set(lockKey, "1", { nx: true, ex: lockEx });
+    if (!nxLockSucceeded(acquired)) {
+      const waited = await waitForRedisCacheHit<T>(
+        backend,
+        key,
+        coordMaxWaitMs(),
+      );
+      if (waited) return waited;
+
+      const retryAcquire = await redis.set(lockKey, "1", {
+        nx: true,
+        ex: lockEx,
+      });
+      if (!nxLockSucceeded(retryAcquire)) {
+        console.warn(
+          `[cache:coord] timed out waiting for ${key} — proceeding may duplicate PMXT work`,
+        );
+      } else {
+        holdCoordLock = true;
+      }
+    } else {
+      holdCoordLock = true;
+    }
+  }
+
   const promise = (async (): Promise<CachedResult<T>> => {
     try {
       const fresh = await fetcher();
-      backend.set(key, fresh, ttlSeconds).catch((err) => {
+      try {
+        await backend.set(key, fresh, ttlSeconds);
+      } catch (err) {
         console.warn(`[cache:${backend.name}] write failed for ${key}`, err);
-      });
+      }
       return { value: fresh, state: "MISS" };
     } finally {
+      if (holdCoordLock && redis) {
+        await redis.del(lockKey).catch(() => {
+          /* ignore */
+        });
+      }
       inflight.delete(key);
     }
   })();
@@ -146,12 +258,10 @@ export async function checkRateLimit(
     windowSeconds,
   }: { limit: number; windowSeconds: number },
 ): Promise<{ success: boolean; remaining: number; reset: number }> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const client = getUpstashRedis();
 
-  if (url && token) {
+  if (client) {
     const { Ratelimit } = await import("@upstash/ratelimit");
-    const client = new Redis({ url, token });
     const rl = new Ratelimit({
       redis: client,
       limiter: Ratelimit.slidingWindow(limit, `${windowSeconds} s`),
@@ -165,8 +275,11 @@ export async function checkRateLimit(
   // In-memory fallback.
   const now = Date.now();
   const windowMs = windowSeconds * 1000;
-  const bucket = (globalThis as any).__memRateLimit ??
-    ((globalThis as any).__memRateLimit = new Map<string, number[]>());
+  const bucket =
+    (globalThis as unknown as { __memRateLimit?: Map<string, number[]> })
+      .__memRateLimit ??
+    ((globalThis as unknown as { __memRateLimit: Map<string, number[]> })
+      .__memRateLimit = new Map<string, number[]>());
   const hits: number[] = (bucket.get(identifier) ?? []).filter(
     (t: number) => now - t < windowMs,
   );

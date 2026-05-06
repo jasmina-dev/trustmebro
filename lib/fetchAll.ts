@@ -6,7 +6,7 @@
  * `limit` rows.
  *
  * Every call goes through the Upstash cache — resolved markets have a 1h TTL,
- * live markets have 60s. A single market list can span many pages (Sports on
+ * live markets default to 120s (`RAW_PAGE_LIVE_TTL_SECONDS`). A single market list can span many pages (Sports on
  * Polymarket alone is ~1500 closed markets), so each page is cached on its
  * own key to avoid losing the whole sample when a single page times out.
  */
@@ -16,6 +16,20 @@ import { router } from "./pmxt";
 import type { Exchange, UnifiedMarket } from "./types";
 
 const PAGE_SIZE = 500;
+
+function defaultLivePageTtlSeconds(): number {
+  const raw = process.env.RAW_PAGE_LIVE_TTL_SECONDS?.trim();
+  if (!raw) return 120;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 30 ? Math.min(n, 3600) : 120;
+}
+
+function defaultClosedPageTtlSeconds(): number {
+  const raw = process.env.RAW_PAGE_CLOSED_TTL_SECONDS?.trim();
+  if (!raw) return 3600;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 60 ? Math.min(n, 86_400) : 3600;
+}
 
 /** One cached Router page: filtered rows + raw length (pagination must use raw length). */
 interface CachedRawPage {
@@ -50,7 +64,9 @@ export async function fetchAllMarkets(
   opts: FetchAllOptions,
 ): Promise<FetchAllResult> {
   const { exchange, category, closed = false, query, maxPages = 20 } = opts;
-  const ttl = opts.ttlSeconds ?? (closed ? 3600 : 60);
+  const ttl =
+    opts.ttlSeconds ??
+    (closed ? defaultClosedPageTtlSeconds() : defaultLivePageTtlSeconds());
 
   const t0 = Date.now();
   const all: UnifiedMarket[] = [];
