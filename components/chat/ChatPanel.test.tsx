@@ -1,9 +1,3 @@
-jest.mock("./ChatMarkdown", () => ({
-  ChatMarkdown: ({ content }: { content: string }) => (
-    <div data-testid="assistant-md">{content}</div>
-  ),
-}));
-
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TextDecoder, TextEncoder } from "util";

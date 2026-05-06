@@ -1,35 +1,38 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
-import type { Components } from "react-markdown";
+import type { AnchorHTMLAttributes } from "react";
+import Markdown from "markdown-to-jsx";
 
-const markdownComponents: Partial<Components> = {
-  a: ({ href, children }) => {
-    const external = Boolean(href?.startsWith("http"));
-    return (
-      <a
-        href={href}
-        target={external ? "_blank" : undefined}
-        rel={external ? "noopener noreferrer" : undefined}
-        className="font-medium text-accent underline-offset-2 hover:underline"
-      >
-        {children}
-      </a>
-    );
-  },
-};
+function MarkdownLink({
+  href,
+  children,
+  ...rest
+}: AnchorHTMLAttributes<HTMLAnchorElement>) {
+  const external = Boolean(href?.startsWith("http"));
+  return (
+    <a
+      href={href}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
+      className="font-medium text-accent underline-offset-2 hover:underline"
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+}
 
 export function ChatMarkdown({ content }: { content: string }) {
   return (
     <div className="chat-prose">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
-        components={markdownComponents}
+      <Markdown
+        options={{
+          disableParsingRawHTML: true,
+          overrides: { a: { component: MarkdownLink } },
+        }}
       >
         {content}
-      </ReactMarkdown>
+      </Markdown>
     </div>
   );
 }
