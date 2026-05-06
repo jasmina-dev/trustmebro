@@ -67,7 +67,7 @@ export function ChatPanel() {
 
     try {
       const snapshot = getContextSnapshot();
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/analyst", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,

@@ -1,5 +1,5 @@
 /**
- * POST /api/chat
+ * POST /api/analyst
  *
  * Streaming chat endpoint backed by Anthropic Claude (via Vercel AI SDK).
  *
@@ -219,60 +219,69 @@ export async function POST(req: NextRequest) {
 
   const anthropic = createAnthropic({ apiKey });
 
+  // Do NOT await streamText — StreamTextResult implements PromiseLike, so
+  // awaiting it calls .then() which internally drains textStream before this
+  // function resumes, leaving result.textStream exhausted (empty response).
+  let result: ReturnType<typeof streamText>;
   try {
-    const result = await streamText({
+    result = streamText({
       model: anthropic(modelId),
       system: buildSystemPrompt(normalizeContext(body.context)),
       messages: body.messages,
       maxTokens: 1024,
     });
-
-    // Wrap the text stream so provider errors during streaming are forwarded
-    // to the client as readable text rather than an abrupt connection close
-    // (which the browser surfaces as an opaque "Failed to fetch" TypeError).
-    const enc = new TextEncoder();
-    const safeStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of result.textStream) {
-            controller.enqueue(enc.encode(chunk));
-          }
-          controller.close();
-        } catch (streamErr) {
-          console.error("[api/chat] provider stream error", streamErr);
-          const msg =
-            streamErr instanceof Error
-              ? streamErr.message
-              : "Unknown provider error";
-          controller.enqueue(
-            enc.encode(`\n\n*AI provider error: ${msg}*`),
-          );
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(safeStream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-RateLimit-Remaining": String(rl.remaining),
-        "X-RateLimit-Reset": String(rl.reset),
-        "X-Chat-Mode": "live",
-      },
-    });
   } catch (err) {
-    console.error("[api/chat] stream failed to start", err);
+    console.error("[api/analyst] stream setup error", err);
     const message =
-      err instanceof Error ? err.message : "Unknown error starting chat stream";
+      err instanceof Error ? err.message : "Unknown error setting up stream";
     return new Response(
-      JSON.stringify({
-        error: "Chat failed to start",
-        message,
-      }),
+      JSON.stringify({ error: "Chat failed to start", message }),
       {
         status: 502,
         headers: { "Content-Type": "application/json" },
       },
     );
   }
+
+  // Wrap the text stream so provider errors are forwarded as readable text
+  // rather than an abrupt close (which the browser surfaces as "Failed to fetch").
+  const enc = new TextEncoder();
+  const safeStream = new ReadableStream({
+    async start(controller) {
+      let wrote = false;
+      try {
+        for await (const chunk of result.textStream) {
+          controller.enqueue(enc.encode(chunk));
+          wrote = true;
+        }
+      } catch (streamErr) {
+        console.error("[api/analyst] provider stream error", streamErr);
+        const msg =
+          streamErr instanceof Error
+            ? streamErr.message
+            : "Unknown provider error";
+        controller.enqueue(enc.encode(`\n\n*AI provider error: ${msg}*`));
+        wrote = true;
+      }
+      if (!wrote) {
+        // Stream closed cleanly but emitted nothing — typically an auth or
+        // quota error that the SDK absorbed without throwing.
+        controller.enqueue(
+          enc.encode(
+            "*No response from AI provider. Check that ANTHROPIC_API_KEY is valid and the selected model is available.*",
+          ),
+        );
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(safeStream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "X-RateLimit-Remaining": String(rl.remaining),
+      "X-RateLimit-Reset": String(rl.reset),
+      "X-Chat-Mode": "live",
+    },
+  });
 }

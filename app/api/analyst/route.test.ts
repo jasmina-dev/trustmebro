@@ -18,7 +18,7 @@ jest.mock("ai", () => ({
   streamText: jest.fn(),
 }));
 
-describe("/api/chat POST", () => {
+describe("/api/analyst POST", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -30,7 +30,7 @@ describe("/api/chat POST", () => {
       reset: 123,
     });
 
-    const req = new NextRequest("http://localhost:3000/api/chat", {
+    const req = new NextRequest("http://localhost:3000/api/analyst", {
       method: "POST",
       body: JSON.stringify({ messages: [], context: {} }),
       headers: { "content-type": "application/json" },
@@ -54,7 +54,7 @@ describe("/api/chat POST", () => {
     delete process.env.ANTHROPIC_API_KEY;
 
     try {
-      const req = new NextRequest("http://localhost:3000/api/chat", {
+      const req = new NextRequest("http://localhost:3000/api/analyst", {
         method: "POST",
         body: JSON.stringify({
           messages: [{ role: "user", content: "hi" }],
@@ -108,7 +108,7 @@ describe("/api/chat POST", () => {
     process.env.ANTHROPIC_API_KEY = "test-key";
 
     try {
-      const req = new NextRequest("http://localhost:3000/api/chat", {
+      const req = new NextRequest("http://localhost:3000/api/analyst", {
         method: "POST",
         body: JSON.stringify({
           messages: [{ role: "user", content: "analyze this" }],
@@ -158,7 +158,7 @@ describe("/api/chat POST", () => {
     process.env.CHAT_RATE_LIMIT_WINDOW_SECONDS = "30";
 
     try {
-      const req = new NextRequest("http://localhost:3000/api/chat", {
+      const req = new NextRequest("http://localhost:3000/api/analyst", {
         method: "POST",
         body: JSON.stringify({ messages: [], context: {} }),
         headers: { "content-type": "application/json" },
