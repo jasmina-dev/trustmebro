@@ -4,6 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import type { ChatMessage } from "@/lib/types";
+import { ChatMarkdown } from "./ChatMarkdown";
+
+/** `randomUUID` is only available in secure contexts; LAN http dev URLs often are not. */
+function newMessageId(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") {
+    return c.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
 
 const SUGGESTED = [
   "Why do sports markets skew toward NO?",
@@ -36,13 +46,13 @@ export function ChatPanel() {
   const send = async (text: string) => {
     if (!text.trim() || chatStreaming) return;
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: newMessageId(),
       role: "user",
       content: text.trim(),
       createdAt: Date.now(),
     };
     const assistantMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: newMessageId(),
       role: "assistant",
       content: "",
       createdAt: Date.now(),
@@ -126,12 +136,14 @@ export function ChatPanel() {
           </div>
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={clearChat}
               className="rounded-md border border-border bg-bg-card px-2 py-1 text-[10px] text-fg-muted hover:text-fg"
             >
               Clear
             </button>
             <button
+              type="button"
               onClick={() => setChatOpen(false)}
               className="rounded-md p-1 text-fg-muted hover:bg-bg-hover hover:text-fg"
               aria-label="Close chat"
@@ -152,6 +164,7 @@ export function ChatPanel() {
               <div className="space-y-1.5">
                 {SUGGESTED.map((q) => (
                   <button
+                    type="button"
                     key={q}
                     onClick={() => send(q)}
                     className="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-left text-xs text-fg hover:border-accent hover:bg-bg-hover"
@@ -220,8 +233,10 @@ function MessageBubble({
       >
         {isEmptyAssistant ? (
           <TypingIndicator />
+        ) : isUser ? (
+          <div className="whitespace-pre-wrap">{msg.content}</div>
         ) : (
-          <div className="chat-prose whitespace-pre-wrap">{msg.content}</div>
+          <ChatMarkdown content={msg.content} />
         )}
       </div>
     </div>

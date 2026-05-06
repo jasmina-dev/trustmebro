@@ -74,16 +74,68 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Prose-ish chat message formatting */
+/* Prose-ish chat message formatting (assistant markdown) */
+.chat-prose > :first-child {
+  @apply mt-0;
+}
+.chat-prose > :last-child {
+  @apply mb-0;
+}
 .chat-prose p {
-  @apply mb-2 leading-relaxed;
+  @apply mb-2 leading-relaxed last:mb-0;
+}
+.chat-prose h1,
+.chat-prose h2,
+.chat-prose h3 {
+  @apply mb-1.5 mt-3 font-semibold text-fg first:mt-0;
+}
+.chat-prose h1 {
+  @apply text-sm;
+}
+.chat-prose h2 {
+  @apply text-xs uppercase tracking-wide text-fg-muted;
+}
+.chat-prose h3 {
+  @apply text-xs;
+}
+.chat-prose ul,
+.chat-prose ol {
+  @apply mb-2 ml-4 last:mb-0;
 }
 .chat-prose ul {
-  @apply mb-2 ml-4 list-disc space-y-1;
+  @apply list-disc space-y-1;
+}
+.chat-prose ol {
+  @apply list-decimal space-y-1;
+}
+.chat-prose li {
+  @apply leading-relaxed;
+}
+.chat-prose blockquote {
+  @apply mb-2 border-l-2 border-accent/50 pl-3 text-fg-muted last:mb-0;
+}
+.chat-prose hr {
+  @apply my-3 border-border;
+}
+.chat-prose pre {
+  @apply mb-2 overflow-x-auto rounded-md border border-border bg-bg-elev p-2.5 last:mb-0;
+}
+.chat-prose pre code {
+  @apply bg-transparent p-0 text-[11px] text-fg;
 }
 .chat-prose code {
-  @apply rounded bg-bg-hover px-1 py-0.5 font-mono text-xs text-accent-hover;
+  @apply rounded bg-bg-hover px-1 py-0.5 font-mono text-[11px] text-accent-hover;
 }
 .chat-prose strong {
   @apply font-semibold text-fg;
+}
+.chat-prose table {
+  @apply mb-2 w-full border-collapse text-left text-[11px] last:mb-0;
+}
+.chat-prose th,
+.chat-prose td {
+  @apply border border-border px-2 py-1 align-top;
+}
+.chat-prose th {
+  @apply bg-bg-hover font-semibold text-fg;
 }
