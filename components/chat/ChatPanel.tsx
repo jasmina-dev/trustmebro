@@ -90,7 +90,13 @@ export function ChatPanel() {
       }
 
       const reader = res.body?.getReader();
-      if (!reader) return;
+      if (!reader) {
+        appendChatAssistantChunk(
+          assistantMsg.id,
+          "\n\n*Error: empty response body (streaming may be blocked by the network or host).*",
+        );
+        return;
+      }
       const decoder = new TextDecoder();
       while (true) {
         const { done, value } = await reader.read();

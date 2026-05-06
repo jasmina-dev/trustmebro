@@ -22,13 +22,52 @@ import { NextRequest } from "next/server";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { streamText } from "ai";
 import { checkRateLimit } from "@/lib/redis";
-import type { DashboardContextSnapshot } from "@/lib/types";
+import type {
+  DashboardContextSnapshot,
+  ExchangeFilter,
+} from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
+/** Must be a Messages API id (see @ai-sdk/anthropic types). `claude-sonnet-4-5` is not valid and fails in prod. */
+const DEFAULT_MODEL = "claude-3-5-sonnet-latest";
+
+function anthropicApiKey(): string | undefined {
+  const raw = process.env.ANTHROPIC_API_KEY;
+  if (typeof raw !== "string") return undefined;
+  const key = raw.trim();
+  return key.length > 0 ? key : undefined;
+}
+
+function resolveModel(): string {
+  const id = process.env.ANTHROPIC_MODEL?.trim();
+  return id && id.length > 0 ? id : DEFAULT_MODEL;
+}
+
+function normalizeContext(
+  raw: DashboardContextSnapshot | undefined,
+): DashboardContextSnapshot {
+  return {
+    filters: {
+      venue: (raw?.filters?.venue ?? "all") as ExchangeFilter,
+      category: raw?.filters?.category ?? "All",
+      dateRange: {
+        start: raw?.filters?.dateRange?.start ?? "",
+        end: raw?.filters?.dateRange?.end ?? "",
+      },
+    },
+    activeChart: raw?.activeChart ?? "overview",
+    visibleMarkets: Array.isArray(raw?.visibleMarkets) ? raw.visibleMarkets : [],
+    inefficiencyScores: Array.isArray(raw?.inefficiencyScores)
+      ? raw.inefficiencyScores
+      : [],
+    resolutionStats: Array.isArray(raw?.resolutionStats)
+      ? raw.resolutionStats
+      : [],
+  };
+}
 const DEFAULT_CHAT_RATE_LIMIT = 20;
 const DEFAULT_CHAT_RATE_WINDOW_SECONDS = 60;
 
@@ -121,17 +160,37 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = (await req.json()) as {
+  let body: {
     messages: Array<{ role: "user" | "assistant"; content: string }>;
     context: DashboardContextSnapshot;
   };
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!Array.isArray(body.messages) || body.messages.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "Expected a non-empty messages array" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  const apiKey = anthropicApiKey();
+  if (!apiKey) {
     // Graceful degrade: return a single SSE-ish text stream explaining that
     // the chat isn't live. Keeps the UI flow identical to a real call.
     const text =
-      "The chatbot is not configured — set `ANTHROPIC_API_KEY` in `.env.local` to enable it. " +
-      "In the meantime, the dashboard is running on deterministic mock data so you can still explore every chart.";
+      "The chatbot is not configured — add `ANTHROPIC_API_KEY` to your deployment environment " +
+      "(e.g. Vercel: Project → Settings → Environment Variables), redeploy, and try again. " +
+      "The dashboard still runs on deterministic mock data without it.";
     const stream = new ReadableStream({
       start(controller) {
         const chunks = text.split(/(\s+)/);
@@ -156,24 +215,43 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const anthropic = createAnthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
+  const modelId = resolveModel();
 
-  const result = await streamText({
-    model: anthropic(MODEL),
-    system: buildSystemPrompt(body.context),
-    messages: body.messages,
-    maxTokens: 1024,
-  });
+  const anthropic = createAnthropic({ apiKey });
 
-  // Plain text stream — the ChatPanel reads it with a standard ReadableStream
-  // reader loop. Avoids coupling the client to a specific SDK shape.
-  return result.toTextStreamResponse({
-    headers: {
-      "X-RateLimit-Remaining": String(rl.remaining),
-      "X-RateLimit-Reset": String(rl.reset),
-      "X-Chat-Mode": "live",
-    },
-  });
+  try {
+    const result = await streamText({
+      model: anthropic(modelId),
+      system: buildSystemPrompt(normalizeContext(body.context)),
+      messages: body.messages,
+      maxTokens: 1024,
+      onError({ error }) {
+        console.error("[api/chat] provider stream error", error);
+      },
+    });
+
+    // Plain text stream — the ChatPanel reads it with a standard ReadableStream
+    // reader loop. Avoids coupling the client to a specific SDK shape.
+    return result.toTextStreamResponse({
+      headers: {
+        "X-RateLimit-Remaining": String(rl.remaining),
+        "X-RateLimit-Reset": String(rl.reset),
+        "X-Chat-Mode": "live",
+      },
+    });
+  } catch (err) {
+    console.error("[api/chat] stream failed to start", err);
+    const message =
+      err instanceof Error ? err.message : "Unknown error starting chat stream";
+    return new Response(
+      JSON.stringify({
+        error: "Chat failed to start",
+        message,
+      }),
+      {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 }

@@ -247,32 +247,13 @@ export async function invalidate(key: string): Promise<void> {
 // Rate-limit helper (used by /api/chat) — keyed by IP.
 // ---------------------------------------------------------------------------
 
-/**
- * Lightweight ratelimit wrapper. Uses `@upstash/ratelimit` when Upstash is
- * configured and a best-effort in-memory sliding window otherwise.
- */
-export async function checkRateLimit(
+function checkRateLimitInMemory(
   identifier: string,
   {
     limit,
     windowSeconds,
   }: { limit: number; windowSeconds: number },
-): Promise<{ success: boolean; remaining: number; reset: number }> {
-  const client = getUpstashRedis();
-
-  if (client) {
-    const { Ratelimit } = await import("@upstash/ratelimit");
-    const rl = new Ratelimit({
-      redis: client,
-      limiter: Ratelimit.slidingWindow(limit, `${windowSeconds} s`),
-      analytics: false,
-      prefix: "rl:chat",
-    });
-    const { success, remaining, reset } = await rl.limit(identifier);
-    return { success, remaining, reset };
-  }
-
-  // In-memory fallback.
+): { success: boolean; remaining: number; reset: number } {
   const now = Date.now();
   const windowMs = windowSeconds * 1000;
   const bucket =
@@ -297,4 +278,42 @@ export async function checkRateLimit(
     remaining: limit - hits.length,
     reset: now + windowMs,
   };
+}
+
+/**
+ * Lightweight ratelimit wrapper. Uses `@upstash/ratelimit` when Upstash is
+ * configured and a best-effort in-memory sliding window otherwise.
+ *
+ * If Upstash is configured but the limit call fails (network, bad token, etc.),
+ * we fall back to in-memory limiting so chat still works in production.
+ */
+export async function checkRateLimit(
+  identifier: string,
+  {
+    limit,
+    windowSeconds,
+  }: { limit: number; windowSeconds: number },
+): Promise<{ success: boolean; remaining: number; reset: number }> {
+  const client = getUpstashRedis();
+
+  if (client) {
+    try {
+      const { Ratelimit } = await import("@upstash/ratelimit");
+      const rl = new Ratelimit({
+        redis: client,
+        limiter: Ratelimit.slidingWindow(limit, `${windowSeconds} s`),
+        analytics: false,
+        prefix: "rl:chat",
+      });
+      const { success, remaining, reset } = await rl.limit(identifier);
+      return { success, remaining, reset };
+    } catch (err) {
+      console.warn(
+        "[ratelimit] Upstash limiter failed; using in-process fallback",
+        err,
+      );
+    }
+  }
+
+  return checkRateLimitInMemory(identifier, { limit, windowSeconds });
 }
