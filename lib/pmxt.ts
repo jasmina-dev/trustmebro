@@ -40,6 +40,42 @@ const PMXT_BASE = "https://api.pmxt.dev";
  */
 const ROUTER_FETCH_TIMEOUT_MS = 45_000;
 
+/** Sliding window for PMXT Router RPM (free tier is 60/min — stay under to avoid 429 storms). */
+const ROUTER_LIMIT_WINDOW_MS = 60_000;
+
+function routerBudgetPerMinute(): number {
+  const raw = process.env.PMXT_ROUTER_MAX_PER_MINUTE?.trim();
+  if (!raw) return 50;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1 ? n : 50;
+}
+
+let routerTokens = routerBudgetPerMinute();
+let routerBucketAt = Date.now();
+
+/**
+ * Wait until one Router HTTP request fits under the per-minute budget (shared
+ * across all concurrent routes in this Node process). Without this, a single
+ * dashboard reload fans out many `/api/*` handlers that each paginate `/v0/markets`
+ * and immediately exhaust PMXT's per-minute quota (429).
+ */
+async function acquireRouterBudget(): Promise<void> {
+  const cap = routerBudgetPerMinute();
+  for (;;) {
+    const now = Date.now();
+    const elapsed = Math.max(0, now - routerBucketAt);
+    routerBucketAt = now;
+    routerTokens = Math.min(cap, routerTokens + (elapsed * cap) / ROUTER_LIMIT_WINDOW_MS);
+    if (routerTokens >= 1) {
+      routerTokens -= 1;
+      return;
+    }
+    const deficit = 1 - routerTokens;
+    const waitMs = Math.ceil((deficit * ROUTER_LIMIT_WINDOW_MS) / cap) + 25;
+    await sleep(Math.min(waitMs, ROUTER_LIMIT_WINDOW_MS));
+  }
+}
+
 async function sleep(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
 }
@@ -50,6 +86,7 @@ async function sleep(ms: number): Promise<void> {
 async function routerFetchMarkets(url: URL): Promise<Response> {
   let last: Response | undefined;
   for (let attempt = 0; attempt < 4; attempt++) {
+    await acquireRouterBudget();
     const res = await fetch(url, {
       headers: {
         Authorization: `Bearer ${requireKey()}`,
