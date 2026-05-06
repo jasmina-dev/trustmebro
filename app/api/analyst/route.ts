@@ -222,6 +222,11 @@ export async function POST(req: NextRequest) {
   // Do NOT await streamText — StreamTextResult implements PromiseLike, so
   // awaiting it calls .then() which internally drains textStream before this
   // function resumes, leaving result.textStream exhausted (empty response).
+  //
+  // providerError is set by onError when the SDK absorbs a provider-level
+  // error without re-throwing it into textStream (silent empty-stream case).
+  let providerError: string | null = null;
+
   let result: ReturnType<typeof streamText>;
   try {
     result = streamText({
@@ -229,6 +234,11 @@ export async function POST(req: NextRequest) {
       system: buildSystemPrompt(normalizeContext(body.context)),
       messages: body.messages,
       maxTokens: 1024,
+      onError({ error }) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error("[api/analyst] provider error (absorbed by SDK):", msg);
+        providerError = msg;
+      },
     });
   } catch (err) {
     console.error("[api/analyst] stream setup error", err);
@@ -243,6 +253,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  console.log(`[api/analyst] streaming with model=${modelId} key_prefix=${apiKey.slice(0, 14)}…`);
+
   // Wrap the text stream so provider errors are forwarded as readable text
   // rather than an abrupt close (which the browser surfaces as "Failed to fetch").
   const enc = new TextEncoder();
@@ -255,7 +267,7 @@ export async function POST(req: NextRequest) {
           wrote = true;
         }
       } catch (streamErr) {
-        console.error("[api/analyst] provider stream error", streamErr);
+        console.error("[api/analyst] stream read error:", streamErr);
         const msg =
           streamErr instanceof Error
             ? streamErr.message
@@ -264,11 +276,13 @@ export async function POST(req: NextRequest) {
         wrote = true;
       }
       if (!wrote) {
-        // Stream closed cleanly but emitted nothing — typically an auth or
-        // quota error that the SDK absorbed without throwing.
+        const reason = providerError ?? "no chunks received and no error thrown";
+        console.error("[api/analyst] stream yielded no content:", reason);
         controller.enqueue(
           enc.encode(
-            "*No response from AI provider. Check that ANTHROPIC_API_KEY is valid and the selected model is available.*",
+            providerError
+              ? `*AI provider error: ${providerError}*`
+              : "*No response from AI provider — check pm2 logs for details.*",
           ),
         );
       }
