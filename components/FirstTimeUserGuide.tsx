@@ -43,8 +43,8 @@ export function FirstTimeUserGuide() {
           </li>
         </ol>
         <p>
-          Tip: start broad, then narrow down. A good flow is: all sources ->
-          pick one category -> inspect top signals -> ask AI follow-up
+          Tip: start broad, then narrow down. A good flow is: all sources -
+          pick one category - inspect top signals - ask AI follow-up
           questions.
         </p>
         <p className="text-xs">
