@@ -2,24 +2,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Sidebar } from "./Sidebar";
 import { useDashboard } from "@/lib/store";
+import { resetDashboardState } from "@/test-utils/dashboardState";
 
 describe("Sidebar", () => {
   beforeEach(() => {
-    useDashboard.setState({
-      activeVenue: "all",
-      activeCategory: "All",
-      activeChart: "overview",
-      dateRange: {
-        start: "2026-01-01T00:00:00.000Z",
-        end: "2026-01-31T00:00:00.000Z",
-      },
-      chatOpen: false,
-      chatMessages: [],
-      chatStreaming: false,
-      visibleMarkets: [],
-      inefficiencyScores: [],
-      resolutionStats: [],
-    });
+    resetDashboardState();
   });
 
   test("collapses and expands sidebar", async () => {

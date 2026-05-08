@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { TextDecoder, TextEncoder } from "util";
 import { ChatPanel } from "./ChatPanel";
 import { useDashboard } from "@/lib/store";
+import { resetDashboardState } from "@/test-utils/dashboardState";
 
 function restoreProperty(
   target: object,
@@ -18,53 +18,21 @@ function restoreProperty(
 
 describe("ChatPanel", () => {
   let cryptoDesc: PropertyDescriptor | undefined;
-  let textEncoderDesc: PropertyDescriptor | undefined;
-  let textDecoderDesc: PropertyDescriptor | undefined;
   let scrollIntoViewDesc: PropertyDescriptor | undefined;
   let fetchDesc: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     cryptoDesc = Object.getOwnPropertyDescriptor(globalThis, "crypto");
-    textEncoderDesc = Object.getOwnPropertyDescriptor(
-      globalThis,
-      "TextEncoder",
-    );
-    textDecoderDesc = Object.getOwnPropertyDescriptor(
-      globalThis,
-      "TextDecoder",
-    );
     scrollIntoViewDesc = Object.getOwnPropertyDescriptor(
       Element.prototype,
       "scrollIntoView",
     );
     fetchDesc = Object.getOwnPropertyDescriptor(globalThis, "fetch");
 
-    useDashboard.setState({
-      activeVenue: "all",
-      activeCategory: "All",
-      activeChart: "overview",
-      dateRange: {
-        start: "2026-01-01T00:00:00.000Z",
-        end: "2026-01-31T00:00:00.000Z",
-      },
-      chatOpen: true,
-      chatMessages: [],
-      chatStreaming: false,
-      visibleMarkets: [],
-      inefficiencyScores: [],
-      resolutionStats: [],
-    });
+    resetDashboardState({ chatOpen: true });
     let id = 0;
     Object.defineProperty(globalThis, "crypto", {
       value: { randomUUID: () => `id-${++id}` },
-      configurable: true,
-    });
-    Object.defineProperty(globalThis, "TextEncoder", {
-      value: TextEncoder,
-      configurable: true,
-    });
-    Object.defineProperty(globalThis, "TextDecoder", {
-      value: TextDecoder,
       configurable: true,
     });
     Object.defineProperty(Element.prototype, "scrollIntoView", {
@@ -75,8 +43,6 @@ describe("ChatPanel", () => {
 
   afterEach(() => {
     restoreProperty(globalThis, "crypto", cryptoDesc);
-    restoreProperty(globalThis, "TextEncoder", textEncoderDesc);
-    restoreProperty(globalThis, "TextDecoder", textDecoderDesc);
     restoreProperty(Element.prototype, "scrollIntoView", scrollIntoViewDesc);
     restoreProperty(globalThis, "fetch", fetchDesc);
   });
@@ -140,7 +106,8 @@ describe("ChatPanel", () => {
       configurable: true,
     });
 
-    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click")
+    const clickSpy = jest
+      .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => {});
 
     render(<ChatPanel />);
@@ -150,7 +117,9 @@ describe("ChatPanel", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(capturedType).toBe("text/plain;charset=utf-8");
     expect(capturedText).toBeDefined();
-    expect(capturedText).toContain("TrustMeBro AI Analyst — Conversation Export");
+    expect(capturedText).toContain(
+      "TrustMeBro AI Analyst — Conversation Export",
+    );
     expect(capturedText).toContain("Messages: 2");
     expect(capturedText).toContain("You:\nHi");
     expect(capturedText).toContain("Analyst:\nHello");

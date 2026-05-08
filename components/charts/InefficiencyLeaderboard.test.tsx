@@ -2,53 +2,23 @@ import { act, render, screen } from "@testing-library/react";
 import useSWR from "swr";
 import { useDashboard } from "@/lib/store";
 import { InefficiencyLeaderboard } from "./InefficiencyLeaderboard";
+import { resetDashboardState } from "@/test-utils/dashboardState";
+import { swrByKey } from "@/test-utils/mocks/swr";
 
 jest.mock("swr");
-jest.mock("../ui/Card", () => ({
-  Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardBody: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-  CardHeader: ({
-    title,
-    subtitle,
-    right,
-  }: {
-    title: string;
-    subtitle?: string;
-    right?: React.ReactNode;
-  }) => (
-    <div>
-      <div>{title}</div>
-      {subtitle ? <div data-testid="subtitle">{subtitle}</div> : null}
-      {right}
-    </div>
-  ),
-}));
-jest.mock("../ui/Skeleton", () => ({
-  ChartSkeleton: () => <div>loading</div>,
-}));
-jest.mock("../ui/HelpTooltip", () => ({
-  HelpTooltip: () => null,
-}));
+jest.mock("../ui/Card", () =>
+  require("@/test-utils/mocks/ui").mockCardModule(),
+);
+jest.mock("../ui/Skeleton", () =>
+  require("@/test-utils/mocks/ui").mockSkeletonModule(),
+);
+jest.mock("../ui/HelpTooltip", () =>
+  require("@/test-utils/mocks/ui").mockHelpTooltipModule(),
+);
 
 describe("InefficiencyLeaderboard venue toggle", () => {
   beforeEach(() => {
-    useDashboard.setState({
-      activeVenue: "all",
-      activeCategory: "All",
-      activeChart: "overview",
-      dateRange: {
-        start: "2026-01-01T00:00:00.000Z",
-        end: "2026-01-31T00:00:00.000Z",
-      },
-      chatOpen: false,
-      chatMessages: [],
-      chatStreaming: false,
-      visibleMarkets: [],
-      inefficiencyScores: [],
-      resolutionStats: [],
-    });
+    resetDashboardState();
   });
 
   test("includes cross-venue divergence rows under both venues", () => {
@@ -81,11 +51,13 @@ describe("InefficiencyLeaderboard venue toggle", () => {
       ],
     };
 
-    (useSWR as jest.Mock).mockImplementation((key: string) => {
-      if (key === "/api/inefficiencies")
-        return { data: scoresPayload, isLoading: false };
-      return { data: undefined, isLoading: false };
-    });
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+      }),
+    );
 
     render(<InefficiencyLeaderboard />);
     expect(screen.getByText("Divergence row")).toBeInTheDocument();

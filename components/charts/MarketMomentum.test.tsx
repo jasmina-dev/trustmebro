@@ -2,57 +2,31 @@ import { act, render, screen } from "@testing-library/react";
 import useSWR from "swr";
 import { useDashboard } from "@/lib/store";
 import { MarketMomentum } from "./MarketMomentum";
+import { resetDashboardState } from "@/test-utils/dashboardState";
+import { swrByKey } from "@/test-utils/mocks/swr";
 
 jest.mock("swr");
-jest.mock("../ui/Card", () => ({
-  Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardBody: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-  CardHeader: ({
-    title,
-    subtitle,
-  }: {
-    title: string;
-    subtitle?: string;
-    right?: React.ReactNode;
-  }) => (
-    <div>
-      <div>{title}</div>
-      {subtitle ? <div data-testid="subtitle">{subtitle}</div> : null}
-    </div>
-  ),
-}));
-jest.mock("../ui/Skeleton", () => ({
-  ChartSkeleton: () => <div>loading</div>,
-}));
-jest.mock("../ui/HelpTooltip", () => ({
-  HelpTooltip: () => null,
-}));
+jest.mock("../ui/Card", () =>
+  require("@/test-utils/mocks/ui").mockCardModule(),
+);
+jest.mock("../ui/Skeleton", () =>
+  require("@/test-utils/mocks/ui").mockSkeletonModule(),
+);
+jest.mock("../ui/HelpTooltip", () =>
+  require("@/test-utils/mocks/ui").mockHelpTooltipModule(),
+);
 
 describe("MarketMomentum venue toggle", () => {
   beforeEach(() => {
-    useDashboard.setState({
-      activeVenue: "all",
-      activeCategory: "All",
-      activeChart: "overview",
-      dateRange: {
-        start: "2026-01-01T00:00:00.000Z",
-        end: "2026-01-31T00:00:00.000Z",
-      },
-      chatOpen: false,
-      chatMessages: [],
-      chatStreaming: false,
-      visibleMarkets: [],
-      inefficiencyScores: [],
-      resolutionStats: [],
-    });
+    resetDashboardState();
   });
 
   test("switching activeVenue changes the SWR key (exchange param)", () => {
-    (useSWR as jest.Mock).mockImplementation((key: string) => {
-      return { data: { data: [] }, isLoading: false };
-    });
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        fallback: { data: { data: [] }, isLoading: false },
+      }),
+    );
 
     render(<MarketMomentum />);
 
@@ -101,29 +75,35 @@ describe("MarketMomentum venue toggle", () => {
       ],
     });
 
-    (useSWR as jest.Mock).mockImplementation((key: string) => {
-      if (typeof key === "string" && key.includes("exchange=kalshi")) {
-        return {
-          data: { data: [market("kal-only", "kalshi", 0.2)] },
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        startsWith: [
+          {
+            prefix: "/api/markets?exchange=kalshi",
+            value: {
+              data: { data: [market("kal-only", "kalshi", 0.2)] },
+              isLoading: false,
+            },
+          },
+          {
+            prefix: "/api/markets?exchange=polymarket",
+            value: {
+              data: { data: [market("poly-only", "polymarket", -0.2)] },
+              isLoading: false,
+            },
+          },
+        ],
+        fallback: {
+          data: {
+            data: [
+              market("poly-default", "polymarket", 0.15),
+              market("kal-default", "kalshi", 0.11),
+            ],
+          },
           isLoading: false,
-        };
-      }
-      if (typeof key === "string" && key.includes("exchange=polymarket")) {
-        return {
-          data: { data: [market("poly-only", "polymarket", -0.2)] },
-          isLoading: false,
-        };
-      }
-      return {
-        data: {
-          data: [
-            market("poly-default", "polymarket", 0.15),
-            market("kal-default", "kalshi", 0.11),
-          ],
         },
-        isLoading: false,
-      };
-    });
+      }),
+    );
 
     render(<MarketMomentum />);
     expect(screen.getByText("Market momentum")).toBeInTheDocument();

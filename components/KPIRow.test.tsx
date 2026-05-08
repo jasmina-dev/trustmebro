@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { KPIRow } from "./KPIRow";
 import { useDashboard } from "@/lib/store";
 import useSWR from "swr";
+import { resetDashboardState } from "@/test-utils/dashboardState";
+import { swrByKey } from "@/test-utils/mocks/swr";
 
 jest.mock("swr");
 jest.mock("./ui/KPICard", () => ({
@@ -23,21 +25,7 @@ describe("KPIRow", () => {
   };
 
   beforeEach(() => {
-    useDashboard.setState({
-      activeVenue: "all",
-      activeCategory: "All",
-      activeChart: "overview",
-      dateRange: {
-        start: "2026-01-01T00:00:00.000Z",
-        end: "2026-01-31T00:00:00.000Z",
-      },
-      chatOpen: false,
-      chatMessages: [],
-      chatStreaming: false,
-      visibleMarkets: [],
-      inefficiencyScores: [],
-      resolutionStats: [],
-    });
+    resetDashboardState();
   });
 
   test("renders key KPI labels and derived values", () => {
@@ -70,18 +58,23 @@ describe("KPIRow", () => {
       ],
     };
 
-    (useSWR as jest.Mock).mockImplementation((key: string) => {
-      if (key.startsWith("/api/markets")) {
-        return { data: marketsPayload, isLoading: false };
-      }
-      if (key.startsWith("/api/resolution-bias")) {
-        return { data: resolutionPayload, isLoading: false };
-      }
-      if (key === "/api/inefficiencies") {
-        return { data: scoresPayload, isLoading: false };
-      }
-      return { data: undefined, isLoading: false };
-    });
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+        startsWith: [
+          {
+            prefix: "/api/markets?",
+            value: { data: marketsPayload, isLoading: false },
+          },
+          {
+            prefix: "/api/resolution-bias",
+            value: { data: resolutionPayload, isLoading: false },
+          },
+        ],
+      }),
+    );
 
     render(<KPIRow />);
     expect(screen.getByText("Markets analyzed")).toBeInTheDocument();
@@ -110,18 +103,23 @@ describe("KPIRow", () => {
     };
     const scoresPayload = { data: [] };
 
-    (useSWR as jest.Mock).mockImplementation((key: string) => {
-      if (key.startsWith("/api/markets")) {
-        return { data: marketsPayload, isLoading: false };
-      }
-      if (key.startsWith("/api/resolution-bias")) {
-        return { data: resolutionPayload, isLoading: false };
-      }
-      if (key === "/api/inefficiencies") {
-        return { data: scoresPayload, isLoading: false };
-      }
-      return { data: undefined, isLoading: false };
-    });
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+        startsWith: [
+          {
+            prefix: "/api/markets?",
+            value: { data: marketsPayload, isLoading: false },
+          },
+          {
+            prefix: "/api/resolution-bias",
+            value: { data: resolutionPayload, isLoading: false },
+          },
+        ],
+      }),
+    );
 
     render(<KPIRow />);
     // Should use only Kalshi politics bucket => 1/10 = 0.1
@@ -160,18 +158,23 @@ describe("KPIRow", () => {
       ],
     };
 
-    (useSWR as jest.Mock).mockImplementation((key: string) => {
-      if (key.startsWith("/api/markets")) {
-        return { data: marketsPayload, isLoading: false };
-      }
-      if (key.startsWith("/api/resolution-bias")) {
-        return { data: resolutionPayload, isLoading: false };
-      }
-      if (key === "/api/inefficiencies") {
-        return { data: scoresPayload, isLoading: false };
-      }
-      return { data: undefined, isLoading: false };
-    });
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+        startsWith: [
+          {
+            prefix: "/api/markets?",
+            value: { data: marketsPayload, isLoading: false },
+          },
+          {
+            prefix: "/api/resolution-bias",
+            value: { data: resolutionPayload, isLoading: false },
+          },
+        ],
+      }),
+    );
 
     useDashboard.setState({ activeVenue: "kalshi" });
     const { rerender } = render(<KPIRow />);
