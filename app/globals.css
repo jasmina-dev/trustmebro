@@ -2,8 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* Dark theme is the default. Values are RGB triplets so that Tailwind's
+   `<alpha-value>` placeholder (e.g. `bg-bg/80`) keeps working. */
+:root,
+[data-theme="dark"] {
   color-scheme: dark;
+
+  --color-bg: 13 15 18;
+  --color-bg-elev: 13 15 18;
+  --color-bg-card: 22 26 32;
+  --color-bg-hover: 28 33 41;
+
+  --color-border: 42 49 60;
+  --color-border-subtle: 28 33 41;
+  --color-border-strong: 42 49 60;
+
+  --color-fg: 230 233 239;
+  --color-fg-muted: 139 146 160;
+  --color-fg-subtle: 91 101 120;
+
+  --color-grid-dot: 255 255 255;
+  --color-grid-dot-alpha: 0.04;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-bg: 247 248 250;
+  --color-bg-elev: 255 255 255;
+  --color-bg-card: 255 255 255;
+  --color-bg-hover: 238 240 244;
+
+  --color-border: 216 221 229;
+  --color-border-subtle: 230 233 239;
+  --color-border-strong: 199 205 214;
+
+  --color-fg: 17 24 39;
+  --color-fg-muted: 75 85 99;
+  --color-fg-subtle: 107 114 128;
+
+  --color-grid-dot: 15 23 42;
+  --color-grid-dot-alpha: 0.05;
 }
 
 html,
@@ -15,8 +54,11 @@ body {
 
 /* Subtle grid background for the dashboard surface */
 .bg-grid {
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgb(var(--color-grid-dot) / var(--color-grid-dot-alpha)) 1px,
+    transparent 0
+  );
   background-size: 24px 24px;
 }
 
@@ -24,9 +66,9 @@ body {
 .shimmer {
   background: linear-gradient(
     105deg,
-    theme('colors.bg.card') 0%,
-    theme('colors.bg.hover') 45%,
-    theme('colors.bg.card') 90%
+    theme("colors.bg.card") 0%,
+    theme("colors.bg.hover") 45%,
+    theme("colors.bg.card") 90%
   );
   background-size: 200% 100%;
   @apply animate-shimmer;
@@ -46,24 +88,24 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: theme('colors.border.strong');
+  background: theme("colors.border.strong");
   border-radius: 999px;
-  border: 2px solid theme('colors.bg.DEFAULT');
+  border: 2px solid theme("colors.bg.DEFAULT");
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: theme('colors.fg.subtle');
+  background: theme("colors.fg.subtle");
 }
 
 /* Recharts tooltip overrides */
 .recharts-default-tooltip {
-  background: theme('colors.bg.hover') !important;
-  border: 1px solid theme('colors.border.DEFAULT') !important;
+  background: theme("colors.bg.hover") !important;
+  border: 1px solid theme("colors.border.DEFAULT") !important;
   border-radius: 10px !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 .recharts-tooltip-label,
 .recharts-tooltip-item {
-  color: theme('colors.fg.DEFAULT') !important;
+  color: theme("colors.fg.DEFAULT") !important;
 }
 
 .recharts-cartesian-axis-tick-value,

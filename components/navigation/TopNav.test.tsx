@@ -43,4 +43,18 @@ describe("TopNav", () => {
     await user.selectOptions(screen.getByRole("combobox"), "Crypto");
     expect(useDashboard.getState().activeCategory).toBe("Crypto");
   });
+
+  test("renders the theme toggle immediately after the Ask AI button", () => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    render(<TopNav />);
+
+    const askAi = screen.getByRole("button", { name: "Ask AI" });
+    const themeToggle = screen.getByRole("button", {
+      name: /switch to light mode/i,
+    });
+
+    expect(themeToggle).toBeInTheDocument();
+    // The toggle is the immediate next sibling of the Ask AI button.
+    expect(askAi.nextElementSibling).toBe(themeToggle);
+  });
 });

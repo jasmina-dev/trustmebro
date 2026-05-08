@@ -11,20 +11,20 @@ const config: Config = {
     extend: {
       colors: {
         bg: {
-          DEFAULT: "#0d0f12",
-          elev: "#0d0f12",
-          card: "#161a20",
-          hover: "#1c2129",
+          DEFAULT: "rgb(var(--color-bg) / <alpha-value>)",
+          elev: "rgb(var(--color-bg-elev) / <alpha-value>)",
+          card: "rgb(var(--color-bg-card) / <alpha-value>)",
+          hover: "rgb(var(--color-bg-hover) / <alpha-value>)",
         },
         border: {
-          DEFAULT: "#2a313c",
-          subtle: "#1c2129",
-          strong: "#2a313c",
+          DEFAULT: "rgb(var(--color-border) / <alpha-value>)",
+          subtle: "rgb(var(--color-border-subtle) / <alpha-value>)",
+          strong: "rgb(var(--color-border-strong) / <alpha-value>)",
         },
         fg: {
-          DEFAULT: "#e6e9ef",
-          muted: "#8b92a0",
-          subtle: "#5b6578",
+          DEFAULT: "rgb(var(--color-fg) / <alpha-value>)",
+          muted: "rgb(var(--color-fg-muted) / <alpha-value>)",
+          subtle: "rgb(var(--color-fg-subtle) / <alpha-value>)",
         },
         accent: {
           DEFAULT: "#3b82f6",

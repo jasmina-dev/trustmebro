@@ -3,6 +3,7 @@
 import { useDashboard } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import type { ExchangeFilter } from "@/lib/types";
+import { ThemeToggle } from "./ThemeToggle";
 
 const VENUES: Array<{ id: ExchangeFilter; label: string }> = [
   { id: "all", label: "All" },
@@ -13,8 +14,16 @@ const VENUES: Array<{ id: ExchangeFilter; label: string }> = [
 const CATEGORIES = ["All", "Politics", "Crypto", "Finance", "Other"];
 
 export function TopNav() {
-  const { activeVenue, setVenue, activeCategory, setCategory, dateRange, setDateRange, setChatOpen, chatOpen } =
-    useDashboard();
+  const {
+    activeVenue,
+    setVenue,
+    activeCategory,
+    setCategory,
+    dateRange,
+    setDateRange,
+    setChatOpen,
+    chatOpen,
+  } = useDashboard();
 
   const startDate = new Date(dateRange.start).toISOString().slice(0, 10);
   const endDate = new Date(dateRange.end).toISOString().slice(0, 10);
@@ -52,11 +61,15 @@ export function TopNav() {
             >
               {chatOpen ? "Close chat" : "Ask AI"}
             </button>
+            <ThemeToggle />
           </div>
         </div>
       </div>
 
-      <nav className="border-b border-border bg-bg px-tmb7 py-tmb4" aria-label="Market filters">
+      <nav
+        className="border-b border-border bg-bg px-tmb7 py-tmb4"
+        aria-label="Market filters"
+      >
         <div className="mx-auto flex max-w-tmb-header flex-wrap items-center gap-tmb2">
           <span className="mr-1 text-xs font-bold uppercase tracking-wider text-fg-muted">
             Source
@@ -76,49 +89,49 @@ export function TopNav() {
             </button>
           ))}
 
-        <div className="ml-tmb5 hidden items-center gap-tmb2 lg:flex">
-          <label className="text-xs font-bold uppercase tracking-wider text-fg-muted">
-            Category
-          </label>
-          <select
-            value={activeCategory}
-            onChange={(e) => setCategory(e.target.value)}
-            className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 font-number text-sm font-medium text-fg focus:border-accent"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="ml-tmb5 hidden items-center gap-tmb2 lg:flex">
+            <label className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+              Category
+            </label>
+            <select
+              value={activeCategory}
+              onChange={(e) => setCategory(e.target.value)}
+              className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 font-number text-sm font-medium text-fg focus:border-accent"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="hidden items-center gap-tmb2 xl:flex">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) =>
-              setDateRange({
-                start: new Date(e.target.value).toISOString(),
-                end: dateRange.end,
-              })
-            }
-            className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 font-number text-sm font-medium text-fg focus:border-accent"
-          />
-          <span className="text-xs text-fg-muted">→</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) =>
-              setDateRange({
-                start: dateRange.start,
-                end: new Date(e.target.value).toISOString(),
-              })
-            }
-            className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 text-sm font-medium text-fg focus:border-accent"
-          />
+          <div className="hidden items-center gap-tmb2 xl:flex">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) =>
+                setDateRange({
+                  start: new Date(e.target.value).toISOString(),
+                  end: dateRange.end,
+                })
+              }
+              className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 font-number text-sm font-medium text-fg focus:border-accent"
+            />
+            <span className="text-xs text-fg-muted">→</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) =>
+                setDateRange({
+                  start: dateRange.start,
+                  end: new Date(e.target.value).toISOString(),
+                })
+              }
+              className="rounded-tmb border border-border bg-bg-card px-tmb4 py-tmb2 text-sm font-medium text-fg focus:border-accent"
+            />
+          </div>
         </div>
-      </div>
       </nav>
     </header>
   );
