@@ -5,6 +5,13 @@ import { cn } from "@/lib/cn";
 import type { ExchangeFilter } from "@/lib/types";
 import { ThemeToggle } from "./ThemeToggle";
 
+/**
+ * Top navigation bar for dashboard-wide controls.
+ *
+ * @remarks
+ * Owns the primary global filters (venue, category, date range) and the chat
+ * open/close toggle. State is persisted in the shared dashboard store.
+ */
 const VENUES: Array<{ id: ExchangeFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "polymarket", label: "Polymarket" },

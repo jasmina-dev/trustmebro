@@ -5,6 +5,14 @@ import { GET } from "./route";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets, mockResolutionBuckets } from "@/lib/mock";
 
+/**
+ * Route tests for `GET /api/resolution-bias`.
+ *
+ * @remarks
+ * The route returns category buckets for the resolution-bias dashboard views.
+ * Tests run in Node, mock upstream dependencies, and validate envelope shape
+ * plus mock/real branching behavior.
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),

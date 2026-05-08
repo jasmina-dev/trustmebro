@@ -1,9 +1,14 @@
-import {
-  buildExportFilename,
-  formatChatTranscript,
-} from "./chat-export";
+import { buildExportFilename, formatChatTranscript } from "./chat-export";
 import type { ChatMessage } from "./types";
 
+/**
+ * Unit tests for `lib/chat-export.ts`.
+ *
+ * @remarks
+ * Exported chat transcripts are user-facing artifacts, so we validate:
+ * - filenames are stable and filesystem-safe (notably Windows)
+ * - transcript formatting is deterministic given timestamps and message order
+ */
 const FIXED_DATE = new Date("2026-05-08T16:45:30.000Z");
 
 function msg(
@@ -36,13 +41,23 @@ describe("formatChatTranscript", () => {
 
   test("renders user and assistant turns with timestamps and labels", () => {
     const messages: ChatMessage[] = [
-      msg("user", "Why do sports markets skew NO?", Date.UTC(2026, 4, 8, 12, 35, 0)),
-      msg("assistant", "Because of the favorite-longshot bias.", Date.UTC(2026, 4, 8, 12, 35, 2)),
+      msg(
+        "user",
+        "Why do sports markets skew NO?",
+        Date.UTC(2026, 4, 8, 12, 35, 0),
+      ),
+      msg(
+        "assistant",
+        "Because of the favorite-longshot bias.",
+        Date.UTC(2026, 4, 8, 12, 35, 2),
+      ),
     ];
     const out = formatChatTranscript(messages, FIXED_DATE);
 
     expect(out).toContain("Messages: 2");
-    expect(out).toContain("[2026-05-08 12:35:00Z] You:\nWhy do sports markets skew NO?");
+    expect(out).toContain(
+      "[2026-05-08 12:35:00Z] You:\nWhy do sports markets skew NO?",
+    );
     expect(out).toContain(
       "[2026-05-08 12:35:02Z] Analyst:\nBecause of the favorite-longshot bias.",
     );
@@ -50,6 +65,8 @@ describe("formatChatTranscript", () => {
 
   test("substitutes (empty) for blank assistant turns", () => {
     const messages: ChatMessage[] = [msg("assistant", "", 0)];
-    expect(formatChatTranscript(messages, FIXED_DATE)).toContain("Analyst:\n(empty)");
+    expect(formatChatTranscript(messages, FIXED_DATE)).toContain(
+      "Analyst:\n(empty)",
+    );
   });
 });

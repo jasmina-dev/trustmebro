@@ -4,6 +4,14 @@ import { Sidebar } from "./Sidebar";
 import { useDashboard } from "@/lib/store";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 
+/**
+ * Component tests for `Sidebar`.
+ *
+ * @remarks
+ * Sidebar coordinates navigation state (active chart) and a few DOM behaviors
+ * (scrolling to chart sections). These tests assert on store updates and the
+ * expected scroll hook without coupling to layout details.
+ */
 describe("Sidebar", () => {
   beforeEach(() => {
     resetDashboardState();

@@ -7,6 +7,13 @@ type Theme = "light" | "dark";
 
 const STORAGE_KEY = "tmb-theme";
 
+/**
+ * Theme toggle (light/dark) with local persistence.
+ *
+ * @remarks
+ * Mirrors the selected theme onto `document.documentElement.dataset.theme` and
+ * stores it in `localStorage` under `tmb-theme`.
+ */
 function readInitialTheme(): Theme {
   if (typeof document === "undefined") return "dark";
   const attr = document.documentElement.getAttribute("data-theme");

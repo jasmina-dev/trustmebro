@@ -4,6 +4,14 @@ import { GET } from "./route";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets } from "@/lib/mock";
 
+/**
+ * Route tests for `GET /api/calibration`.
+ *
+ * @remarks
+ * The route computes calibration buckets from closed markets and is expected to
+ * return a stable envelope and cache headers. Tests mock upstream fetch and
+ * validate mock/real branching via `hasPmxtKey()`.
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),

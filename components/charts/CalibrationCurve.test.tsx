@@ -4,6 +4,16 @@ import useSWR from "swr";
 import { CalibrationCurve } from "./CalibrationCurve";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `CalibrationCurve`.
+ *
+ * @remarks
+ * Exercises the primary UX paths:
+ * - loading/empty states from SWR (`/api/calibration`)
+ * - category selection interactions
+ *
+ * Recharts is mocked to avoid coupling to chart rendering details.
+ */
 jest.mock("swr");
 jest.mock("../ui/Card", () =>
   require("@/test-utils/mocks/ui").mockCardModule(),

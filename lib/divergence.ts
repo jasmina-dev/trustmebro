@@ -72,6 +72,11 @@ export function pairMarkets(
   return pairs;
 }
 
+/**
+ * Fetch both venues' active markets for a category and return divergent pairs.
+ *
+ * @param category - Normalized category bucket (e.g. "Politics").
+ */
 export async function divergentPairsForCategory(
   category: string,
 ): Promise<DivergentPair[]> {

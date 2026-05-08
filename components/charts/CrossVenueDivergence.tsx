@@ -21,6 +21,14 @@ import { useDashboard } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import type { DivergentPair } from "@/lib/types";
 
+/**
+ * Cross-venue divergence scatter plot.
+ *
+ * @remarks
+ * Compares matched markets across venues (Polymarket vs Kalshi) and surfaces
+ * spread magnitude over time/category. Uses `/api/divergence` and responds to
+ * dashboard filters (venue/category) via derived SWR keys.
+ */
 const CATEGORY_OPTIONS = [
   "All",
   "Politics",
@@ -56,12 +64,16 @@ export function CrossVenueDivergence() {
     return `/api/divergence?${qs.toString()}`;
   }, [category]);
 
-  const { data, isLoading } = useSWR<ApiPayload<DivergentPair[]>>(url, fetcher, {
-    refreshInterval: REFRESH.inefficiencies,
-    dedupingInterval: 60_000,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading } = useSWR<ApiPayload<DivergentPair[]>>(
+    url,
+    fetcher,
+    {
+      refreshInterval: REFRESH.inefficiencies,
+      dedupingInterval: 60_000,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
 
   const pairs = useMemo(() => data?.data ?? [], [data?.data]);
   const topPairs = useMemo(() => pairs.slice(0, 15), [pairs]);
@@ -183,7 +195,10 @@ function PairRow({
           </div>
           <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[10px] text-fg-muted">
             <span>
-              Poly <span className="text-fg">{(pair.polyYes * 100).toFixed(0)}%</span>
+              Poly{" "}
+              <span className="text-fg">
+                {(pair.polyYes * 100).toFixed(0)}%
+              </span>
             </span>
             <span>
               Kalshi{" "}

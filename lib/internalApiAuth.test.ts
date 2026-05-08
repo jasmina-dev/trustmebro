@@ -1,5 +1,15 @@
 import { requireCronAuthorized } from "./internalApiAuth";
 
+/**
+ * Unit tests for `requireCronAuthorized()`.
+ *
+ * @remarks
+ * This helper is used by internal/warmup routes to gate cron access:
+ * - In production: CRON_SECRET must be configured and must match Bearer token.
+ * - In dev/test: missing CRON_SECRET is allowed for local convenience.
+ *
+ * Tests intentionally patch `process.env` to cover both modes.
+ */
 describe("requireCronAuthorized", () => {
   const withEnv = async (
     patch: Record<string, string | undefined>,

@@ -202,7 +202,9 @@ export function mockMarkets({
   for (const cat of categories) {
     const titles = SAMPLE_TITLES[cat] ?? SAMPLE_TITLES.Other;
     for (const ex of exchanges) {
-      const count = closed ? MOCK_MARKETS_PER_CELL_CLOSED : MOCK_MARKETS_PER_CELL_LIVE;
+      const count = closed
+        ? MOCK_MARKETS_PER_CELL_CLOSED
+        : MOCK_MARKETS_PER_CELL_LIVE;
       for (let i = 0; i < count; i++) {
         const title = titles[i % titles.length];
         rows.push(
@@ -230,7 +232,9 @@ export function mockMarkets({
  * Resolution outcome labels for closed markets — derived from TRUE_NO_RATES
  * so the computed NO-rate stats match the "ground truth" bias we seeded in.
  */
-export function assignResolutionLabels(markets: UnifiedMarket[]): UnifiedMarket[] {
+export function assignResolutionLabels(
+  markets: UnifiedMarket[],
+): UnifiedMarket[] {
   const rng = mulberry32(9001);
   return markets.map((m) => {
     if ((m.status ?? "").toLowerCase() !== "resolved") return m;
@@ -255,6 +259,12 @@ export function assignResolutionLabels(markets: UnifiedMarket[]): UnifiedMarket[
 // OHLCV
 // ---------------------------------------------------------------------------
 
+/**
+ * Deterministic mock OHLCV generator for a given outcome id.
+ *
+ * @remarks
+ * Seeded by `outcomeId` so charts are stable across reloads in mock mode.
+ */
 export function mockOhlcv(
   outcomeId: string,
   { limit = 168 }: { limit?: number } = {},
@@ -295,6 +305,9 @@ export function mockOhlcv(
 // we want to show buckets without running the full pipeline on every route).
 // ---------------------------------------------------------------------------
 
+/**
+ * Deterministic resolution-bias buckets for mock mode (no PMXT key).
+ */
 export function mockResolutionBuckets(): ResolutionBiasBucket[] {
   const buckets: ResolutionBiasBucket[] = [];
   for (const category of CATEGORIES) {

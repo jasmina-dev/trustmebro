@@ -11,6 +11,14 @@ import { cn } from "@/lib/cn";
 import { useDashboard } from "@/lib/store";
 import type { InefficiencyScore, InefficiencyType } from "@/lib/types";
 
+/**
+ * Inefficiency leaderboard table.
+ *
+ * @remarks
+ * The leaderboard is driven by `/api/inefficiencies` and filtered by the active
+ * dashboard venue/category. Divergence entries span two venues and should be
+ * visible under either exchange toggle.
+ */
 const TYPE_LABEL: Record<InefficiencyType, string> = {
   resolution_bias: "Bias",
   cross_venue_divergence: "Divergence",

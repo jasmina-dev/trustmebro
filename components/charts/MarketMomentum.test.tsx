@@ -5,6 +5,14 @@ import { MarketMomentum } from "./MarketMomentum";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `MarketMomentum`.
+ *
+ * @remarks
+ * MarketMomentum builds its SWR key from dashboard state (venue/exchange). These
+ * tests ensure toggling `activeVenue` updates the key and therefore triggers a
+ * refetch path, without depending on chart implementation details.
+ */
 jest.mock("swr");
 jest.mock("../ui/Card", () =>
   require("@/test-utils/mocks/ui").mockCardModule(),

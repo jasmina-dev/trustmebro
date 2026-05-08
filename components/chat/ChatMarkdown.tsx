@@ -3,6 +3,13 @@
 import type { AnchorHTMLAttributes } from "react";
 import Markdown from "markdown-to-jsx";
 
+/**
+ * Markdown renderer for chat messages.
+ *
+ * @remarks
+ * Keeps the surface area intentionally small (links + basic formatting) and
+ * ensures external links open safely in a new tab.
+ */
 function MarkdownLink({
   href,
   children,

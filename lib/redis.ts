@@ -20,6 +20,14 @@ import { Redis } from "@upstash/redis";
 let _upstashResolved: boolean | undefined;
 let _upstashClient: Redis | null | undefined;
 
+/**
+ * Get the shared Upstash Redis REST client for this process.
+ *
+ * @remarks
+ * Returns `null` when Upstash env vars are not configured. Callers should
+ * degrade gracefully; the rest of this module uses an in-memory backend
+ * in that case.
+ */
 export function getUpstashRedis(): Redis | null {
   if (_upstashResolved) return _upstashClient ?? null;
   _upstashResolved = true;
@@ -136,6 +144,11 @@ function getBackend(): CacheBackend {
   return _backend;
 }
 
+/**
+ * Which cache backend is active for this process.
+ *
+ * @returns `"upstash"` when Upstash env vars are configured, otherwise `"memory"`.
+ */
 export function cacheBackendName(): "upstash" | "memory" {
   return getBackend().name;
 }
@@ -181,9 +194,7 @@ export async function cached<T>(
 
   const redis = getUpstashRedis();
   const useCoord =
-    Boolean(redis) &&
-    coordinateMissEnabled() &&
-    backend.name === "upstash";
+    Boolean(redis) && coordinateMissEnabled() && backend.name === "upstash";
 
   const lockKey = `coord:${key}`;
   const lockEx = coordLockSeconds();
@@ -249,18 +260,16 @@ export async function invalidate(key: string): Promise<void> {
 
 function checkRateLimitInMemory(
   identifier: string,
-  {
-    limit,
-    windowSeconds,
-  }: { limit: number; windowSeconds: number },
+  { limit, windowSeconds }: { limit: number; windowSeconds: number },
 ): { success: boolean; remaining: number; reset: number } {
   const now = Date.now();
   const windowMs = windowSeconds * 1000;
   const bucket =
     (globalThis as unknown as { __memRateLimit?: Map<string, number[]> })
       .__memRateLimit ??
-    ((globalThis as unknown as { __memRateLimit: Map<string, number[]> })
-      .__memRateLimit = new Map<string, number[]>());
+    ((
+      globalThis as unknown as { __memRateLimit: Map<string, number[]> }
+    ).__memRateLimit = new Map<string, number[]>());
   const hits: number[] = (bucket.get(identifier) ?? []).filter(
     (t: number) => now - t < windowMs,
   );
@@ -289,10 +298,7 @@ function checkRateLimitInMemory(
  */
 export async function checkRateLimit(
   identifier: string,
-  {
-    limit,
-    windowSeconds,
-  }: { limit: number; windowSeconds: number },
+  { limit, windowSeconds }: { limit: number; windowSeconds: number },
 ): Promise<{ success: boolean; remaining: number; reset: number }> {
   const client = getUpstashRedis();
 

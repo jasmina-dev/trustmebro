@@ -9,6 +9,14 @@ import {
   jsonCacheHeaders,
 } from "./cacheHeaders";
 
+/**
+ * Unit tests for `lib/cacheHeaders.ts`.
+ *
+ * @remarks
+ * These tests lock in our public API caching contract:
+ * - `X-Cache` is always set so UI/devtools can observe cache behavior.
+ * - `"BYPASS"` forces `Cache-Control: no-store` regardless of route defaults.
+ */
 describe("cacheHeaders", () => {
   test("jsonCacheHeaders sets X-Cache and cache-control for HIT/MISS", () => {
     expect(jsonCacheHeaders("HIT", "private, max-age=10")).toEqual({

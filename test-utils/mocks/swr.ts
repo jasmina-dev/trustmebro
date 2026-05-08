@@ -6,10 +6,14 @@
  *   jest.mock("swr");
  *   (useSWR as jest.Mock).mockImplementation(
  *     swrByKey({
- *       "/api/foo": { data: { data: [] }, isLoading: false },
+ *       exact: { "/api/foo": { data: { data: [] }, isLoading: false } },
  *       startsWith: [{ prefix: "/api/markets?", value: { data: { data: [] } } }],
  *     }),
  *   );
+ *
+ * @remarks
+ * This helper is meant for unit tests only. Keep it deterministic and avoid
+ * encoding "business logic" into the mock selector.
  */
 
 type SwrReturn = { data?: any; isLoading?: boolean; error?: any };

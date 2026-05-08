@@ -2,6 +2,13 @@
 
 import React from "react";
 
+/**
+ * Error boundary wrapper for charts and other dashboard widgets.
+ *
+ * @remarks
+ * Prevents a single render-time exception from blanking the entire page by
+ * rendering a small fallback UI and allowing retry.
+ */
 interface Props {
   children: React.ReactNode;
   fallbackLabel?: string;

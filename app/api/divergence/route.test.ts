@@ -5,6 +5,13 @@ import { GET } from "./route";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets } from "@/lib/mock";
 
+/**
+ * Route tests for `GET /api/divergence`.
+ *
+ * @remarks
+ * Ensures the route returns a stable envelope and uses the expected "real" vs
+ * "mock" divergence sources depending on whether a PMXT key is configured.
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),

@@ -4,6 +4,13 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { useDashboard } from "@/lib/store";
 
+/**
+ * Sidebar section navigation for the dashboard.
+ *
+ * @remarks
+ * Keeps the active chart section in the shared store and scrolls to the
+ * corresponding anchor for a "single-page report" style flow.
+ */
 const SECTIONS = [
   {
     id: "overview",

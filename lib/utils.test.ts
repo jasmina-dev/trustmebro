@@ -13,6 +13,13 @@ import {
   yesOutcome,
 } from "./utils";
 
+/**
+ * Unit tests for `lib/utils.ts`.
+ *
+ * @remarks
+ * These are the small, shared helpers used across charts/routes. Tests focus on
+ * corner cases and stable behavior (formatting, bucketing, and URL inference).
+ */
 function buildMarket(overrides: Partial<UnifiedMarket> = {}): UnifiedMarket {
   return {
     marketId: "MKT-1",
@@ -55,7 +62,11 @@ describe("lib/utils", () => {
   });
 
   test("histogram bins values and ignores non-finite inputs", () => {
-    const buckets = histogram([0.1, 0.15, 0.9, Number.NaN], { bins: 2, min: 0, max: 1 });
+    const buckets = histogram([0.1, 0.15, 0.9, Number.NaN], {
+      bins: 2,
+      min: 0,
+      max: 1,
+    });
     expect(buckets.map((b) => b.count)).toEqual([2, 1]);
   });
 
@@ -131,7 +142,9 @@ describe("lib/utils", () => {
       url: "https://kalshi.com/markets/ABC",
       title: "Will X happen?",
     });
-    expect(url).toBe("https://polymarket.com/search?search=Will%20X%20happen%3F");
+    expect(url).toBe(
+      "https://polymarket.com/search?search=Will%20X%20happen%3F",
+    );
   });
 
   test("resolvedLabel returns null for unresolved or weak winners", () => {

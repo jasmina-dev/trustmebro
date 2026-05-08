@@ -59,6 +59,14 @@ export interface FetchAllResult {
  * Fetch every market matching the filter, transparently paginating and
  * caching each page. Logs a one-line summary per invocation so the dev
  * console shows what the quota is actually being spent on.
+ *
+ * @remarks
+ * Pagination termination is based on the upstream Router page size (raw row
+ * count), not the post-processed `markets.length`, because filtering can drop
+ * many rows while still requiring additional pages.
+ *
+ * @param opts - Fetch filters and cache/pagination bounds.
+ * @returns Aggregated markets plus telemetry about cache hits and elapsed time.
  */
 export async function fetchAllMarkets(
   opts: FetchAllOptions,
@@ -85,25 +93,29 @@ export async function fetchAllMarkets(
       offset,
     ].join(":");
 
-    const { value: page, state } = await cached<CachedRawPage>(key, ttl, async () => {
-      const res = await router.markets({
-        exchange,
-        category,
-        closed,
-        query,
-        limit: PAGE_SIZE,
-        offset,
-      });
-      const markets = res.data.map((m) => ({
-        ...m,
-        // Router guarantees `exchange=` scoping; venue metadata is sometimes
-        // missing or inconsistent — do not drop rows (see divergence logs:
-        // ~10k raw → ~277 kept when filtering on marketExchange).
-        exchange,
-        category: m.category ?? category ?? null,
-      }));
-      return { markets, apiRowCount: res.data.length };
-    });
+    const { value: page, state } = await cached<CachedRawPage>(
+      key,
+      ttl,
+      async () => {
+        const res = await router.markets({
+          exchange,
+          category,
+          closed,
+          query,
+          limit: PAGE_SIZE,
+          offset,
+        });
+        const markets = res.data.map((m) => ({
+          ...m,
+          // Router guarantees `exchange=` scoping; venue metadata is sometimes
+          // missing or inconsistent — do not drop rows (see divergence logs:
+          // ~10k raw → ~277 kept when filtering on marketExchange).
+          exchange,
+          category: m.category ?? category ?? null,
+        }));
+        return { markets, apiRowCount: res.data.length };
+      },
+    );
 
     pagesFetched += 1;
     if (state === "HIT") fromCache += 1;

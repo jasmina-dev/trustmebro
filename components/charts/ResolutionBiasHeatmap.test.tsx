@@ -4,6 +4,14 @@ import { ResolutionBiasHeatmap } from "./ResolutionBiasHeatmap";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `ResolutionBiasHeatmap`.
+ *
+ * @remarks
+ * The heatmap is driven by SWR (`/api/resolution-bias`) and rendered under the
+ * shared dashboard filter context. We mock SWR and shared UI primitives to keep
+ * assertions focused on user-visible states (loading/empty/data).
+ */
 jest.mock("swr");
 jest.mock("../ui/Card", () =>
   require("@/test-utils/mocks/ui").mockCardModule(),

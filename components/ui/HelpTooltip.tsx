@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+/**
+ * Small click-to-open help tooltip used in chart headers.
+ *
+ * @remarks
+ * Implemented as a controlled popover-like element (not a native tooltip) so we
+ * can support rich explanatory text and close-on-outside-click behavior.
+ */
 export function HelpTooltip({
   title = "What this shows",
   content,

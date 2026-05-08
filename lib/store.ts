@@ -22,6 +22,15 @@ import type {
   UnifiedMarket,
 } from "./types";
 
+/**
+ * Shared Zustand store used by the dashboard.
+ *
+ * @remarks
+ * `useDashboard` is the coordination point between:
+ * - filters (venue/category/date range) that affect SWR keys
+ * - chart context snapshots (so the chat endpoint can "see" what’s on screen)
+ * - chat panel UI state (open/messages/streaming)
+ */
 interface DashboardState {
   // ------- Filters -------
   activeVenue: ExchangeFilter;
@@ -71,6 +80,15 @@ const initialDateRange = () => {
   return { start: start.toISOString(), end: end.toISOString() };
 };
 
+/**
+ * Access and mutate dashboard state.
+ *
+ * @remarks
+ * Components should:
+ * - read filters directly (`activeVenue`, `activeCategory`, `dateRange`)
+ * - call `updateChartContext(id, patch)` when SWR data loads, so the chat
+ *   context stays in sync with what the user is viewing
+ */
 export const useDashboard = create<DashboardState>((set, get) => ({
   activeVenue: "all",
   activeCategory: "All",

@@ -6,6 +6,15 @@ import { cached } from "@/lib/redis";
 import { hasPmxtKey, router } from "@/lib/pmxt";
 import { mockMarkets } from "@/lib/mock";
 
+/**
+ * Route tests for `GET /api/markets`.
+ *
+ * @remarks
+ * Runs in the Node test environment and mocks Redis + PMXT to validate:
+ * - query parsing (exchange/category/closed/limit)
+ * - response envelope shape + cache headers
+ * - behavior differences between real mode (PMXT key) and mock mode
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),

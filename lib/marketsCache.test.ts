@@ -22,6 +22,14 @@ jest.mock("./utils", () => ({
   venueMarketUrl: jest.fn((m: any) => `url:${m.marketId}`),
 }));
 
+/**
+ * Unit tests for `lib/marketsCache.ts`.
+ *
+ * @remarks
+ * This suite focuses on pure behavior: cache key construction, TTL selection
+ * (including env overrides), and response normalization. Redis integration and
+ * upstream PMXT behavior are mocked.
+ */
 describe("marketsCache", () => {
   const withEnv = async (
     patch: Record<string, string | undefined>,

@@ -1,6 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import Page from "./page";
 
+/**
+ * Component tests for the dashboard page (`app/dashboard/page.tsx`).
+ *
+ * @remarks
+ * The dashboard composes many heavy chart modules loaded via `next/dynamic`.
+ * This suite mocks those pieces to keep the test fast and focused on page-level
+ * composition (nav/sidebar/KPIs and chart placeholders).
+ */
 jest.mock("next/dynamic", () => {
   return () => {
     const DynamicStub = () => <div data-testid="dynamic-module" />;

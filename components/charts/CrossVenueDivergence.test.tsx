@@ -5,6 +5,14 @@ import { CrossVenueDivergence } from "./CrossVenueDivergence";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `CrossVenueDivergence`.
+ *
+ * @remarks
+ * This chart is SWR-driven and rendered in a "dashboard filter" context, so we
+ * mock both the fetch layer (SWR) and shared UI primitives. Tests focus on
+ * basic rendering and interactions without depending on SVG output.
+ */
 jest.mock("swr");
 jest.mock("../ui/Card", () =>
   require("@/test-utils/mocks/ui").mockCardModule(),

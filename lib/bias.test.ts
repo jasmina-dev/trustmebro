@@ -1,6 +1,13 @@
 import { classifyWinnerLabel, computeBiasBucket } from "./bias";
 import type { UnifiedMarket } from "./types";
 
+/**
+ * Unit tests for `lib/bias.ts`.
+ *
+ * @remarks
+ * Focuses on deterministic label classification and bucket computation so the
+ * resolution-bias pipeline remains stable across minor upstream label changes.
+ */
 function marketWithOutcomes(
   marketId: string,
   outcomes: UnifiedMarket["outcomes"],
@@ -56,8 +63,18 @@ describe("lib/bias", () => {
   test("computeBiasBucket flags large no-heavy samples", () => {
     const markets: UnifiedMarket[] = Array.from({ length: 35 }, (_, i) =>
       marketWithOutcomes(String(i), [
-        { outcomeId: `${i}y`, marketId: String(i), label: "Yes", price: i < 5 ? 0.9 : 0.1 },
-        { outcomeId: `${i}n`, marketId: String(i), label: "No", price: i < 5 ? 0.1 : 0.9 },
+        {
+          outcomeId: `${i}y`,
+          marketId: String(i),
+          label: "Yes",
+          price: i < 5 ? 0.9 : 0.1,
+        },
+        {
+          outcomeId: `${i}n`,
+          marketId: String(i),
+          label: "No",
+          price: i < 5 ? 0.1 : 0.9,
+        },
       ]),
     );
 

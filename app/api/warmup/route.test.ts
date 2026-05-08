@@ -3,6 +3,14 @@
 import { GET } from "./route";
 import { hasPmxtKey } from "@/lib/pmxt";
 
+/**
+ * Route tests for `GET /api/warmup`.
+ *
+ * @remarks
+ * The warmup endpoint primes/caches several expensive aggregates. Tests mock
+ * the downstream pipeline modules and validate that the route orchestrates the
+ * expected calls (without requiring real upstream data).
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(),
 }));

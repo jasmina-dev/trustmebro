@@ -13,6 +13,13 @@ interface KPICardProps {
   loading?: boolean;
 }
 
+/**
+ * Display card for a single KPI (label + value + optional delta).
+ *
+ * @remarks
+ * Handles animated numeric transitions and optional contextual hint text while
+ * keeping markup simple for accessibility and testing.
+ */
 export function KPICard({
   label,
   value,
@@ -26,20 +33,20 @@ export function KPICard({
     typeof value === "number" && format !== "string" ? value : null;
   const display = useCountUp(numericTarget);
 
-  const formatted =
-    loading
-      ? "—"
-      : format === "string" || typeof value === "string"
-        ? String(value)
-        : formatValue(numericTarget === null ? 0 : display, format);
+  const formatted = loading
+    ? "—"
+    : format === "string" || typeof value === "string"
+      ? String(value)
+      : formatValue(numericTarget === null ? 0 : display, format);
 
-  const deltaColor = delta === undefined
-    ? ""
-    : delta > 0
-      ? "text-success"
-      : delta < 0
-        ? "text-danger"
-        : "text-fg-muted";
+  const deltaColor =
+    delta === undefined
+      ? ""
+      : delta > 0
+        ? "text-success"
+        : delta < 0
+          ? "text-danger"
+          : "text-fg-muted";
 
   return (
     <div className="rounded-tmb border border-border bg-bg-card p-tmb6">

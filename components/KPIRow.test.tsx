@@ -5,6 +5,15 @@ import useSWR from "swr";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `KPIRow`.
+ *
+ * @remarks
+ * KPIs combine multiple SWR endpoints and are further filtered by the current
+ * dashboard "venue" (exchange) toggle. These tests verify that derived KPIs
+ * (like Avg politics NO-rate and Inefficiencies flagged) recompute when the
+ * venue changes.
+ */
 jest.mock("swr");
 jest.mock("./ui/KPICard", () => ({
   KPICard: ({ label, value }: { label: string; value: number | string }) => (

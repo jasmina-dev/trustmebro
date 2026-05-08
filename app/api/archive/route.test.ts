@@ -4,6 +4,14 @@ import { NextRequest } from "next/server";
 import { GET } from "./route";
 import { hasPmxtKey, fetchArchive } from "@/lib/pmxt";
 
+/**
+ * Route tests for `GET /api/archive`.
+ *
+ * @remarks
+ * The archive route is a thin wrapper around `fetchArchive()` with caching and
+ * mock-mode fallbacks. Tests mock PMXT and validate the envelope + branch
+ * behavior with/without a configured API key.
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),
@@ -52,7 +60,9 @@ describe("/api/archive GET", () => {
     (hasPmxtKey as jest.Mock).mockReturnValue(true);
     (fetchArchive as jest.Mock).mockResolvedValue(null);
 
-    const req = new NextRequest("http://localhost:3000/api/archive?path=unknown");
+    const req = new NextRequest(
+      "http://localhost:3000/api/archive?path=unknown",
+    );
     const res = await GET(req);
     const body = await res.json();
 

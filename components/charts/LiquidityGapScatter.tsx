@@ -19,12 +19,16 @@ import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
 import { useState } from "react";
-import type {
-  InefficiencyScore,
-  UnifiedMarket,
-} from "@/lib/types";
+import type { InefficiencyScore, UnifiedMarket } from "@/lib/types";
 import { usd } from "@/lib/utils";
 
+/**
+ * Liquidity gap scatter plot.
+ *
+ * @remarks
+ * Visualizes inefficiency scores vs liquidity and reacts to dashboard filters
+ * by rebuilding its SWR keys (`/api/markets` and `/api/inefficiencies`).
+ */
 export function LiquidityGapScatter() {
   const { activeVenue, activeCategory } = useDashboard();
 
@@ -156,7 +160,10 @@ export function LiquidityGapScatter() {
                     </div>
                     <div className="space-y-0.5 text-fg-muted">
                       <div>
-                        Venue: <span className="capitalize text-fg">{d.m.exchange}</span>
+                        Venue:{" "}
+                        <span className="capitalize text-fg">
+                          {d.m.exchange}
+                        </span>
                       </div>
                       <div>Vol: {usd(d.m.volume24h)}</div>
                       <div>Liq: {usd(d.m.liquidity)}</div>

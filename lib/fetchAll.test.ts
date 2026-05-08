@@ -12,6 +12,13 @@ jest.mock("./pmxt", () => ({
   },
 }));
 
+/**
+ * Unit tests for `lib/fetchAll.ts`.
+ *
+ * @remarks
+ * The key invariant: pagination termination is driven by the upstream Router
+ * page size (`apiRowCount`), not by the filtered/normalized row count.
+ */
 describe("fetchAll", () => {
   beforeEach(() => {
     jest.clearAllMocks();

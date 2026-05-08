@@ -5,6 +5,14 @@ import { LiquidityGapScatter } from "./LiquidityGapScatter";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `LiquidityGapScatter`.
+ *
+ * @remarks
+ * This chart depends on SWR data (`/api/inefficiencies`) and the dashboard
+ * venue filter (Zustand). We mock Recharts so we can assert on data plumbing
+ * and venue-driven key changes without relying on SVG rendering.
+ */
 jest.mock("swr");
 jest.mock("../ui/Card", () =>
   require("@/test-utils/mocks/ui").mockCardModule(),

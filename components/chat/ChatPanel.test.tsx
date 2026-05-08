@@ -4,6 +4,14 @@ import { ChatPanel } from "./ChatPanel";
 import { useDashboard } from "@/lib/store";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 
+/**
+ * Component tests for `ChatPanel`.
+ *
+ * @remarks
+ * ChatPanel interacts with browser-ish globals (crypto UUIDs, fetch, and
+ * scrolling). This suite stubs those globals and validates the user-facing chat
+ * behavior and store updates without requiring a running backend.
+ */
 function restoreProperty(
   target: object,
   key: string,

@@ -1,5 +1,12 @@
 import { cn } from "@/lib/cn";
 
+/**
+ * Small set of shared "card" primitives.
+ *
+ * @remarks
+ * Used throughout the dashboard to keep spacing, borders, and header layouts
+ * consistent across charts and KPI modules.
+ */
 export function Card({
   className,
   children,
@@ -7,10 +14,7 @@ export function Card({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(
-        "rounded-tmb border border-border bg-bg-card",
-        className,
-      )}
+      className={cn("rounded-tmb border border-border bg-bg-card", className)}
       {...props}
     >
       {children}
@@ -30,7 +34,9 @@ export function CardHeader({
   return (
     <div className="flex items-start justify-between gap-tmb5 border-b border-border px-tmb6 py-tmb5">
       <div>
-        <h3 className="text-lg font-semibold tracking-tight text-fg">{title}</h3>
+        <h3 className="text-lg font-semibold tracking-tight text-fg">
+          {title}
+        </h3>
         {subtitle && (
           <p className="mt-tmb1 text-sm leading-normal text-fg-muted">
             {subtitle}

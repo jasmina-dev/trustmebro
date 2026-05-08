@@ -3,6 +3,14 @@ import useSWR from "swr";
 import { EfficiencyTimeline } from "./EfficiencyTimeline";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `EfficiencyTimeline`.
+ *
+ * @remarks
+ * Validates the component’s handling of SWR lifecycle states for
+ * `/api/efficiency-timeline` (loading/empty/data). Recharts is mocked so tests
+ * can assert on deterministic rendering without SVG.
+ */
 jest.mock("swr");
 jest.mock("../ui/Card", () =>
   require("@/test-utils/mocks/ui").mockCardModule(),

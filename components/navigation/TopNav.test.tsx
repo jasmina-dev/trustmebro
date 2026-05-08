@@ -4,6 +4,14 @@ import { TopNav } from "./TopNav";
 import { useDashboard } from "@/lib/store";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 
+/**
+ * Component tests for `TopNav`.
+ *
+ * @remarks
+ * TopNav is mostly a thin UI over dashboard state (Zustand). These tests verify
+ * that user interactions correctly update the store (chat open, venue/category
+ * filters) rather than asserting on styling or layout.
+ */
 describe("TopNav", () => {
   beforeEach(() => {
     resetDashboardState();

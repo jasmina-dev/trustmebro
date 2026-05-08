@@ -5,6 +5,16 @@ import { GET } from "./route";
 import { fetchOhlcv, hasPmxtKey } from "@/lib/pmxt";
 import { mockOhlcv } from "@/lib/mock";
 
+/**
+ * Route tests for `GET /api/ohlcv`.
+ *
+ * @remarks
+ * This endpoint is the bridge between the dashboard and per-venue OHLCV:
+ * - mock mode returns deterministic candles
+ * - real mode proxies through `fetchOhlcv()`
+ *
+ * Tests mock PMXT + Redis and validate envelope/branch behavior.
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),

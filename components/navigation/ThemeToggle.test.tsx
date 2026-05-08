@@ -2,6 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeToggle } from "./ThemeToggle";
 
+/**
+ * Component tests for `ThemeToggle`.
+ *
+ * @remarks
+ * The toggle persists the chosen theme in `localStorage` and mirrors it onto
+ * `document.documentElement.dataset.theme`. Tests validate both the icon/ARIA
+ * state and persistence behavior.
+ */
 const STORAGE_KEY = "tmb-theme";
 
 function setInitialTheme(theme: "light" | "dark") {

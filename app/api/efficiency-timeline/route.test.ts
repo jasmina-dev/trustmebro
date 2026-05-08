@@ -4,6 +4,13 @@ import { GET } from "./route";
 import { hasPmxtKey } from "@/lib/pmxt";
 import { mockMarkets } from "@/lib/mock";
 
+/**
+ * Route tests for `GET /api/efficiency-timeline`.
+ *
+ * @remarks
+ * Validates the route’s envelope + mock/real branching behavior. Downstream
+ * fetching/caching is mocked so assertions focus on deterministic responses.
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),

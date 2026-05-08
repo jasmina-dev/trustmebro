@@ -7,7 +7,18 @@ import {
   impliedYesStrictNoTerminal,
 } from "./calibrationPrice";
 
-function market(partial: Partial<UnifiedMarket> & Pick<UnifiedMarket, "marketId" | "outcomes">): UnifiedMarket {
+/**
+ * Unit tests for `lib/calibrationPrice.ts`.
+ *
+ * @remarks
+ * The calibration pipeline relies on a consistent definition of "implied YES"
+ * across venues and market shapes. These tests lock in edge cases such as
+ * pinned pre-resolution snapshots and terminal-ish prices.
+ */
+function market(
+  partial: Partial<UnifiedMarket> &
+    Pick<UnifiedMarket, "marketId" | "outcomes">,
+): UnifiedMarket {
   return {
     title: "t",
     volume: 1,

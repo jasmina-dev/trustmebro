@@ -9,6 +9,13 @@ import { useEffect, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
+/**
+ * Resolution-bias heatmap (category × venue).
+ *
+ * @remarks
+ * Renders aggregated NO-rate bias buckets from `/api/resolution-bias` and
+ * supports filtering interactions that update the shared dashboard store.
+ */
 /** Heatmap columns only — API still aggregates Other for KPI / filters. */
 const CATEGORIES = ["Politics", "Crypto", "Finance"];
 const EXCHANGES = ["polymarket", "kalshi"] as const;
@@ -78,10 +85,10 @@ export function ResolutionBiasHeatmap() {
       <Card>
         <CardHeader title="Resolution bias heatmap" />
         <CardBody className="py-8 text-center text-sm text-fg-muted">
-          Couldn&apos;t load resolution bias yet (server still aggregating closed
-          markets, or request timed out). If you deploy on a short serverless
-          limit, rely on <code className="text-fg">/api/warmup</code> cron or
-          retry in a minute once Redis fills.
+          Couldn&apos;t load resolution bias yet (server still aggregating
+          closed markets, or request timed out). If you deploy on a short
+          serverless limit, rely on <code className="text-fg">/api/warmup</code>{" "}
+          cron or retry in a minute once Redis fills.
         </CardBody>
       </Card>
     );
@@ -243,9 +250,7 @@ function HeatmapRow({
                   style={{ color: fg }}
                 >
                   N={b!.total}
-                  {b!.total >= LOW_SAMPLE
-                    ? ` · z=${b!.zScore.toFixed(1)}`
-                    : ""}
+                  {b!.total >= LOW_SAMPLE ? ` · z=${b!.zScore.toFixed(1)}` : ""}
                 </span>
                 {b!.total > 0 && b!.total < LOW_SAMPLE && (
                   <span

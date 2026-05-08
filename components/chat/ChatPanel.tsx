@@ -23,6 +23,13 @@ const SUGGESTED = [
   "What's the most inefficient market today?",
 ];
 
+/**
+ * Dashboard chat side panel ("Ask AI").
+ *
+ * @remarks
+ * Chat state is stored in the dashboard Zustand store so it can be toggled from
+ * the top nav and persisted across chart section changes.
+ */
 export function ChatPanel() {
   const {
     chatOpen,
@@ -136,7 +143,9 @@ export function ChatPanel() {
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <div className="text-sm font-semibold tracking-tight">AI Analyst</div>
+            <div className="text-sm font-semibold tracking-tight">
+              AI Analyst
+            </div>
             <div className="text-[10px] text-fg-muted">
               claude-sonnet · reads your dashboard context
             </div>
@@ -238,8 +247,7 @@ function MessageBubble({
   streaming: boolean;
 }) {
   const isUser = msg.role === "user";
-  const isEmptyAssistant =
-    !isUser && msg.content.length === 0 && streaming;
+  const isEmptyAssistant = !isUser && msg.content.length === 0 && streaming;
 
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>

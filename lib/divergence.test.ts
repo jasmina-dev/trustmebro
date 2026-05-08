@@ -1,6 +1,13 @@
 import { pairMarkets } from "./divergence";
 import type { UnifiedMarket } from "./types";
 
+/**
+ * Unit tests for `lib/divergence.ts`.
+ *
+ * @remarks
+ * Verifies deterministic market pairing logic (title similarity + price deltas)
+ * without depending on network fetches.
+ */
 jest.mock("./fetchAll", () => ({
   fetchAllMarkets: jest.fn(),
   timed: jest.fn(),

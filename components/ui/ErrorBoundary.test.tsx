@@ -2,6 +2,14 @@ import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { ErrorBoundary } from "./ErrorBoundary";
 
+/**
+ * Component tests for `ErrorBoundary`.
+ *
+ * @remarks
+ * Ensures render-time errors are caught and surfaced through the fallback UI,
+ * and that healthy children render normally. Console noise is suppressed for
+ * the intentional crash path.
+ */
 function Crash(): ReactNode {
   throw new Error("boom");
 }

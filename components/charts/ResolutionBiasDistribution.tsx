@@ -24,6 +24,13 @@ import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
+/**
+ * Resolution-bias distribution chart.
+ *
+ * @remarks
+ * Visualizes the distribution of NO-rate bias across buckets returned by
+ * `/api/resolution-bias`, filtered by the active dashboard category.
+ */
 export function ResolutionBiasDistribution() {
   const { activeCategory } = useDashboard();
 
@@ -90,7 +97,11 @@ export function ResolutionBiasDistribution() {
       <CardBody className="h-[300px] pl-2 pr-4">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={histogramData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2330" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#1f2330"
+              vertical={false}
+            />
             <XAxis
               dataKey="label"
               tick={{ fill: "#8b91a1", fontSize: 10 }}

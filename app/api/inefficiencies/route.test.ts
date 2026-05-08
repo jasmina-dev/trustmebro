@@ -3,6 +3,15 @@
 import { GET } from "./route";
 import { cached } from "@/lib/redis";
 
+/**
+ * Route tests for `GET /api/inefficiencies`.
+ *
+ * @remarks
+ * Validates the route's response envelope and integration points:
+ * - cache wrapper (`cached()`) behavior
+ * - optional real-vs-mock data paths (PMXT key)
+ * - URL mapping for venue links
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(),
 }));

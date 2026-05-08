@@ -16,6 +16,15 @@ import type {
   UnifiedMarket,
 } from "@/lib/types";
 
+/**
+ * Dashboard KPI row.
+ *
+ * @remarks
+ * KPIs are derived from multiple API aggregates (markets, inefficiencies,
+ * resolution-bias) and are further filtered by the dashboard venue/category
+ * toggles. The computations are memoized so filter changes deterministically
+ * recompute the displayed values.
+ */
 function matchesVenue(
   score: InefficiencyScore,
   venue: "all" | string,

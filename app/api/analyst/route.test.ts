@@ -6,6 +6,14 @@ import { checkRateLimit } from "@/lib/redis";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { streamText } from "ai";
 
+/**
+ * Route tests for `POST /api/analyst`.
+ *
+ * @remarks
+ * This endpoint combines rate-limiting (Redis) with an LLM streaming response.
+ * We mock the AI SDKs to keep the suite deterministic and focused on request
+ * validation, rate-limit handling, and response shaping.
+ */
 jest.mock("@/lib/redis", () => ({
   checkRateLimit: jest.fn(),
 }));

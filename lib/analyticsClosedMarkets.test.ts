@@ -23,6 +23,17 @@ import { fetchAllMarkets } from "./fetchAll";
 
 import { resolutionBiasMarketCategory } from "./utils";
 
+/**
+ * Unit tests for `lib/analyticsClosedMarkets.ts`.
+ *
+ * @remarks
+ * This suite treats the module as an orchestration layer:
+ * - calls `fetchAllMarkets()` with the expected "closed analytics" bounds
+ * - applies category bucketing via `resolutionBiasMarketCategory()`
+ *
+ * The underlying fetch/caching mechanisms are mocked; we only validate
+ * parameters and deterministic transformations.
+ */
 describe("analyticsClosedMarkets", () => {
   test("fetchClosedMarketsForAnalytics uses fetchAllMarkets with resolution-bias params", async () => {
     (fetchAllMarkets as jest.Mock).mockResolvedValue({

@@ -11,6 +11,14 @@ import { yesOutcome, usd } from "@/lib/utils";
 import { useDashboard } from "@/lib/store";
 import type { UnifiedMarket } from "@/lib/types";
 
+/**
+ * Market momentum list (top movers).
+ *
+ * @remarks
+ * Ranks markets by 24h price change and highlights large moves as potential
+ * late-information events. The list is derived from `/api/markets` and filtered
+ * by dashboard venue/category selections.
+ */
 const TOP_N = 20;
 const BIG_MOVE = 0.1; // 10pp threshold for "late-information event" callout
 
@@ -72,10 +80,11 @@ export function MarketMomentum() {
 
   const maxAbs = Math.max(...movers.map((m) => m.abs), 0.05);
   const bigMoveCount = useMemo(
-    () => (data?.data ?? []).reduce((n, m) => {
-      const y = yesOutcome(m);
-      return n + (y && Math.abs(y.priceChange24h ?? 0) >= BIG_MOVE ? 1 : 0);
-    }, 0),
+    () =>
+      (data?.data ?? []).reduce((n, m) => {
+        const y = yesOutcome(m);
+        return n + (y && Math.abs(y.priceChange24h ?? 0) >= BIG_MOVE ? 1 : 0);
+      }, 0),
     [data?.data],
   );
 
@@ -116,8 +125,8 @@ export function MarketMomentum() {
                   {bigMoveCount} markets moved &gt; {BIG_MOVE * 100}pp in 24h
                 </span>
                 <span className="ml-1 text-warning/80">
-                  — possible late-information events worth cross-checking on
-                  the other venue.
+                  — possible late-information events worth cross-checking on the
+                  other venue.
                 </span>
               </div>
             )}

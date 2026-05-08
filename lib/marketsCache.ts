@@ -29,6 +29,16 @@ export type MarketsRouteParams = {
   limit: number;
 };
 
+/**
+ * Build the Redis cache key for a `GET /api/markets` aggregate.
+ *
+ * @remarks
+ * This key is intentionally stable across deploys so `primeMarketsV3Aggregates()`
+ * can warm the exact keys the route handler will read.
+ *
+ * @param p - Normalized route params.
+ * @returns Redis key in the `markets:v3:*` namespace.
+ */
 export function marketsRedisKey(p: MarketsRouteParams): string {
   const exchangeSeg = p.exchange ?? "all";
   const categorySeg = p.category ?? "all";
@@ -45,6 +55,18 @@ export function marketsRedisKey(p: MarketsRouteParams): string {
   ].join(":");
 }
 
+/**
+ * Compute the cache TTL (in seconds) for `/api/markets` aggregates.
+ *
+ * @remarks
+ * Env overrides are clamped to safe bounds to prevent accidental "forever cache"
+ * or extremely chatty revalidation.
+ *
+ * - Live: defaults to 120s, clamped to \([30, 3600]\).
+ * - Closed: defaults to 3600s, clamped to \([60, 86400]\).
+ *
+ * @param closed - Whether the aggregate is for closed/resolved markets.
+ */
 export function marketsTtlSeconds(closed: boolean): number {
   if (closed) {
     const raw = process.env.MARKETS_CLOSED_TTL_SECONDS?.trim();
@@ -99,7 +121,9 @@ async function computeMarketsPayload(
   return { source: "pmxt", markets };
 }
 
-export function normalizeMarketsForApi(markets: UnifiedMarket[]): UnifiedMarket[] {
+export function normalizeMarketsForApi(
+  markets: UnifiedMarket[],
+): UnifiedMarket[] {
   return markets.map((m) => ({
     ...m,
     exchange: marketExchange(m),
@@ -108,6 +132,12 @@ export function normalizeMarketsForApi(markets: UnifiedMarket[]): UnifiedMarket[
   }));
 }
 
+/**
+ * Fetch (and cache) the normalized `/api/markets` payload for the given params.
+ *
+ * @param p - Route params.
+ * @returns The cached value plus whether it was a cache HIT/MISS/BYPASS.
+ */
 export async function getCachedMarketsPayload(
   p: MarketsRouteParams,
 ): Promise<{ value: CachedMarketsValue; state: CacheState }> {
@@ -116,7 +146,13 @@ export async function getCachedMarketsPayload(
   return cached(key, ttl, () => computeMarketsPayload(p));
 }
 
-/** Primes keys used by KPI + charts + PriceVsResolution closed pool. */
+/**
+ * Prime the most common `markets:v3:*` variants used by the dashboard.
+ *
+ * @remarks
+ * Intended to be called by warmup endpoints / boot primers so the first
+ * dashboard pageview doesn't pay the full cold-cache cost.
+ */
 export async function primeMarketsV3Aggregates(): Promise<void> {
   const variants: MarketsRouteParams[] = [
     { exchange: null, closed: false, limit: 500 },

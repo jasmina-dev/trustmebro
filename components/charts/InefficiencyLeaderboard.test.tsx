@@ -5,6 +5,15 @@ import { InefficiencyLeaderboard } from "./InefficiencyLeaderboard";
 import { resetDashboardState } from "@/test-utils/dashboardState";
 import { swrByKey } from "@/test-utils/mocks/swr";
 
+/**
+ * Component tests for `InefficiencyLeaderboard`.
+ *
+ * @remarks
+ * The leaderboard is driven by SWR data and a Zustand venue filter. This suite
+ * verifies that venue toggling updates the computed rows, including the special
+ * case where a `cross_venue_divergence` entry should be visible under either
+ * venue (because it involves both exchanges).
+ */
 jest.mock("swr");
 jest.mock("../ui/Card", () =>
   require("@/test-utils/mocks/ui").mockCardModule(),

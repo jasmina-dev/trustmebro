@@ -2,6 +2,13 @@
 
 import { mockMarkets } from "./mock";
 
+/**
+ * Unit tests for `lib/mock.ts`.
+ *
+ * @remarks
+ * Mock mode is used when PMXT credentials are not present. These tests lock in
+ * the shape/size invariants relied on by the dashboard defaults.
+ */
 describe("mockMarkets", () => {
   test("live dual-venue universe matches expected 500-row dashboard default", () => {
     expect(mockMarkets({}).length).toBe(500);
