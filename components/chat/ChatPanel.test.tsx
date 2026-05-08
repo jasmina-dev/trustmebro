@@ -88,6 +88,83 @@ describe("ChatPanel", () => {
     ).toBeInTheDocument();
   });
 
+  test("Export button is disabled when there are no messages", () => {
+    render(<ChatPanel />);
+    const exportBtn = screen.getByRole("button", { name: /export/i });
+    expect(exportBtn).toBeDisabled();
+  });
+
+  test("Export downloads a .txt of the transcript and does not clear messages", async () => {
+    const user = userEvent.setup();
+    useDashboard.setState({
+      chatMessages: [
+        {
+          id: "u1",
+          role: "user",
+          content: "Hi",
+          createdAt: Date.UTC(2026, 4, 8, 12, 35, 0),
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          content: "Hello",
+          createdAt: Date.UTC(2026, 4, 8, 12, 35, 2),
+        },
+      ],
+    });
+
+    const createObjectURL = jest.fn().mockReturnValue("blob:mock-url");
+    const revokeObjectURL = jest.fn();
+    Object.defineProperty(URL, "createObjectURL", {
+      value: createObjectURL,
+      configurable: true,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      value: revokeObjectURL,
+      configurable: true,
+    });
+
+    let capturedText: string | undefined;
+    let capturedType: string | undefined;
+    const originalBlob = globalThis.Blob;
+    class CapturingBlob extends originalBlob {
+      constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
+        super(parts, options);
+        // jsdom's Blob doesn't implement .text(); capture the raw parts here.
+        capturedText = (parts ?? []).map((p) => String(p)).join("");
+        capturedType = options?.type;
+      }
+    }
+    Object.defineProperty(globalThis, "Blob", {
+      value: CapturingBlob,
+      configurable: true,
+    });
+
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    render(<ChatPanel />);
+    await user.click(screen.getByRole("button", { name: /export/i }));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(capturedType).toBe("text/plain;charset=utf-8");
+    expect(capturedText).toBeDefined();
+    expect(capturedText).toContain("TrustMeBro AI Analyst — Conversation Export");
+    expect(capturedText).toContain("Messages: 2");
+    expect(capturedText).toContain("You:\nHi");
+    expect(capturedText).toContain("Analyst:\nHello");
+
+    // The conversation must NOT be cleared after export.
+    expect(useDashboard.getState().chatMessages).toHaveLength(2);
+
+    clickSpy.mockRestore();
+    Object.defineProperty(globalThis, "Blob", {
+      value: originalBlob,
+      configurable: true,
+    });
+  });
+
   test("submits message and appends stream chunks", async () => {
     const user = userEvent.setup();
     const encoder = new TextEncoder();

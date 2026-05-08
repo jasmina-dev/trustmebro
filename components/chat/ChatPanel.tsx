@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import type { ChatMessage } from "@/lib/types";
+import { downloadChatTranscript } from "@/lib/chat-export";
 import { ChatMarkdown } from "./ChatMarkdown";
 
 /** `randomUUID` is only available in secure contexts; LAN http dev URLs often are not. */
@@ -141,6 +142,19 @@ export function ChatPanel() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => downloadChatTranscript(chatMessages)}
+              disabled={chatMessages.length === 0}
+              title={
+                chatMessages.length === 0
+                  ? "Nothing to export yet"
+                  : "Download conversation as .txt"
+              }
+              className="rounded-md border border-border bg-bg-card px-2 py-1 text-[10px] text-fg-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-fg-muted"
+            >
+              Export
+            </button>
             <button
               type="button"
               onClick={clearChat}
