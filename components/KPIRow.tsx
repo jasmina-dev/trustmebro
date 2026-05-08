@@ -3,13 +3,30 @@
 import useSWR from "swr";
 import { useEffect, useMemo } from "react";
 import { KPICard } from "./ui/KPICard";
-import { fetcher, REFRESH, resolutionBiasFetcher, type ApiPayload } from "@/lib/api";
+import {
+  fetcher,
+  REFRESH,
+  resolutionBiasFetcher,
+  type ApiPayload,
+} from "@/lib/api";
 import { useDashboard } from "@/lib/store";
 import type {
   InefficiencyScore,
   ResolutionBiasBucket,
   UnifiedMarket,
 } from "@/lib/types";
+
+function matchesVenue(
+  score: InefficiencyScore,
+  venue: "all" | string,
+): boolean {
+  if (venue === "all") return true;
+  // Divergence spans two venues; include under either toggle.
+  if (score.type === "cross_venue_divergence") {
+    return score.exchange === venue || score.counterpartyExchange === venue;
+  }
+  return score.exchange === venue;
+}
 
 export function KPIRow() {
   const { activeVenue, activeCategory } = useDashboard();
@@ -53,13 +70,9 @@ export function KPIRow() {
   const totalMarkets = markets?.data?.length ?? 0;
 
   // Filter inefficiency scores to the active venue.
-  // cross_venue_divergence spans both exchanges, so always include it.
   const filteredScores = useMemo(() => {
     if (!scores?.data) return [];
-    if (activeVenue === "all") return scores.data;
-    return scores.data.filter(
-      (s) => s.type === "cross_venue_divergence" || s.exchange === activeVenue,
-    );
+    return scores.data.filter((s) => matchesVenue(s, activeVenue));
   }, [scores?.data, activeVenue]);
 
   // Push markets + scores into the global dashboard context so the chatbot
@@ -90,7 +103,11 @@ export function KPIRow() {
 
   const avgPoliticsNo = useMemo(() => {
     if (!resolution?.data) return 0;
-    const politics = resolution.data.filter((b) => b.category === "Politics");
+    const politics = resolution.data.filter((b) => {
+      if (b.category !== "Politics") return false;
+      if (activeVenue === "all") return true;
+      return b.exchange === activeVenue;
+    });
     if (politics.length === 0) return 0;
     const totals = politics.reduce(
       (acc, b) => {
@@ -102,11 +119,12 @@ export function KPIRow() {
     );
     if (totals.total === 0) return 0;
     return totals.no / totals.total;
-  }, [resolution?.data]);
+  }, [resolution?.data, activeVenue]);
 
   const topDivergence = useMemo(() => {
     const divs = filteredScores.filter(
-      (s) => s.type === "cross_venue_divergence" && typeof s.spread === "number",
+      (s) =>
+        s.type === "cross_venue_divergence" && typeof s.spread === "number",
     );
     if (divs.length === 0) return 0;
     return Math.max(...divs.map((d) => d.spread ?? 0));
@@ -119,7 +137,6 @@ export function KPIRow() {
       <KPICard
         label="Markets analyzed"
         value={totalMarkets}
-
         loading={loadingMarkets}
       />
       <KPICard

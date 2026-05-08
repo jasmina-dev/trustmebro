@@ -27,6 +27,18 @@ const TYPE_COLOR: Record<InefficiencyType, string> = {
 
 type SortKey = "score" | "type" | "exchange" | "category" | "lastUpdated";
 
+function matchesVenue(
+  score: InefficiencyScore,
+  venue: "all" | string,
+): boolean {
+  if (venue === "all") return true;
+  // Divergence rows span two venues; include them under either toggle.
+  if (score.type === "cross_venue_divergence") {
+    return score.exchange === venue || score.counterpartyExchange === venue;
+  }
+  return score.exchange === venue;
+}
+
 export function InefficiencyLeaderboard() {
   const { data, isLoading } = useSWR<ApiPayload<InefficiencyScore[]>>(
     "/api/inefficiencies",
@@ -55,8 +67,7 @@ export function InefficiencyLeaderboard() {
   const rows = useMemo(() => {
     const list = (data?.data ?? []).filter((r) => {
       if (filter !== "all" && r.type !== filter) return false;
-      // cross_venue_divergence spans both exchanges — always include it
-      if (activeVenue !== "all" && r.type !== "cross_venue_divergence" && r.exchange !== activeVenue) return false;
+      if (!matchesVenue(r, activeVenue)) return false;
       return true;
     });
     return [...list].sort((a, b) => {
@@ -67,7 +78,7 @@ export function InefficiencyLeaderboard() {
         return (av - bv) * dir;
       return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
     });
-  }, [data?.data, filter, sortKey, sortDir]);
+  }, [data?.data, filter, sortKey, sortDir, activeVenue]);
 
   if (isLoading && !data) {
     return (
@@ -92,9 +103,13 @@ export function InefficiencyLeaderboard() {
             >
               <option value="all">All types</option>
               <option value="resolution_bias">Resolution bias</option>
-              <option value="cross_venue_divergence">Cross-venue divergence</option>
+              <option value="cross_venue_divergence">
+                Cross-venue divergence
+              </option>
               <option value="liquidity_gap">Liquidity gap</option>
-              <option value="late_breaking_mismatch">Late-breaking mismatch</option>
+              <option value="late_breaking_mismatch">
+                Late-breaking mismatch
+              </option>
             </select>
             <HelpTooltip content="Ranks detected inefficiencies by score. Click a row to open details with signal-specific metrics such as spread, z-score, or liquidity ratio." />
           </div>
@@ -211,12 +226,15 @@ export function InefficiencyLeaderboard() {
   );
 }
 
-function Th({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) {
+function Th({
+  onClick,
+  children,
+}: {
+  onClick?: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <th
-      className="cursor-pointer px-4 py-2 hover:text-fg"
-      onClick={onClick}
-    >
+    <th className="cursor-pointer px-4 py-2 hover:text-fg" onClick={onClick}>
       {children}
     </th>
   );
@@ -292,18 +310,14 @@ function DetailModal({
             <Stat label="Z-score" value={detail.zScore.toFixed(2)} />
           )}
           {detail.liquidityRatio !== undefined && (
-            <Stat
-              label="Vol/Liq"
-              value={formatRatio(detail.liquidityRatio)}
-            />
+            <Stat label="Vol/Liq" value={formatRatio(detail.liquidityRatio)} />
           )}
           {detail.liquidityRatio !== undefined &&
             detail.liquidityPopulation && (
               <Stat
                 label="σ above mean"
                 value={`${(
-                  (detail.liquidityRatio -
-                    detail.liquidityPopulation.mean) /
+                  (detail.liquidityRatio - detail.liquidityPopulation.mean) /
                   detail.liquidityPopulation.sd
                 ).toFixed(1)}σ`}
               />
@@ -324,7 +338,10 @@ function DetailModal({
         </div>
 
         <div className="mt-4 text-[10px] text-fg-subtle">
-          Last updated {formatDistanceToNow(new Date(detail.lastUpdated), { addSuffix: true })}
+          Last updated{" "}
+          {formatDistanceToNow(new Date(detail.lastUpdated), {
+            addSuffix: true,
+          })}
         </div>
       </div>
     </div>
