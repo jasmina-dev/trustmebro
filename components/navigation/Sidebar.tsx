@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { useDashboard } from "@/lib/store";
 
@@ -104,16 +105,25 @@ export function Sidebar() {
 
   const handleSectionClick = (id: string) => {
     setActiveChart(id);
-    document
-      .getElementById(id)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
     setSidebarOpen(false);
+    const target = document.getElementById(id);
+    if (!target) return;
+    // The dashboard's `<TopNav>` is `position: sticky` at the top of the
+    // viewport. Without an offset, `scrollIntoView({ block: "start" })`
+    // aligns the section's top to the viewport top, so the heading lands
+    // hidden underneath the header. Set `scroll-margin-top` equal to the
+    // header's actual rendered height so we land just below it.
+    const headerHeight =
+      document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+    target.style.scrollMarginTop = `${headerHeight + 8}px`;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
     <>
       {/* ----- Desktop rail ----- */}
       <aside
+        aria-label="Dashboard sections"
         className={cn(
           "sticky top-tmb-nav hidden h-tmb-sidebar shrink-0 border-r border-border bg-bg transition-all duration-200 md:block",
           collapsed ? "w-tmb-sidebar-collapsed" : "w-tmb-sidebar",
@@ -149,31 +159,15 @@ export function Sidebar() {
           </div>
 
           <nav className="flex-1 space-y-tmb1 overflow-y-auto px-tmb2 py-tmb4">
-            {SECTIONS.map((s) => {
-              const active = activeChart === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => handleSectionClick(s.id)}
-                  className={cn(
-                    "group flex w-full flex-col items-start rounded-tmb border px-tmb4 py-tmb3 text-left transition-colors",
-                    active
-                      ? "border-accent bg-accent/10 text-fg"
-                      : "border-border bg-bg-card text-fg hover:bg-bg-hover",
-                  )}
-                  title={collapsed ? s.label : undefined}
-                >
-                  <span className="truncate text-sm font-semibold leading-snug">
-                    {collapsed ? s.label.slice(0, 2) : s.label}
-                  </span>
-                  {!collapsed && (
-                    <span className="mt-1 truncate text-xs leading-snug text-fg-muted">
-                      {s.description}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            {SECTIONS.map((s) => (
+              <SidebarItem
+                key={s.id}
+                section={s}
+                active={activeChart === s.id}
+                collapsed={collapsed}
+                onClick={() => handleSectionClick(s.id)}
+              />
+            ))}
           </nav>
 
           {!collapsed && (
@@ -229,8 +223,9 @@ export function Sidebar() {
               <button
                 key={s.id}
                 onClick={() => handleSectionClick(s.id)}
+                title={s.description}
                 className={cn(
-                  "flex w-full min-w-0 flex-col items-start rounded-tmb border px-3 py-2 text-left transition-colors",
+                  "flex w-full min-w-0 items-center rounded-tmb border px-3 py-2 text-left transition-colors",
                   active
                     ? "border-accent bg-accent/10 text-fg"
                     : "border-border bg-bg-card text-fg hover:bg-bg-hover",
@@ -238,9 +233,6 @@ export function Sidebar() {
               >
                 <span className="w-full truncate text-sm font-semibold leading-snug">
                   {s.label}
-                </span>
-                <span className="mt-0.5 w-full truncate text-xs leading-snug text-fg-muted">
-                  {s.description}
                 </span>
               </button>
             );
@@ -255,6 +247,115 @@ export function Sidebar() {
           </div>
         </div>
       </aside>
+    </>
+  );
+}
+
+type Section = (typeof SECTIONS)[number];
+
+/**
+ * A single desktop-rail nav item with a portal-rendered hover tooltip
+ * showing the section's description.
+ *
+ * @remarks
+ * The tooltip is rendered into `document.body` via a portal so it can escape
+ * the sidebar's scroll container (which would otherwise clip it horizontally).
+ * Position is computed from the trigger button's bounding rect on each open.
+ */
+function SidebarItem({
+  section,
+  active,
+  collapsed,
+  onClick,
+}: {
+  section: Section;
+  active: boolean;
+  collapsed: boolean;
+  onClick: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const recomputeCoords = useCallback(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setCoords({
+      top: rect.top + rect.height / 2,
+      left: rect.right + 8,
+    });
+  }, []);
+
+  const showTip = () => {
+    recomputeCoords();
+    setOpen(true);
+  };
+
+  const hideTip = () => setOpen(false);
+
+  // Keep the portal-rendered tooltip stuck to the trigger while it's open.
+  // The sidebar `<nav>` is `overflow-y-auto`, so its inner scroll moves the
+  // button without firing mouseenter/leave when the user is keyboard-focused
+  // (or when the cursor stays within the same button mid-scroll). Window
+  // resize has the same staleness problem. We listen on `window` with
+  // `capture: true` so we observe scroll events from any ancestor (DOM
+  // scroll events don't bubble to window otherwise).
+  useEffect(() => {
+    if (!open) return;
+    const opts: AddEventListenerOptions = { capture: true, passive: true };
+    window.addEventListener("scroll", recomputeCoords, opts);
+    window.addEventListener("resize", recomputeCoords);
+    return () => {
+      window.removeEventListener("scroll", recomputeCoords, opts);
+      window.removeEventListener("resize", recomputeCoords);
+    };
+  }, [open, recomputeCoords]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        onClick={onClick}
+        onMouseEnter={showTip}
+        onMouseLeave={hideTip}
+        onFocus={showTip}
+        onBlur={hideTip}
+        className={cn(
+          "flex w-full items-center rounded-tmb border px-tmb4 py-tmb3 text-left transition-colors",
+          active
+            ? "border-accent bg-accent/10 text-fg"
+            : "border-border bg-bg-card text-fg hover:bg-bg-hover",
+        )}
+        aria-label={section.label}
+        aria-describedby={open ? `sidebar-tip-${section.id}` : undefined}
+      >
+        <span className="truncate text-sm font-semibold leading-snug">
+          {collapsed ? section.label.slice(0, 2) : section.label}
+        </span>
+      </button>
+      {open &&
+        mounted &&
+        createPortal(
+          <div
+            id={`sidebar-tip-${section.id}`}
+            role="tooltip"
+            className="pointer-events-none fixed z-50 w-56 -translate-y-1/2 rounded-md border border-border bg-bg-card px-3 py-2 text-xs leading-snug shadow-xl"
+            style={{ top: coords.top, left: coords.left }}
+          >
+            <div className="mb-0.5 font-semibold text-fg">{section.label}</div>
+            <div className="text-fg-muted">{section.description}</div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
