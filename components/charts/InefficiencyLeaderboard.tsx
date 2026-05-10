@@ -173,7 +173,7 @@ export function InefficiencyLeaderboard() {
                   onClick={() => setDetail(r)}
                   className="cursor-pointer border-t border-border-subtle hover:bg-bg-hover"
                 >
-                  <td className="px-4 py-2 font-mono font-semibold text-fg">
+                  <td className="px-4 py-2 font-semibold tabular-nums text-fg">
                     {r.score.toFixed(0)}
                   </td>
                   <td className="px-4 py-2">
@@ -362,7 +362,7 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] uppercase tracking-wider text-fg-muted">
         {label}
       </div>
-      <div className="mt-0.5 font-mono text-base font-semibold">{value}</div>
+      <div className="mt-0.5 text-base font-semibold tabular-nums">{value}</div>
     </div>
   );
 }
@@ -438,7 +438,7 @@ function LiquidityDistributionViz({
           style={{ left: `${sToPct(sigmas)}%` }}
           title={`this market · ${formatRatio(ratio)}`}
         />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between font-mono text-[9px] text-fg-subtle">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between text-[9px] tabular-nums text-fg-subtle">
           <span>−3σ</span>
           <span>0</span>
           <span>+{axisMax.toFixed(0)}σ</span>
@@ -467,7 +467,7 @@ function LiquidityDistributionViz({
         />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-3 font-mono text-[10px]">
+      <div className="mt-3 grid grid-cols-3 gap-3 text-[10px] tabular-nums">
         <div className="flex items-center gap-1.5 text-fg-muted">
           <span className="inline-block h-2 w-2 rounded-full bg-success" />
           mean {formatRatio(stats.mean)}

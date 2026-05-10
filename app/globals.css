@@ -163,7 +163,7 @@ body {
   @apply mb-2 overflow-x-auto rounded-md border border-border bg-bg-elev p-2.5 last:mb-0;
 }
 .chat-prose pre code {
-  @apply bg-transparent p-0 text-[11px] text-fg;
+  @apply bg-transparent p-0 font-mono text-[11px] text-fg;
 }
 .chat-prose code {
   @apply rounded bg-bg-hover px-1 py-0.5 font-mono text-[11px] text-accent-hover;

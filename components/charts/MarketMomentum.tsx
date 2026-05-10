@@ -157,7 +157,7 @@ function MomentumRow({ mover, max }: { mover: Mover; max: number }) {
           )}
           {!rising && (
             <span
-              className="absolute left-1 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold"
+              className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-semibold tabular-nums"
               style={{ color }}
             >
               {changePP}pp
@@ -201,7 +201,7 @@ function MomentumRow({ mover, max }: { mover: Mover; max: number }) {
           )}
           {rising && (
             <span
-              className="absolute right-1 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold"
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-semibold tabular-nums"
               style={{ color }}
             >
               +{changePP}pp
@@ -212,7 +212,7 @@ function MomentumRow({ mover, max }: { mover: Mover; max: number }) {
       {big && (
         <div
           className={cn(
-            "mt-0.5 text-center font-mono text-[9px] uppercase tracking-wider",
+            "mt-0.5 text-center text-[9px] uppercase tracking-wider",
           )}
           style={{ color }}
         >

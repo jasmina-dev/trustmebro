@@ -241,7 +241,7 @@ function HeatmapRow({
             ) : (
               <>
                 <span
-                  className="font-mono text-sm font-semibold leading-none"
+                  className="text-sm font-semibold leading-none tabular-nums"
                   style={{ color: fg }}
                 >
                   {(rate * 100).toFixed(0)}% NO

@@ -67,7 +67,16 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         number: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-jetbrains)", "ui-monospace", "monospace"],
+        /** Chat/code via `font-mono`; dashboard UI stays Inter (`font-sans`) */
+        mono: [
+          "var(--font-jetbrains)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
+        ],
       },
       fontSize: {
         kpi: ["clamp(1.5rem, 3.5vw, 2.35rem)", { lineHeight: "1.1" }],

@@ -22,6 +22,11 @@ import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
+import {
+  chartAxisTick,
+  chartLegendWrapperStyle,
+  chartTooltipContentStyle,
+} from "@/lib/chartTypography";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
 /**
@@ -104,24 +109,18 @@ export function ResolutionBiasDistribution() {
             />
             <XAxis
               dataKey="label"
-              tick={{ fill: "#8b91a1", fontSize: 10 }}
+              tick={chartAxisTick}
               interval={2}
               axisLine={{ stroke: "#2a2f3d" }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fill: "#8b91a1", fontSize: 10 }}
+              tick={chartAxisTick}
               axisLine={{ stroke: "#2a2f3d" }}
               tickLine={false}
             />
-            <Tooltip
-              contentStyle={{
-                background: "#111318",
-                border: "1px solid #2a2f3d",
-                borderRadius: 8,
-              }}
-            />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Tooltip contentStyle={chartTooltipContentStyle} />
+            <Legend wrapperStyle={chartLegendWrapperStyle} />
             <Bar dataKey="count" name="Markets" radius={[4, 4, 0, 0]}>
               {histogramData.map((b, i) => (
                 <Cell

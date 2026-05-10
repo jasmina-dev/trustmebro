@@ -16,6 +16,12 @@ import { resolutionBiasFetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
+import {
+  chartAxisLabelBase,
+  chartAxisTick,
+  chartLegendWrapperStyle,
+  chartTooltipContentStyle,
+} from "@/lib/chartTypography";
 import { usd } from "@/lib/utils";
 import type { EfficiencyMonth } from "@/lib/types";
 
@@ -116,30 +122,25 @@ export function EfficiencyTimeline() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2330" />
                 <XAxis
                   dataKey="month"
-                  tick={{ fill: "#8b91a1", fontSize: 10 }}
+                  tick={chartAxisTick}
                   axisLine={{ stroke: "#2a2f3d" }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: "#8b91a1", fontSize: 10 }}
+                  tick={chartAxisTick}
                   axisLine={{ stroke: "#2a2f3d" }}
                   tickLine={false}
                   tickFormatter={(v) => `${v}%`}
                   label={{
+                    ...chartAxisLabelBase,
                     value: "Mispricing (weighted)",
-                    fill: "#8b91a1",
-                    fontSize: 11,
                     angle: -90,
                     position: "insideLeft",
                     offset: -4,
                   }}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: "#111318",
-                    border: "1px solid #2a2f3d",
-                    borderRadius: 8,
-                  }}
+                  contentStyle={chartTooltipContentStyle}
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null;
                     const row = payload[0].payload as EfficiencyMonth;
@@ -148,7 +149,7 @@ export function EfficiencyTimeline() {
                         <div className="mb-1 font-semibold text-fg">
                           {label}
                         </div>
-                        <div className="space-y-0.5 font-mono text-fg-muted">
+                        <div className="space-y-0.5 tabular-nums text-fg-muted">
                           {row.polymarket !== undefined && (
                             <div>
                               <span style={{ color: "#2d9cdb" }}>
@@ -170,7 +171,7 @@ export function EfficiencyTimeline() {
                     );
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend wrapperStyle={chartLegendWrapperStyle} />
                 <Area
                   type="monotone"
                   dataKey="polymarket"
@@ -272,7 +273,7 @@ function TrendPill({ venue, direction, slopePP }: TrendChip) {
   )[direction];
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono"
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 tabular-nums"
       style={{ background: bg, color }}
     >
       <span className="font-semibold capitalize" style={{ color: venueColor }}>

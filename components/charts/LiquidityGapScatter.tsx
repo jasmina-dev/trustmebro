@@ -20,6 +20,11 @@ import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
 import { useState } from "react";
 import type { InefficiencyScore, UnifiedMarket } from "@/lib/types";
+import {
+  chartAxisLabelBase,
+  chartAxisTick,
+  chartLegendWrapperStyle,
+} from "@/lib/chartTypography";
 import { usd } from "@/lib/utils";
 
 /**
@@ -119,14 +124,13 @@ export function LiquidityGapScatter() {
                 name="volume24h"
                 scale="log"
                 domain={["auto", "auto"]}
-                tick={{ fill: "#8b91a1", fontSize: 10 }}
+                tick={chartAxisTick}
                 tickFormatter={(v) => usd(v)}
                 axisLine={{ stroke: "#2a2f3d" }}
                 tickLine={false}
                 label={{
+                  ...chartAxisLabelBase,
                   value: "24h volume (log)",
-                  fill: "#8b91a1",
-                  fontSize: 11,
                   position: "insideBottom",
                   offset: -8,
                 }}
@@ -137,14 +141,13 @@ export function LiquidityGapScatter() {
                 name="liquidity"
                 scale="log"
                 domain={["auto", "auto"]}
-                tick={{ fill: "#8b91a1", fontSize: 10 }}
+                tick={chartAxisTick}
                 tickFormatter={(v) => usd(v)}
                 axisLine={{ stroke: "#2a2f3d" }}
                 tickLine={false}
                 label={{
+                  ...chartAxisLabelBase,
                   value: "Liquidity (log)",
-                  fill: "#8b91a1",
-                  fontSize: 11,
                   angle: -90,
                   position: "insideLeft",
                   offset: 12,
@@ -182,7 +185,7 @@ export function LiquidityGapScatter() {
                   );
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Legend wrapperStyle={chartLegendWrapperStyle} />
               <Scatter
                 name="Polymarket"
                 data={polyPoints}

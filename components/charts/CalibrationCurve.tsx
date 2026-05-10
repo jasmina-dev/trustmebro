@@ -17,6 +17,12 @@ import { resolutionBiasFetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
+import {
+  chartAxisLabelBase,
+  chartAxisTick,
+  chartLegendWrapperStyle,
+  chartTooltipContentStyle,
+} from "@/lib/chartTypography";
 import type { CalibrationSeries } from "@/lib/types";
 
 const CATEGORIES = ["All", "Politics", "Crypto", "Finance", "Other"];
@@ -201,14 +207,13 @@ export function CalibrationCurve() {
                   dataKey="meanPrice"
                   domain={[0, 100]}
                   ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                  tick={{ fill: "#8b91a1", fontSize: 10 }}
+                  tick={chartAxisTick}
                   tickFormatter={(v) => `${v}%`}
                   axisLine={{ stroke: "#2a2f3d" }}
                   tickLine={false}
                   label={{
+                    ...chartAxisLabelBase,
                     value: "Final YES price (decile mean)",
-                    fill: "#8b91a1",
-                    fontSize: 11,
                     position: "insideBottom",
                     offset: -12,
                   }}
@@ -217,25 +222,20 @@ export function CalibrationCurve() {
                   type="number"
                   domain={[0, 100]}
                   ticks={[0, 25, 50, 75, 100]}
-                  tick={{ fill: "#8b91a1", fontSize: 10 }}
+                  tick={chartAxisTick}
                   tickFormatter={(v) => `${v}%`}
                   axisLine={{ stroke: "#2a2f3d" }}
                   tickLine={false}
                   label={{
+                    ...chartAxisLabelBase,
                     value: "Actual YES resolution rate",
-                    fill: "#8b91a1",
-                    fontSize: 11,
                     angle: -90,
                     position: "insideLeft",
                     offset: -2,
                   }}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: "#111318",
-                    border: "1px solid #2a2f3d",
-                    borderRadius: 8,
-                  }}
+                  contentStyle={chartTooltipContentStyle}
                   formatter={(value: number, key: string) => {
                     if (key === "polymarket" || key === "kalshi") {
                       return [`${value}%`, key];
@@ -245,7 +245,7 @@ export function CalibrationCurve() {
                   labelFormatter={(label) => `Price ≈ ${label}%`}
                 />
                 <Legend
-                  wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+                  wrapperStyle={{ ...chartLegendWrapperStyle, paddingTop: 4 }}
                   payload={[
                     {
                       value: "Perfect calibration",

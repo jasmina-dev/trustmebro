@@ -18,6 +18,7 @@ import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
+import { chartAxisLabelBase, chartAxisTick } from "@/lib/chartTypography";
 import { cn } from "@/lib/cn";
 import type { DivergentPair } from "@/lib/types";
 
@@ -193,7 +194,7 @@ function PairRow({
           >
             {truncate(pair.polyTitle, 56)}
           </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[10px] text-fg-muted">
+          <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] tabular-nums text-fg-muted">
             <span>
               Poly{" "}
               <span className="text-fg">
@@ -222,7 +223,7 @@ function PairRow({
           </div>
         </div>
         <div
-          className="shrink-0 rounded-sm px-1.5 py-0.5 font-mono text-xs font-semibold"
+          className="shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-semibold tabular-nums"
           style={{ color, background: `${color}22` }}
         >
           {pair.spreadPP.toFixed(1)}pp
@@ -270,14 +271,13 @@ function AgreementScatter({ pairs }: { pairs: DivergentPair[] }) {
               dataKey="x"
               domain={[0, 100]}
               name="Polymarket YES"
-              tick={{ fill: "#8b91a1", fontSize: 10 }}
+              tick={chartAxisTick}
               tickFormatter={(v) => `${v}%`}
               axisLine={{ stroke: "#2a2f3d" }}
               tickLine={false}
               label={{
+                ...chartAxisLabelBase,
                 value: "Polymarket YES",
-                fill: "#8b91a1",
-                fontSize: 11,
                 position: "insideBottom",
                 offset: -8,
               }}
@@ -287,14 +287,13 @@ function AgreementScatter({ pairs }: { pairs: DivergentPair[] }) {
               dataKey="y"
               domain={[0, 100]}
               name="Kalshi YES"
-              tick={{ fill: "#8b91a1", fontSize: 10 }}
+              tick={chartAxisTick}
               tickFormatter={(v) => `${v}%`}
               axisLine={{ stroke: "#2a2f3d" }}
               tickLine={false}
               label={{
+                ...chartAxisLabelBase,
                 value: "Kalshi YES",
-                fill: "#8b91a1",
-                fontSize: 11,
                 angle: -90,
                 position: "insideLeft",
                 offset: 12,
@@ -321,7 +320,7 @@ function AgreementScatter({ pairs }: { pairs: DivergentPair[] }) {
                     <div className="mb-1 font-semibold text-fg">
                       {truncate(p.pair.polyTitle, 56)}
                     </div>
-                    <div className="space-y-0.5 font-mono text-fg-muted">
+                    <div className="space-y-0.5 tabular-nums text-fg-muted">
                       <div>
                         Poly YES{" "}
                         <span className="text-fg">

@@ -14,7 +14,8 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-const mono = JetBrains_Mono({
+/** Loaded for `font-mono` only (e.g. `.chat-prose code`); body stays `font-sans`. */
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
   display: "swap",
@@ -63,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${dmSans.variable} ${mono.variable}`}
+      className={`${inter.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
       data-theme="dark"
       suppressHydrationWarning
     >
