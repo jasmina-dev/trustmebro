@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,6 +24,18 @@ export const metadata: Metadata = {
   title: "TrustMeBro — Prediction Market Inefficiency Dashboard",
   description:
     "Real-time inefficiency analytics across Polymarket and Kalshi. Resolution bias, cross-venue divergence, liquidity gaps, late-breaking mismatches.",
+};
+
+// Mobile-friendly defaults: render at device width and allow the user to
+// pinch-zoom (don't lock maximum-scale = 1, which is bad for accessibility).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0d0f12" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f8fa" },
+  ],
 };
 
 // Runs synchronously before the body paints so the saved theme is applied

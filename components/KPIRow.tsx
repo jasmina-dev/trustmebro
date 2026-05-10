@@ -141,8 +141,12 @@ export function KPIRow() {
 
   const flaggedCount = filteredScores.length;
 
+  // Stack vertically on small phones (≤414px), since "Inefficiencies flagged"
+  // and "Avg politics NO-rate" wrap to two lines in a 2-column grid at that
+  // width. Switch to 2 columns once each card has room to hold the longest
+  // label on a single line, then 4-up on `xl`.
   return (
-    <div className="grid grid-cols-1 gap-x-tmb7 gap-y-tmb6 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-x-tmb7 sm:gap-y-tmb6 xl:grid-cols-4">
       <KPICard
         label="Markets analyzed"
         value={totalMarkets}

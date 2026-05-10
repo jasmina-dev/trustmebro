@@ -123,9 +123,9 @@ export function InefficiencyLeaderboard() {
           </div>
         }
       />
-      <CardBody className="px-0 py-0">
+      <CardBody className="px-0 py-0 max-sm:px-0 max-sm:py-0">
         <div className="max-h-[520px] overflow-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[640px] text-left text-xs">
             <thead className="sticky top-0 z-10 bg-bg-card/95 backdrop-blur">
               <tr className="text-[10px] uppercase tracking-wider text-fg-muted">
                 <Th
@@ -258,11 +258,11 @@ function DetailModal({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-xl rounded-xl border border-border bg-bg-card p-6 shadow-2xl"
+        className="my-3 w-full max-w-xl rounded-xl border border-border bg-bg-card p-4 shadow-2xl sm:p-6"
       >
         <div className="flex items-start justify-between">
           <div>

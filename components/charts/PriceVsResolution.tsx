@@ -66,9 +66,10 @@ export function PriceVsResolution() {
   const selected = markets.find((m) => m.marketId === selectedId) ?? markets[0];
   const yes = selected ? yesOutcome(selected) : undefined;
 
-  const ohlcvUrl = selected && yes
-    ? `/api/ohlcv?exchange=${selected.exchange}&outcomeId=${encodeURIComponent(yes.outcomeId)}&resolution=1h&limit=72`
-    : null;
+  const ohlcvUrl =
+    selected && yes
+      ? `/api/ohlcv?exchange=${selected.exchange}&outcomeId=${encodeURIComponent(yes.outcomeId)}&resolution=1h&limit=72`
+      : null;
 
   const { data: ohlcvPayload } = useSWR<ApiPayload<PriceCandle[]>>(
     ohlcvUrl,
@@ -83,7 +84,9 @@ export function PriceVsResolution() {
 
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
-  const priceLineRef = useRef<ReturnType<ISeriesApi<"Area">["createPriceLine"]> | null>(null);
+  const priceLineRef = useRef<ReturnType<
+    ISeriesApi<"Area">["createPriceLine"]
+  > | null>(null);
   // Bump this counter every time the chart is recreated so the data-loading
   // effect re-runs against the new series instance. Necessary because React
   // 18 strict mode double-invokes mount effects: the first chart gets torn
@@ -154,9 +157,7 @@ export function PriceVsResolution() {
     const correct = mispricing?.correct ?? true;
     seriesRef.current.applyOptions({
       lineColor: correct ? "#22c55e" : "#ef4444",
-      topColor: correct
-        ? "rgba(34, 197, 94, 0.30)"
-        : "rgba(239, 68, 68, 0.30)",
+      topColor: correct ? "rgba(34, 197, 94, 0.30)" : "rgba(239, 68, 68, 0.30)",
       bottomColor: correct
         ? "rgba(34, 197, 94, 0.00)"
         : "rgba(239, 68, 68, 0.00)",
@@ -211,7 +212,7 @@ export function PriceVsResolution() {
               <select
                 value={selectedId ?? ""}
                 onChange={(e) => setSelectedId(e.target.value)}
-                className="max-w-[280px] truncate rounded-md border border-border bg-bg-elev px-2 py-1 text-xs"
+                className="max-w-[160px] truncate rounded-md border border-border bg-bg-elev px-2 py-1 text-xs sm:max-w-[280px]"
               >
                 {markets.map((m) => (
                   <option key={m.marketId} value={m.marketId}>
@@ -227,10 +228,11 @@ export function PriceVsResolution() {
       />
       <CardBody>
         <div className="relative">
-          <div ref={containerRef} className="h-[300px] w-full" />
+          <div ref={containerRef} className="h-[260px] w-full sm:h-[300px]" />
           {markets.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center bg-bg-card px-6 text-center text-sm text-fg-muted">
-              No resolved markets with final-72h candle history are currently available.
+              No resolved markets with final-72h candle history are currently
+              available.
             </div>
           ) : !ohlcvPayload ? (
             <div className="absolute inset-0 bg-bg-card">

@@ -49,15 +49,17 @@ export function KPICard({
           : "text-fg-muted";
 
   return (
-    <div className="rounded-tmb border border-border bg-bg-card p-tmb6">
-      <div className="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+    <div className="rounded-tmb border border-border bg-bg-card p-tmb5 sm:p-tmb6">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted sm:text-xs">
         {label}
       </div>
-      <div className="mt-tmb3 flex items-baseline gap-tmb2">
+      <div className="mt-tmb2 flex items-baseline gap-tmb2 sm:mt-tmb3">
         <div className="font-number text-kpi font-bold tracking-tight text-fg tabular-nums">
           {formatted}
           {suffix && (
-            <span className="ml-tmb1 text-base text-fg-muted">{suffix}</span>
+            <span className="ml-tmb1 text-sm text-fg-muted sm:text-base">
+              {suffix}
+            </span>
           )}
         </div>
         {delta !== undefined && !loading && (
@@ -67,7 +69,11 @@ export function KPICard({
           </div>
         )}
       </div>
-      {hint && <div className="mt-tmb1 text-xs text-fg-muted">{hint}</div>}
+      {hint && (
+        <div className="mt-tmb1 text-[11px] text-fg-muted sm:text-xs">
+          {hint}
+        </div>
+      )}
     </div>
   );
 }

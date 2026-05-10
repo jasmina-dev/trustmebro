@@ -31,14 +31,17 @@ export function CardHeader({
   subtitle?: string;
   right?: React.ReactNode;
 }) {
+  // On phones we let the right-side controls wrap below the title block so
+  // long titles don't get squashed against the controls (or worse, push the
+  // controls off-screen).
   return (
-    <div className="flex items-start justify-between gap-tmb5 border-b border-border px-tmb6 py-tmb5">
-      <div>
-        <h3 className="text-lg font-semibold tracking-tight text-fg">
+    <div className="flex flex-wrap items-start justify-between gap-x-tmb5 gap-y-tmb3 border-b border-border px-tmb6 py-tmb5 sm:flex-nowrap max-sm:px-4 max-sm:py-3">
+      <div className="min-w-0">
+        <h3 className="text-base font-semibold tracking-tight text-fg sm:text-lg">
           {title}
         </h3>
         {subtitle && (
-          <p className="mt-tmb1 text-sm leading-normal text-fg-muted">
+          <p className="mt-tmb1 text-xs leading-normal text-fg-muted sm:text-sm">
             {subtitle}
           </p>
         )}
@@ -57,5 +60,11 @@ export function CardBody({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn("px-tmb6 py-tmb5", className)}>{children}</div>;
+  // Tighter padding on phones so the chart inside has more horizontal room.
+  // Per-chart overrides (e.g. pl-1 pr-3 for recharts) still apply at sm+.
+  return (
+    <div className={cn("px-tmb6 py-tmb5 max-sm:px-3 max-sm:py-3", className)}>
+      {children}
+    </div>
+  );
 }

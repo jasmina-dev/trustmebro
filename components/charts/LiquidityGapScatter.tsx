@@ -194,9 +194,9 @@ export function LiquidityGapScatter() {
         </ResponsiveContainer>
       </CardBody>
       {selected && (
-        <div className="border-t border-border-subtle bg-bg-elev/60 px-5 py-3 text-xs">
+        <div className="border-t border-border-subtle bg-bg-elev/60 px-4 py-3 text-xs sm:px-5">
           <div className="font-semibold">{selected.title}</div>
-          <div className="mt-1 flex gap-4 text-fg-muted">
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-fg-muted">
             <span className="capitalize">{selected.exchange}</span>
             <span>Vol {usd(selected.volume24h)}</span>
             <span>Liq {usd(selected.liquidity)}</span>

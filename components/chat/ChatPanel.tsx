@@ -137,7 +137,7 @@ export function ChatPanel() {
       {/* Panel */}
       <aside
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-border bg-bg-elev/95 shadow-2xl backdrop-blur-lg transition-transform duration-300 md:w-[420px]",
+          "fixed right-0 top-0 z-50 flex h-full max-h-[100dvh] w-full flex-col border-l border-border bg-bg-elev/95 shadow-2xl backdrop-blur-lg transition-transform duration-300 md:w-[420px]",
           chatOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
@@ -217,19 +217,20 @@ export function ChatPanel() {
             e.preventDefault();
             send(input);
           }}
-          className="flex gap-2 border-t border-border bg-bg-card/60 p-3"
+          className="flex gap-2 border-t border-border bg-bg-card/60 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about the dashboard…"
             disabled={chatStreaming}
-            className="flex-1 rounded-md border border-border bg-bg-elev px-3 py-2 text-xs focus:border-accent disabled:opacity-60"
+            // 16px+ font on mobile keeps iOS Safari from auto-zooming on focus.
+            className="min-w-0 flex-1 rounded-md border border-border bg-bg-elev px-3 py-2 text-base focus:border-accent disabled:opacity-60 sm:text-xs"
           />
           <button
             type="submit"
             disabled={chatStreaming || !input.trim()}
-            className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {chatStreaming ? "…" : "Send"}
           </button>

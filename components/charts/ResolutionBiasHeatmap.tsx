@@ -129,12 +129,12 @@ export function ResolutionBiasHeatmap() {
           <HelpTooltip content="Each cell shows how often resolved markets ended NO for a category and venue. Warmer colors mean stronger NO skew; low-sample cells should be treated cautiously." />
         }
       />
-      <CardBody>
+      <CardBody className="px-3 sm:px-tmb6">
         <div className="flex flex-col gap-2">
           <div
-            className="grid gap-1.5"
+            className="grid gap-1 sm:gap-1.5"
             style={{
-              gridTemplateColumns: `90px repeat(${CATEGORIES.length}, minmax(0, 1fr))`,
+              gridTemplateColumns: `minmax(64px, 90px) repeat(${CATEGORIES.length}, minmax(0, 1fr))`,
             }}
           >
             <div />
@@ -158,13 +158,13 @@ export function ResolutionBiasHeatmap() {
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px] text-fg-muted">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] text-fg-muted">
             <span className="font-medium uppercase tracking-wider">Scale</span>
             <LegendSwatch color="#10b981" label="< 55%" />
             <LegendSwatch color="#f59e0b" label="55–65%" />
             <LegendSwatch color="#f97316" label="65–75%" />
             <LegendSwatch color="#ef4444" label="≥ 75%" />
-            <div className="ml-auto max-w-[min(100%,360px)] text-right leading-snug">
+            <div className="w-full max-w-[min(100%,360px)] leading-snug sm:ml-auto sm:w-auto sm:text-right">
               <div>
                 Binary sample: {totalN.toLocaleString()}
                 {closedSum != null && closedSum > 0 && (

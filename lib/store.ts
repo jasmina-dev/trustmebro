@@ -48,6 +48,11 @@ interface DashboardState {
   chatMessages: ChatMessage[];
   chatStreaming: boolean;
 
+  // ------- Mobile sidebar drawer -------
+  // Controls the slide-in section navigation on phones. The desktop sidebar
+  // is always rendered at md+ regardless of this flag.
+  sidebarOpen: boolean;
+
   // ------- Actions -------
   setVenue: (v: ExchangeFilter) => void;
   setCategory: (c: string) => void;
@@ -69,6 +74,8 @@ interface DashboardState {
   appendChatAssistantChunk: (id: string, chunk: string) => void;
   setChatStreaming: (streaming: boolean) => void;
   clearChat: () => void;
+
+  setSidebarOpen: (open: boolean) => void;
 
   getContextSnapshot: () => DashboardContextSnapshot;
 }
@@ -102,6 +109,8 @@ export const useDashboard = create<DashboardState>((set, get) => ({
   chatOpen: false,
   chatMessages: [],
   chatStreaming: false,
+
+  sidebarOpen: false,
 
   setVenue: (v) => set({ activeVenue: v }),
   setCategory: (c) => set({ activeCategory: c }),
@@ -139,6 +148,8 @@ export const useDashboard = create<DashboardState>((set, get) => ({
     })),
   setChatStreaming: (streaming) => set({ chatStreaming: streaming }),
   clearChat: () => set({ chatMessages: [] }),
+
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
   getContextSnapshot: (): DashboardContextSnapshot => {
     const s = get();

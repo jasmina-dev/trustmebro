@@ -146,7 +146,7 @@ function MomentumRow({ mover, max }: { mover: Mover; max: number }) {
 
   return (
     <div className="rounded-md border border-transparent px-1 py-1 hover:border-border-subtle hover:bg-bg-elev/40">
-      <div className="grid grid-cols-[1fr_220px_1fr] items-center gap-2">
+      <div className="grid grid-cols-[1fr_minmax(140px,200px)_1fr] items-center gap-1.5 sm:grid-cols-[1fr_220px_1fr] sm:gap-2">
         {/* Left (negative) bar track */}
         <div className="relative flex h-3 items-center justify-end overflow-hidden rounded-sm bg-bg-elev/50">
           {!rising && (
@@ -166,26 +166,26 @@ function MomentumRow({ mover, max }: { mover: Mover; max: number }) {
         </div>
 
         {/* Centre label */}
-        <div className="flex flex-col items-center px-2 text-center">
+        <div className="flex min-w-0 flex-col items-center px-1.5 text-center sm:px-2">
           {mover.market.url ? (
             <a
               href={mover.market.url}
               target="_blank"
               rel="noreferrer"
-              className="block max-w-[220px] truncate text-[11px] font-medium text-fg underline-offset-2 hover:text-accent hover:underline"
+              className="block w-full max-w-[200px] truncate text-[11px] font-medium text-fg underline-offset-2 hover:text-accent hover:underline sm:max-w-[220px]"
               title={mover.market.title}
             >
               {mover.market.title}
             </a>
           ) : (
             <span
-              className="max-w-[220px] truncate text-[11px] font-medium text-fg"
+              className="block w-full max-w-[200px] truncate text-[11px] font-medium text-fg sm:max-w-[220px]"
               title={mover.market.title}
             >
               {mover.market.title}
             </span>
           )}
-          <span className="text-[9px] text-fg-subtle">
+          <span className="truncate text-[9px] text-fg-subtle">
             <span className="capitalize">{mover.market.exchange}</span> · YES{" "}
             {(mover.yes * 100).toFixed(0)}% · vol {usd(mover.market.volume24h)}
           </span>
