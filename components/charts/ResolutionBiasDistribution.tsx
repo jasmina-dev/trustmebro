@@ -78,7 +78,7 @@ export function ResolutionBiasDistribution() {
 
   if (isLoading && !data) {
     return (
-      <Card>
+      <Card className="flex h-full min-h-0 flex-col">
         <CardHeader title="Resolution-rate distribution" />
         <ChartSkeleton hint="Sharing the resolution-bias crawl — appears as soon as the heatmap finishes its closed-market scan." />
       </Card>
@@ -86,7 +86,7 @@ export function ResolutionBiasDistribution() {
   }
 
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader
         title="Resolution-rate distribution"
         subtitle={`NO-rate histogram across all closed markets${activeCategory !== "All" ? ` in ${activeCategory}` : ""}. Normal(μ=${(mu * 100).toFixed(0)}%, σ=${(sigma * 100).toFixed(1)}%) overlay.`}

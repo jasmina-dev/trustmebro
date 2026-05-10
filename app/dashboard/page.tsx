@@ -187,7 +187,7 @@ export default function DashboardPage() {
                   staggerMs={CHART_STAGGER_MS * 5}
                   fallback={<ChartSkeleton label="Efficiency timeline" />}
                 >
-                  <div id="efficiency-timeline">
+                  <div id="efficiency-timeline" className="h-full min-h-0">
                     <EfficiencyTimeline />
                   </div>
                 </DeferChartMount>
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                   staggerMs={CHART_STAGGER_MS * 7}
                   fallback={<ChartSkeleton label="Price vs resolution" />}
                 >
-                  <div id="price-vs-resolution">
+                  <div id="price-vs-resolution" className="h-full min-h-0">
                     <PriceVsResolution />
                   </div>
                 </DeferChartMount>

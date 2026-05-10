@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 type Props = {
   children: ReactNode;
@@ -57,7 +52,7 @@ export function DeferChartMount({
   }, [inView, staggerMs]);
 
   return (
-    <div ref={wrapRef} className="min-h-0 w-full flex-1">
+    <div ref={wrapRef} className="h-full min-h-0 w-full">
       {ready ? children : fallback}
     </div>
   );

@@ -73,7 +73,7 @@ export function ResolutionBiasHeatmap() {
 
   if (isLoading && !data) {
     return (
-      <Card>
+      <Card className="flex h-full min-h-0 flex-col">
         <CardHeader title="Resolution bias heatmap" />
         <ChartSkeleton hint="Aggregating closed markets across venues — first paint can take ~30–60s on a cold cache while Redis fills." />
       </Card>
@@ -82,7 +82,7 @@ export function ResolutionBiasHeatmap() {
 
   if (error && !data) {
     return (
-      <Card>
+      <Card className="flex h-full min-h-0 flex-col">
         <CardHeader title="Resolution bias heatmap" />
         <CardBody className="py-8 text-center text-sm text-fg-muted">
           Couldn&apos;t load resolution bias yet (server still aggregating
@@ -121,7 +121,7 @@ export function ResolutionBiasHeatmap() {
   const flaggedCount = buckets.filter((b) => b.flagged).length;
 
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader
         title="Resolution bias heatmap"
         subtitle={`NO-resolution rate per category × venue · ${flaggedCount} flagged`}
@@ -129,12 +129,13 @@ export function ResolutionBiasHeatmap() {
           <HelpTooltip content="Each cell shows how often resolved markets ended NO for a category and venue. Warmer colors mean stronger NO skew; low-sample cells should be treated cautiously." />
         }
       />
-      <CardBody className="px-3 sm:px-tmb6">
-        <div className="flex flex-col gap-2">
+      <CardBody className="flex min-h-0 flex-1 flex-col px-3 sm:px-tmb6">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
           <div
-            className="grid gap-1 sm:gap-1.5"
+            className="grid min-h-0 flex-1 gap-1 sm:gap-1.5"
             style={{
               gridTemplateColumns: `minmax(64px, 90px) repeat(${CATEGORIES.length}, minmax(0, 1fr))`,
+              gridTemplateRows: `auto repeat(${EXCHANGES.length}, minmax(5rem, 1fr))`,
             }}
           >
             <div />
@@ -215,7 +216,7 @@ function HeatmapRow({
 }) {
   return (
     <>
-      <div className="flex items-center text-[11px] font-medium capitalize text-fg-muted">
+      <div className="flex h-full min-h-0 items-center text-[11px] font-medium capitalize text-fg-muted">
         {exchange}
       </div>
       {categories.map((c) => {
@@ -230,7 +231,7 @@ function HeatmapRow({
             key={`${c}-${exchange}`}
             onMouseEnter={() => b && onHover(b)}
             onMouseLeave={() => onHover(null)}
-            className="group relative flex h-16 cursor-pointer flex-col items-center justify-center rounded-md border border-border transition-transform hover:scale-[1.03]"
+            className="group relative flex h-full min-h-0 cursor-pointer flex-col items-center justify-center rounded-md border border-border transition-transform hover:scale-[1.03]"
             style={{ background: bg }}
           >
             {!hasData ? (

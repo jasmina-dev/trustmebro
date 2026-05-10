@@ -194,7 +194,7 @@ export function PriceVsResolution() {
   }, [selected, updateChartContext]);
 
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader
         title="Price vs resolution"
         subtitle={
@@ -226,9 +226,12 @@ export function PriceVsResolution() {
           </div>
         }
       />
-      <CardBody>
-        <div className="relative">
-          <div ref={containerRef} className="h-[260px] w-full sm:h-[300px]" />
+      <CardBody className="flex min-h-0 flex-1 flex-col">
+        <div className="relative flex min-h-[320px] flex-1 flex-col">
+          <div
+            ref={containerRef}
+            className="h-full min-h-[320px] w-full flex-1"
+          />
           {markets.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center bg-bg-card px-6 text-center text-sm text-fg-muted">
               No resolved markets with final-72h candle history are currently

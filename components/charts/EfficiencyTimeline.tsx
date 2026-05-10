@@ -51,19 +51,17 @@ export function EfficiencyTimeline() {
     [series],
   );
 
-  const coverage = (data?.meta?.coverage ?? null) as
-    | {
-        closedMarketsConsidered?: number;
-        missingResolutionDate?: number;
-        processedObservations?: number;
-        monthsBelowFloor?: number;
-        minMarketsPerMonth?: number;
-      }
-    | null;
+  const coverage = (data?.meta?.coverage ?? null) as {
+    closedMarketsConsidered?: number;
+    missingResolutionDate?: number;
+    processedObservations?: number;
+    monthsBelowFloor?: number;
+    minMarketsPerMonth?: number;
+  } | null;
   const sparse = series.length > 0 && series.length < 3;
 
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader
         title="Efficiency over time"
         subtitle={
@@ -76,120 +74,128 @@ export function EfficiencyTimeline() {
         }
       />
       {sparse && coverage && (
-        <div className="mx-5 mb-2 mt-1 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-[11px] leading-snug text-info">
+        <div className="mx-5 mb-2 mt-1 shrink-0 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-[11px] leading-snug text-info">
           <span className="font-semibold">Sparse coverage:</span>{" "}
           {coverage.closedMarketsConsidered?.toLocaleString() ?? "?"} closed
-          markets pulled · {coverage.missingResolutionDate?.toLocaleString() ?? "?"}{" "}
-          missing a resolution date ·{" "}
-          {coverage.monthsBelowFloor?.toLocaleString() ?? "?"} months dropped
-          (&lt; {coverage.minMarketsPerMonth ?? 2} markets per venue). Set{" "}
-          <code className="text-fg">RESOLUTION_BIAS_MAX_PAGES</code> higher to
-          backfill older months.
+          markets pulled ·{" "}
+          {coverage.missingResolutionDate?.toLocaleString() ?? "?"} missing a
+          resolution date · {coverage.monthsBelowFloor?.toLocaleString() ?? "?"}{" "}
+          months dropped (&lt; {coverage.minMarketsPerMonth ?? 2} markets per
+          venue). Set <code className="text-fg">RESOLUTION_BIAS_MAX_PAGES</code>{" "}
+          higher to backfill older months.
         </div>
       )}
-      <CardBody className="h-[320px] pl-0 pr-3">
+      <CardBody className="flex min-h-0 flex-1 flex-col pl-0 pr-3">
         {isLoading && !data ? (
-          <ChartSkeleton />
+          <div className="flex min-h-[320px] flex-1 flex-col">
+            <ChartSkeleton />
+          </div>
         ) : series.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-fg-muted">
+          <div className="flex min-h-[320px] flex-1 items-center justify-center px-6 text-center text-xs text-fg-muted">
             {coverage && (coverage.missingResolutionDate ?? 0) > 0
               ? `No months met the per-venue floor — ${(coverage.missingResolutionDate ?? 0).toLocaleString()} of ${(coverage.closedMarketsConsidered ?? 0).toLocaleString()} closed markets had no resolution date. Lower EFFICIENCY_MIN_MARKETS_PER_MONTH or wait for /api/warmup to backfill.`
               : "Not enough resolved markets with recorded resolution dates yet."}
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={series}
-              margin={{ top: 12, right: 12, bottom: 16, left: 32 }}
-            >
-              <defs>
-                <linearGradient id="polyFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2d9cdb" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#2d9cdb" stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="kalshiFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2330" />
-              <XAxis
-                dataKey="month"
-                tick={{ fill: "#8b91a1", fontSize: 10 }}
-                axisLine={{ stroke: "#2a2f3d" }}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: "#8b91a1", fontSize: 10 }}
-                axisLine={{ stroke: "#2a2f3d" }}
-                tickLine={false}
-                tickFormatter={(v) => `${v}%`}
-                label={{
-                  value: "Mispricing (weighted)",
-                  fill: "#8b91a1",
-                  fontSize: 11,
-                  angle: -90,
-                  position: "insideLeft",
-                  offset: -4,
-                }}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#111318",
-                  border: "1px solid #2a2f3d",
-                  borderRadius: 8,
-                }}
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
-                  const row = payload[0].payload as EfficiencyMonth;
-                  return (
-                    <div className="rounded-lg border border-border bg-bg-card p-3 text-xs shadow-xl">
-                      <div className="mb-1 font-semibold text-fg">{label}</div>
-                      <div className="space-y-0.5 font-mono text-fg-muted">
-                        {row.polymarket !== undefined && (
-                          <div>
-                            <span style={{ color: "#2d9cdb" }}>Polymarket</span>{" "}
-                            {row.polymarket}% · n={row.polymarketN ?? 0} ·{" "}
-                            {usd(row.polymarketVolume ?? 0)}
-                          </div>
-                        )}
-                        {row.kalshi !== undefined && (
-                          <div>
-                            <span style={{ color: "#10b981" }}>Kalshi</span>{" "}
-                            {row.kalshi}% · n={row.kalshiN ?? 0} ·{" "}
-                            {usd(row.kalshiVolume ?? 0)}
-                          </div>
-                        )}
+          <div className="flex min-h-[320px] flex-1 flex-col">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={series}
+                margin={{ top: 12, right: 12, bottom: 16, left: 32 }}
+              >
+                <defs>
+                  <linearGradient id="polyFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2d9cdb" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#2d9cdb" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="kalshiFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2330" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: "#8b91a1", fontSize: 10 }}
+                  axisLine={{ stroke: "#2a2f3d" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#8b91a1", fontSize: 10 }}
+                  axisLine={{ stroke: "#2a2f3d" }}
+                  tickLine={false}
+                  tickFormatter={(v) => `${v}%`}
+                  label={{
+                    value: "Mispricing (weighted)",
+                    fill: "#8b91a1",
+                    fontSize: 11,
+                    angle: -90,
+                    position: "insideLeft",
+                    offset: -4,
+                  }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#111318",
+                    border: "1px solid #2a2f3d",
+                    borderRadius: 8,
+                  }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    const row = payload[0].payload as EfficiencyMonth;
+                    return (
+                      <div className="rounded-lg border border-border bg-bg-card p-3 text-xs shadow-xl">
+                        <div className="mb-1 font-semibold text-fg">
+                          {label}
+                        </div>
+                        <div className="space-y-0.5 font-mono text-fg-muted">
+                          {row.polymarket !== undefined && (
+                            <div>
+                              <span style={{ color: "#2d9cdb" }}>
+                                Polymarket
+                              </span>{" "}
+                              {row.polymarket}% · n={row.polymarketN ?? 0} ·{" "}
+                              {usd(row.polymarketVolume ?? 0)}
+                            </div>
+                          )}
+                          {row.kalshi !== undefined && (
+                            <div>
+                              <span style={{ color: "#10b981" }}>Kalshi</span>{" "}
+                              {row.kalshi}% · n={row.kalshiN ?? 0} ·{" "}
+                              {usd(row.kalshiVolume ?? 0)}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area
-                type="monotone"
-                dataKey="polymarket"
-                name="Polymarket"
-                stroke="#2d9cdb"
-                strokeWidth={2}
-                fill="url(#polyFill)"
-                connectNulls
-              />
-              <Area
-                type="monotone"
-                dataKey="kalshi"
-                name="Kalshi"
-                stroke="#10b981"
-                strokeWidth={2}
-                fill="url(#kalshiFill)"
-                connectNulls
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+                    );
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Area
+                  type="monotone"
+                  dataKey="polymarket"
+                  name="Polymarket"
+                  stroke="#2d9cdb"
+                  strokeWidth={2}
+                  fill="url(#polyFill)"
+                  connectNulls
+                />
+                <Area
+                  type="monotone"
+                  dataKey="kalshi"
+                  name="Kalshi"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  fill="url(#kalshiFill)"
+                  connectNulls
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </CardBody>
       {trends.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-t border-border-subtle px-5 py-3 text-[11px]">
+        <div className="flex shrink-0 flex-wrap gap-2 border-t border-border-subtle px-5 py-3 text-[11px]">
           {trends.map((t) => (
             <TrendPill key={t.venue} {...t} />
           ))}
@@ -216,9 +222,7 @@ function computeTrends(series: EfficiencyMonth[]): TrendChip[] {
     const recent = series
       .slice(-3)
       .map((row, i) => ({ i, v: row[venue] }))
-      .filter((p): p is { i: number; v: number } =>
-        typeof p.v === "number",
-      );
+      .filter((p): p is { i: number; v: number } => typeof p.v === "number");
     if (recent.length < 2) continue;
 
     const n = recent.length;
