@@ -212,8 +212,8 @@ function PairRow({
               className={cn(
                 "uppercase tracking-wide",
                 pair.arbitrageDirection === "buy_kalshi"
-                  ? "text-info"
-                  : "text-accent",
+                  ? "text-kalshi"
+                  : "text-polymarket",
               )}
             >
               {pair.arbitrageDirection === "buy_kalshi"

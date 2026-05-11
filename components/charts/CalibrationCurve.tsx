@@ -199,7 +199,7 @@ export function CalibrationCurve() {
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
-                margin={{ top: 16, right: 16, bottom: 36, left: 24 }}
+                margin={{ top: 16, right: 16, bottom: 56, left: 24 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2330" />
                 <XAxis
@@ -245,7 +245,10 @@ export function CalibrationCurve() {
                   labelFormatter={(label) => `Price ≈ ${label}%`}
                 />
                 <Legend
-                  wrapperStyle={{ ...chartLegendWrapperStyle, paddingTop: 4 }}
+                  wrapperStyle={{
+                    ...chartLegendWrapperStyle,
+                    paddingTop: 18,
+                  }}
                   payload={[
                     {
                       value: "Perfect calibration",

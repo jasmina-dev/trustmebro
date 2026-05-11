@@ -7,11 +7,12 @@ export default function LandingPage() {
 
       <section className="relative z-10 w-full max-w-3xl rounded-2xl border border-border bg-bg-card/90 p-6 text-center shadow-xl backdrop-blur-sm sm:p-8 md:p-12">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-fg-muted sm:text-xs">
-          Prediction markets, decoded
+          Prediction markets, decoded.
         </p>
         <h1 className="text-3xl font-black leading-tight text-fg sm:text-4xl md:text-5xl">
           Don&apos;t trust the vibe.
-          <span className="text-accent"> Trust me bro.</span>
+          <br />
+          <span className="text-accent">Trust me bro.</span>
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm text-fg-muted sm:mt-5 sm:text-base md:text-lg">
           Live odds, volume, and whale flow in one dashboard, plus an AI
