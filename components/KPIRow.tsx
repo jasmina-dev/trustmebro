@@ -15,6 +15,7 @@ import type {
   ResolutionBiasBucket,
   UnifiedMarket,
 } from "@/lib/types";
+import { normalizeCategory } from "@/lib/utils";
 
 /**
  * Dashboard KPI row.
@@ -81,7 +82,11 @@ export function KPIRow() {
   // Filter inefficiency scores to the active venue.
   const filteredScores = useMemo(() => {
     if (!scores?.data) return [];
-    return scores.data.filter((s) => matchesVenue(s, activeVenue));
+    return scores.data.filter(
+      (s) =>
+        normalizeCategory(s.category) !== "Sports" &&
+        matchesVenue(s, activeVenue),
+    );
   }, [scores?.data, activeVenue]);
 
   // Push markets + scores into the global dashboard context so the chatbot

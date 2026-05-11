@@ -130,4 +130,43 @@ describe("MarketMomentum venue toggle", () => {
     expect(screen.getByText("poly-only")).toBeInTheDocument();
     expect(screen.queryByText("kal-only")).toBeNull();
   });
+
+  test("excludes Sports-category markets from the mover list", () => {
+    const mk = (id: string, category: string, change: number) => ({
+      marketId: id,
+      title: id,
+      exchange: "polymarket" as const,
+      category,
+      volume: 0,
+      volume24h: 0,
+      liquidity: 1,
+      outcomes: [
+        {
+          outcomeId: `o-${id}`,
+          marketId: id,
+          label: "YES",
+          price: 0.5,
+          priceChange24h: change,
+        },
+      ],
+    });
+
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        fallback: {
+          data: {
+            data: [
+              mk("sports-mover", "Sports", 0.5),
+              mk("politics-mover", "Politics", 0.12),
+            ],
+          },
+          isLoading: false,
+        },
+      }),
+    );
+
+    render(<MarketMomentum />);
+    expect(screen.queryByText("sports-mover")).toBeNull();
+    expect(screen.getByText("politics-mover")).toBeInTheDocument();
+  });
 });

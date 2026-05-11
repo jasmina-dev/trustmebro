@@ -7,7 +7,7 @@ import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { cn } from "@/lib/cn";
-import { yesOutcome, usd } from "@/lib/utils";
+import { normalizeCategory, yesOutcome, usd } from "@/lib/utils";
 import { useDashboard } from "@/lib/store";
 import type { UnifiedMarket } from "@/lib/types";
 
@@ -17,7 +17,8 @@ import type { UnifiedMarket } from "@/lib/types";
  * @remarks
  * Ranks markets by 24h price change and highlights large moves as potential
  * late-information events. The list is derived from `/api/markets` and filtered
- * by dashboard venue/category selections.
+ * by dashboard venue/category selections. Sports-tagged markets are excluded
+ * (same `normalizeCategory` → "Sports" rule as the inefficiency leaderboard).
  */
 const TOP_N = 20;
 const BIG_MOVE = 0.1; // 10pp threshold for "late-information event" callout
@@ -68,6 +69,7 @@ export function MarketMomentum() {
   const movers = useMemo<Mover[]>(() => {
     const list: Mover[] = [];
     for (const m of data?.data ?? []) {
+      if (normalizeCategory(m.category) === "Sports") continue;
       const yes = yesOutcome(m);
       if (!yes) continue;
       const change = yes.priceChange24h;
@@ -82,6 +84,7 @@ export function MarketMomentum() {
   const bigMoveCount = useMemo(
     () =>
       (data?.data ?? []).reduce((n, m) => {
+        if (normalizeCategory(m.category) === "Sports") return n;
         const y = yesOutcome(m);
         return n + (y && Math.abs(y.priceChange24h ?? 0) >= BIG_MOVE ? 1 : 0);
       }, 0),

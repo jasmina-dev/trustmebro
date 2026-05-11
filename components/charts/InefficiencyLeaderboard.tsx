@@ -9,6 +9,7 @@ import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { cn } from "@/lib/cn";
 import { useDashboard } from "@/lib/store";
+import { normalizeCategory } from "@/lib/utils";
 import type { InefficiencyScore, InefficiencyType } from "@/lib/types";
 
 /**
@@ -16,7 +17,8 @@ import type { InefficiencyScore, InefficiencyType } from "@/lib/types";
  *
  * @remarks
  * The leaderboard is driven by `/api/inefficiencies` and filtered by the active
- * dashboard venue/category. Divergence entries span two venues and should be
+ * dashboard venue/category. Sports-tagged rows are excluded (same as the API
+ * universe for live data). Divergence entries span two venues and should be
  * visible under either exchange toggle.
  */
 const TYPE_LABEL: Record<InefficiencyType, string> = {
@@ -64,16 +66,24 @@ export function InefficiencyLeaderboard() {
   const [detail, setDetail] = useState<InefficiencyScore | null>(null);
 
   const { activeVenue, updateChartContext } = useDashboard();
+
+  const scoresNoSports = useMemo(
+    () =>
+      (data?.data ?? []).filter(
+        (r) => normalizeCategory(r.category) !== "Sports",
+      ),
+    [data?.data],
+  );
+
   useEffect(() => {
-    if (data?.data) {
-      updateChartContext("inefficiency-leaderboard", {
-        inefficiencyScores: data.data,
-      });
-    }
-  }, [data?.data, updateChartContext]);
+    if (data === undefined) return;
+    updateChartContext("inefficiency-leaderboard", {
+      inefficiencyScores: scoresNoSports,
+    });
+  }, [data, scoresNoSports, updateChartContext]);
 
   const rows = useMemo(() => {
-    const list = (data?.data ?? []).filter((r) => {
+    const list = scoresNoSports.filter((r) => {
       if (filter !== "all" && r.type !== filter) return false;
       if (!matchesVenue(r, activeVenue)) return false;
       return true;
@@ -86,7 +96,7 @@ export function InefficiencyLeaderboard() {
         return (av - bv) * dir;
       return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
     });
-  }, [data?.data, filter, sortKey, sortDir, activeVenue]);
+  }, [scoresNoSports, filter, sortKey, sortDir, activeVenue]);
 
   if (isLoading && !data) {
     return (

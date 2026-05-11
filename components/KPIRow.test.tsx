@@ -196,4 +196,57 @@ describe("KPIRow", () => {
     // but the kalshi-only row should drop out.
     expect(kpiValue("Inefficiencies flagged")).toBe("1");
   });
+
+  test("Inefficiencies flagged excludes Sports-category scores", () => {
+    const marketsPayload = { data: [{ marketId: "m1" }] };
+    const resolutionPayload = { data: [] };
+    const scoresPayload = {
+      data: [
+        {
+          id: "s1",
+          marketId: "s1",
+          title: "NFL prop",
+          exchange: "polymarket",
+          category: "Sports",
+          type: "liquidity_gap",
+          score: 99,
+          details: "x",
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          id: "p1",
+          marketId: "p1",
+          title: "Politics row",
+          exchange: "polymarket",
+          category: "Politics",
+          type: "liquidity_gap",
+          score: 10,
+          details: "y",
+          lastUpdated: new Date().toISOString(),
+        },
+      ],
+    };
+
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+        startsWith: [
+          {
+            prefix: "/api/markets?",
+            value: { data: marketsPayload, isLoading: false },
+          },
+          {
+            prefix: "/api/resolution-bias",
+            value: { data: resolutionPayload, isLoading: false },
+          },
+        ],
+      }),
+    );
+
+    useDashboard.setState({ activeVenue: "all" });
+    render(<KPIRow />);
+    expect(kpiValue("Inefficiencies flagged")).toBe("1");
+  });
 });

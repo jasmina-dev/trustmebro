@@ -1,7 +1,8 @@
 /**
  * GET /api/inefficiencies
  *
- * Computes four inefficiency signals across the live market universe:
+ * Computes four inefficiency signals across the live market universe (Sports
+ * markets are excluded — same taxonomy as `normalizeCategory` → "Sports"):
  *
  *   1. resolution_bias           — category × exchange NO-rate anomalies
  *                                  (from resolved markets; NO rate > 65% flagged)
@@ -32,11 +33,7 @@ import {
   venueMarketUrl,
   yesOutcome,
 } from "@/lib/utils";
-import type {
-  Exchange,
-  InefficiencyScore,
-  UnifiedMarket,
-} from "@/lib/types";
+import type { Exchange, InefficiencyScore, UnifiedMarket } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,37 +45,61 @@ const MAX_LATE_BREAKING_PROBES = 8; // OHLCV calls are expensive — cap per run
 
 export async function GET() {
   try {
-    const { value, state } = await cached("inefficiencies:v3:all", 300, async () => {
-      if (!hasPmxtKey()) {
-        const active = mockMarkets({});
-        const resolved = assignResolutionLabels(mockMarkets({ closed: true }));
+    const { value, state } = await cached(
+      "inefficiencies:v3:all",
+      300,
+      async () => {
+        if (!hasPmxtKey()) {
+          const normalizeMarket = (m: UnifiedMarket): UnifiedMarket => ({
+            ...m,
+            exchange: marketExchange(m),
+          });
+          const active = mockMarkets({})
+            .filter(
+              (m) =>
+                marketExchange(m) && normalizeCategory(m.category) !== "Sports",
+            )
+            .map(normalizeMarket);
+          const resolved = assignResolutionLabels(mockMarkets({ closed: true }))
+            .filter(
+              (m) =>
+                marketExchange(m) && normalizeCategory(m.category) !== "Sports",
+            )
+            .map(normalizeMarket);
+          return {
+            source: "mock" as const,
+            scores: await computeAll(active, resolved, { useMockOhlcv: true }),
+          };
+        }
+
+        const [activeRaw, resolvedRaw] = await Promise.all([
+          router.markets({ limit: 500 }),
+          router.markets({ closed: true, limit: 500 }),
+        ]);
+
+        const normalizeMarket = (m: UnifiedMarket): UnifiedMarket => ({
+          ...m,
+          exchange: marketExchange(m),
+        });
+        const active = activeRaw.data
+          .filter(
+            (m) =>
+              marketExchange(m) && normalizeCategory(m.category) !== "Sports",
+          )
+          .map(normalizeMarket);
+        const resolved = resolvedRaw.data
+          .filter(
+            (m) =>
+              marketExchange(m) && normalizeCategory(m.category) !== "Sports",
+          )
+          .map(normalizeMarket);
+
         return {
-          source: "mock" as const,
-          scores: await computeAll(active, resolved, { useMockOhlcv: true }),
+          source: "pmxt" as const,
+          scores: await computeAll(active, resolved, { useMockOhlcv: false }),
         };
-      }
-
-      const [activeRaw, resolvedRaw] = await Promise.all([
-        router.markets({ limit: 500 }),
-        router.markets({ closed: true, limit: 500 }),
-      ]);
-
-      const normalizeMarket = (m: UnifiedMarket): UnifiedMarket => ({
-        ...m,
-        exchange: marketExchange(m),
-      });
-      const active = activeRaw.data
-        .filter((m) => marketExchange(m) && normalizeCategory(m.category) !== "Sports")
-        .map(normalizeMarket);
-      const resolved = resolvedRaw.data
-        .filter((m) => marketExchange(m) && normalizeCategory(m.category) !== "Sports")
-        .map(normalizeMarket);
-
-      return {
-        source: "pmxt" as const,
-        scores: await computeAll(active, resolved, { useMockOhlcv: false }),
-      };
-    });
+      },
+    );
 
     return NextResponse.json(
       {
@@ -122,9 +143,7 @@ async function computeAll(
     ...(await lateBreakingMismatchSignals(resolved, { useMockOhlcv })),
   );
 
-  return scores
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 200);
+  return scores.sort((a, b) => b.score - a.score).slice(0, 200);
 }
 
 // 1. Resolution bias — one row per biased (category, exchange) bucket.

@@ -93,4 +93,46 @@ describe("InefficiencyLeaderboard venue toggle", () => {
     expect(screen.queryByText("Kalshi only row")).toBeNull();
     expect(screen.getByTestId("subtitle").textContent).toMatch(/^1 flagged/);
   });
+
+  test("excludes Sports-category rows from the table and flagged count", () => {
+    const scoresPayload = {
+      data: [
+        {
+          id: "s1",
+          marketId: "s1",
+          title: "Sports row",
+          exchange: "polymarket",
+          category: "Sports",
+          type: "liquidity_gap",
+          score: 99,
+          details: "x",
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          id: "p1",
+          marketId: "p1",
+          title: "Politics row",
+          exchange: "polymarket",
+          category: "Politics",
+          type: "liquidity_gap",
+          score: 10,
+          details: "y",
+          lastUpdated: new Date().toISOString(),
+        },
+      ],
+    };
+
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+      }),
+    );
+
+    render(<InefficiencyLeaderboard />);
+    expect(screen.queryByText("Sports row")).toBeNull();
+    expect(screen.getByText("Politics row")).toBeInTheDocument();
+    expect(screen.getByTestId("subtitle").textContent).toMatch(/^1 flagged/);
+  });
 });
