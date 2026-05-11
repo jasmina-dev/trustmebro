@@ -4,17 +4,14 @@ import useSWR from "swr";
 import { useMemo } from "react";
 import {
   Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
   ComposedChart,
-  Legend,
 } from "recharts";
 import { REFRESH, resolutionBiasFetcher, type ApiPayload } from "@/lib/api";
 import { histogram, mean, normalPdf, stddev } from "@/lib/utils";
@@ -22,11 +19,7 @@ import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
-import {
-  chartAxisTick,
-  chartLegendWrapperStyle,
-  chartTooltipContentStyle,
-} from "@/lib/chartTypography";
+import { chartAxisTick, chartTooltipContentStyle } from "@/lib/chartTypography";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
 /**
@@ -99,47 +92,71 @@ export function ResolutionBiasDistribution() {
           <HelpTooltip content="Bars show how frequently NO-resolution rates appear across buckets. The overlaid curve is a normal-fit reference to help you see skew and fat tails." />
         }
       />
-      <CardBody className="h-[300px] pl-2 pr-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={histogramData}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#1f2330"
-              vertical={false}
+      <CardBody className="flex flex-col gap-2 pl-2 pr-4 pb-3">
+        <div className="h-[280px] w-full min-h-0 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={histogramData}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#1f2330"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="label"
+                tick={chartAxisTick}
+                interval={2}
+                axisLine={{ stroke: "#2a2f3d" }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={chartAxisTick}
+                axisLine={{ stroke: "#2a2f3d" }}
+                tickLine={false}
+              />
+              <Tooltip contentStyle={chartTooltipContentStyle} />
+              <Bar dataKey="count" name="Count per bin" radius={[4, 4, 0, 0]}>
+                {histogramData.map((b, i) => (
+                  <Cell
+                    key={i}
+                    fill={b.bucketStart >= 0.65 ? "#ef4444" : "#6366f1"}
+                    fillOpacity={0.85}
+                  />
+                ))}
+              </Bar>
+              <Line
+                type="monotone"
+                dataKey="normal"
+                name="Normal(μ,σ)"
+                stroke="#22c55e"
+                strokeWidth={2}
+                dot={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border-subtle pt-2 text-[10px] text-fg-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-4 shrink-0 rounded-sm bg-[#6366f1]/85"
+              aria-hidden
             />
-            <XAxis
-              dataKey="label"
-              tick={chartAxisTick}
-              interval={2}
-              axisLine={{ stroke: "#2a2f3d" }}
-              tickLine={false}
+            Bin starts below 65% NO-rate
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-4 shrink-0 rounded-sm bg-[#ef4444]/85"
+              aria-hidden
             />
-            <YAxis
-              tick={chartAxisTick}
-              axisLine={{ stroke: "#2a2f3d" }}
-              tickLine={false}
+            Bin starts at or above 65% NO-rate (strong NO-skew band)
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-0.5 w-5 shrink-0 rounded-full bg-[#22c55e]"
+              aria-hidden
             />
-            <Tooltip contentStyle={chartTooltipContentStyle} />
-            <Legend wrapperStyle={chartLegendWrapperStyle} />
-            <Bar dataKey="count" name="Markets" radius={[4, 4, 0, 0]}>
-              {histogramData.map((b, i) => (
-                <Cell
-                  key={i}
-                  fill={b.bucketStart >= 0.65 ? "#ef4444" : "#6366f1"}
-                  fillOpacity={0.85}
-                />
-              ))}
-            </Bar>
-            <Line
-              type="monotone"
-              dataKey="normal"
-              name="Normal(μ,σ)"
-              stroke="#22c55e"
-              strokeWidth={2}
-              dot={false}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+            Normal fit curve (μ, σ)
+          </span>
+        </div>
       </CardBody>
     </Card>
   );
