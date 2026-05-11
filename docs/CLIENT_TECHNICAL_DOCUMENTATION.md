@@ -12,7 +12,7 @@ It is written for client teams who need to:
 - troubleshoot common issues,
 - and maintain or extend the codebase safely.
 
-The current production architecture is a single Next.js app (App Router) with server route handlers and a client-side dashboard UI.
+The current production architecture is a single **Next.js 16** app (App Router) with server route handlers and a client-side dashboard UI. For a shorter overview, see the repository [`README.md`](../README.md); this file is the deeper handoff.
 
 ---
 
@@ -49,15 +49,16 @@ TrustMeBro is a prediction-market analytics platform that:
 3. API routes fetch/calculate data using PMXT and local analytics helpers.
 4. Responses are wrapped in a common envelope and cached (`HIT`/`MISS`/`BYPASS`).
 5. Charts render and also push selected context into the global Zustand store.
-6. Chat panel sends user question + live dashboard context to `/api/chat`.
-7. `/api/chat` streams response tokens back to the client.
+6. Chat panel sends user question + live dashboard context to `POST /api/analyst`.
+7. `/api/analyst` streams response tokens back to the client.
 
 ## 3.2 Main directories
 
 - `app/` - Next.js App Router pages and API route handlers
 - `components/` - Dashboard UI, charts, navigation, chat, and reusable UI primitives
 - `lib/` - Type definitions, API wrappers, PMXT client, caching/rate limiting, analytics utilities
-- `tests/` - E2E tests (Playwright)
+- `tests/e2e/` - E2E tests (Playwright; `playwright.config.ts` at repo root)
+- Colocated Jest tests (e.g. `app/**/*.test.ts`, `app/**/*.test.tsx`)
 - `docs/` - Project documentation (this file)
 
 ---
@@ -76,20 +77,18 @@ Landing page provides:
 
 Major dashboard layout sections:
 
-- `TopNav` - title, venue/category/date controls, AI panel toggle
-- `Sidebar` - jump links to chart sections
+- `TopNav` - title, venue/category/date controls, theme toggle, AI panel toggle, mobile sidebar control
+- `Sidebar` - jump links to chart sections (off-canvas on small viewports)
 - `KPIRow` - high-level summary metrics
-- Chart sections:
-  - Resolution bias heatmap
-  - Resolution bias distribution
+- Chart sections (lazy-loaded with `next/dynamic`; mounts are staggered via `DeferChartMount` to reduce burst traffic):
+  - Resolution bias heatmap + resolution bias distribution (two-column row)
   - Cross-venue divergence
   - Market momentum
-  - Calibration curve
-  - Efficiency timeline
-  - Liquidity gap scatter
-  - Price vs resolution
+  - Calibration curve + efficiency timeline (shared row; efficiency anchor `id="efficiency-timeline"`)
+  - Liquidity gap scatter + price vs resolution (shared row; price anchor `id="price-vs-resolution"`)
   - Inefficiency leaderboard
-- `ChatPanel` - AI assistant with context visibility and streaming responses
+- `FirstTimeUserGuide` - in-page tips for reading the dashboard (`#first-time-users`)
+- `ChatPanel` - AI assistant with context visibility and streaming responses (`POST /api/analyst`)
 
 ---
 
@@ -180,9 +179,9 @@ Notes:
 - Cache TTL: 24h
 - Supports flexible parsing (JSON/NDJSON/plain lines)
 
-## 5.6 `POST /api/chat`
+## 5.6 `POST /api/analyst`
 
-Purpose: Streaming AI assistant endpoint.
+Purpose: Streaming AI assistant endpoint (dashboard chat).
 
 Request body:
 
@@ -191,21 +190,19 @@ Request body:
 
 Notes:
 
-- Streams plain text response chunks
-- Rate limit: 10 requests/minute/IP
-- Uses Anthropic model when configured
-- Gracefully degrades to mock text stream if Anthropic key is missing
+- Streams plain text response chunks (Vercel AI SDK + `@ai-sdk/anthropic`)
+- Rate limit: **20** requests/minute/IP by default (`CHAT_RATE_LIMIT_MAX` / `CHAT_RATE_LIMIT_WINDOW_SECONDS` when set)
+- Default model when `ANTHROPIC_MODEL` is unset: `claude-4-sonnet-20250514` (must be a dated Messages API id)
+- Gracefully degrades to a mock text stream if `ANTHROPIC_API_KEY` is missing
 
 ## 5.7 Other analytical endpoints
 
-- `GET /api/divergence`
-- `GET /api/calibration`
-- `GET /api/efficiency-timeline`
-- `GET /api/warmup`
-- `GET /api/debug/divergence`
-- `GET /api/debug/resolution-bias`
+- `GET /api/divergence` — cross-venue / category divergence payloads for charts
+- `GET /api/calibration` — calibration buckets for the calibration chart
+- `GET /api/efficiency-timeline` — monthly mispricing timeline
+- `GET /api/warmup` — cache warmup (protect in production with `CRON_SECRET` + `Authorization: Bearer …`; see [`HOW_TO_DEPLOY.md`](./HOW_TO_DEPLOY.md))
 
-These support chart-specific analytics, diagnostics, and warmup behavior.
+These support chart-specific analytics and scheduled warmup; there are **no** `/api/debug/*` routes in the current tree—use server logs and `X-Cache` headers for debugging.
 
 ---
 
@@ -243,7 +240,7 @@ Behavior:
 
 ## 7.2 Rate limiting
 
-- `/api/chat` is protected with sliding-window rate limiting.
+- `POST /api/analyst` is protected with sliding-window rate limiting.
 - Uses Upstash ratelimit when configured.
 - Falls back to in-memory limiter when not configured.
 
@@ -269,8 +266,8 @@ Key implementation file:
 
 ## 8.3 Anthropic
 
-- Used by `/api/chat` streaming
-- Configurable model via `ANTHROPIC_MODEL`
+- Used by `POST /api/analyst` streaming
+- Configurable model via `ANTHROPIC_MODEL` (see `.env.local.example` for valid pinned ids)
 
 ## 8.4 Upstash Redis
 
@@ -292,7 +289,7 @@ Required for full live behavior:
 
 Optional:
 
-- `ANTHROPIC_MODEL` (defaults to `claude-sonnet-4-5`)
+- `ANTHROPIC_MODEL` (defaults to `claude-4-sonnet-20250514` in code when unset)
 - `PMXT_ARCHIVE_URL` (defaults to public archive URL)
 
 Graceful degradation behavior:
@@ -303,13 +300,14 @@ Graceful degradation behavior:
 
 ---
 
-## 10) Local Development Runbook (Windows / PowerShell)
+## 10) Local Development Runbook
 
-Run from project root (not from `backend/`):
+Run from the **repository root** (not from a legacy `backend/` folder):
 
-```powershell
-cd "C:\Users\claud\OneDrive\Desktop\CLASSES\trustmebro"
+```bash
+cd /path/to/trustmebro
 npm install
+cp .env.local.example .env.local   # optional; fill keys as needed
 npm run dev
 ```
 
@@ -348,7 +346,7 @@ Important:
 - verify homepage loads (`/`)
 - verify dashboard loads (`/dashboard`)
 - verify API response headers include `X-Cache`
-- verify chat opens and returns a response
+- verify the AI panel opens and `POST /api/analyst` returns a response
 
 ## 12.2 Release checks
 
@@ -357,7 +355,7 @@ Before deployment:
 - run lint/typecheck/tests
 - run build
 - verify key dashboard charts populate
-- verify chat endpoint for both configured and degraded modes
+- verify `POST /api/analyst` for both configured and degraded modes
 
 ## 12.3 Recommended monitoring signals
 
@@ -469,11 +467,13 @@ Use standard conventions:
 - `app/page.tsx` - Landing page
 - `app/dashboard/page.tsx` - Dashboard shell and section composition
 - `app/layout.tsx` - Global metadata/fonts/root layout
-- `app/api/*/route.ts` - Internal API endpoints
-- `components/navigation/TopNav.tsx` - Filters and chat toggle
+- `app/api/*/route.ts` - Internal API endpoints (streaming chat: `app/api/analyst/route.ts`)
+- `components/navigation/TopNav.tsx` - Filters, theme toggle, chat toggle
+- `components/navigation/ThemeToggle.tsx` - Light/dark/system theme control
 - `components/navigation/Sidebar.tsx` - Section navigation
 - `components/KPIRow.tsx` - KPI metrics and context updates
-- `components/chat/ChatPanel.tsx` - AI chat UI and stream handling
+- `components/chat/ChatPanel.tsx` - AI chat UI and stream handling (POST `/api/analyst`)
+- `components/FirstTimeUserGuide.tsx` - First-time user onboarding section
 - `lib/store.ts` - Zustand global state
 - `lib/api.ts` - Fetch envelope and refresh intervals
 - `lib/pmxt.ts` - PMXT/router/OHLCV/archive integration
@@ -489,9 +489,8 @@ TrustMeBro is currently implemented as a single Next.js application with:
 - a landing page (`/`) and dashboard (`/dashboard`),
 - cache-first server routes for market analytics,
 - robust fallback modes for missing third-party keys,
-- and context-aware AI analysis integrated directly into the dashboard workflow.
+- and context-aware AI analysis integrated directly into the dashboard workflow (`POST /api/analyst`).
 
 For clients, the key operational rule is simple:
 
 - run and manage the app from the repository root (`npm run dev`), not from legacy split directories.
-

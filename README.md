@@ -1,6 +1,6 @@
 # trustmebro — prediction market inefficiency dashboard
 
-A full-stack Next.js 14 dashboard that surfaces **systematic inefficiencies**
+A full-stack Next.js 16 (App Router) dashboard that surfaces **systematic inefficiencies**
 across Polymarket and Kalshi — resolution bias, cross-venue price
 divergence, liquidity gaps, and late-breaking mismatches — with an embedded
 AI chatbot that reads live dashboard context.
@@ -46,37 +46,37 @@ npm start
    ┌─────────────────────────────────────────────────────────────┐
    │                      Browser  (Next.js client)              │
    │                                                             │
-   │  TopNav · Sidebar   KPIRow    6× chart modules   ChatPanel  │
+   │  TopNav · Sidebar · KPIRow · chart sections · ChatPanel     │
    │     │        │         │            │               │       │
    │     └────────┴────┬────┴────────────┴──────┬────────┘       │
    │                   │                        │                │
    │          Zustand store (useDashboard)  ───►│ context        │
    │          filters · chart context      ───►│ snapshot fed to │
-   │                                            │ chat endpoint  │
+   │                                            │ /api/analyst   │
    │                   │                        │                │
    └───────────────────┼────────────────────────┼────────────────┘
-                       │ SWR /api/*             │ POST /api/chat
+                       │ SWR /api/*             │ POST /api/analyst
                        ▼                        ▼
      ┌─────────────────────────────────────────────────────────┐
      │   Next.js route handlers  (Node runtime · dynamic)      │
      │                                                         │
      │  /api/markets          /api/resolution-bias             │
      │  /api/inefficiencies   /api/ohlcv                       │
-     │  /api/archive          /api/chat (streaming)            │
+     │  /api/archive          /api/analyst (streaming)         │
      │        │                      │                         │
      │        ▼                      ▼                         │
      │  ┌──────────────┐    ┌──────────────────────────┐       │
      │  │ lib/redis.ts │    │ ai + @ai-sdk/anthropic   │       │
-  │  │ cached()     │    │ streamText               │       │
-  │  │ 60s/5m/1h/24h│    │ rate limit 20/min/IP*    │       │
+     │  │ cached()     │    │ streamText               │       │
+     │  │ 60s/5m/1h/24h│    │ rate limit 20/min/IP*    │       │
      │  └──────┬───────┘    └──────────────────────────┘       │
      │         │ MISS                                          │
      │         ▼                                               │
      │  ┌──────────────────────────────────────────────┐       │
      │  │ lib/pmxt.ts                                  │       │
-     │  │  router.markets()  → GET /v0/markets         │       │
-     │  │  poly/kalshi SDK   → fetchOHLCV(outcomeId…)  │       │
-     │  │  fetchArchive()    → archive.pmxt.dev sniff  │       │
+     │  │  router.markets()  → GET /v0/markets        │       │
+     │  │  poly/kalshi SDK   → fetchOHLCV(outcomeId…)│       │
+     │  │  fetchArchive()    → archive.pmxt.dev sniff│       │
      │  └──────────────────────────────────────────────┘       │
      └─────────────────────────────────────────────────────────┘
                              │
@@ -124,14 +124,17 @@ Every `/api/*` route goes through `lib/redis.ts::cached()` which:
 | `/api/ohlcv`           | 5 min  | Hourly candles move once per hour anyway   |
 | `/api/archive`         | 24 h   | Historical data is append-only             |
 
-Client-side SWR intervals (`lib/api.ts` → `REFRESH`) mirror these TTLs.
+Client-side SWR intervals (`lib/api.ts` → `REFRESH`) are aligned with this
+cadence (live 60 s, inefficiencies/OHLCV 5 m; resolution-bias polling is
+30 m while the server cache remains 1 h).
 
 ---
 
 ## Chatbot
 
-`POST /api/chat` streams an Anthropic Claude response (`claude-sonnet-4-5`
-by default, override with `ANTHROPIC_MODEL`). Every request serializes the
+`POST /api/analyst` streams an Anthropic Claude response (`claude-4-sonnet-20250514`
+by default, override with `ANTHROPIC_MODEL`; use a dated Messages API id — see
+`.env.local.example`). Every request serializes the
 **current dashboard context** into the system prompt:
 
 - active filters (venue / category / date range)
@@ -173,9 +176,19 @@ the same `UnifiedMarket { marketId, title, outcomes[{outcomeId, label, price}], 
 npm run dev         # Next.js dev server (http://localhost:3001)
 npm run build       # Production build (verify before deploying)
 npm start           # Run the built output
-npm run lint        # next lint (ESLint)
+npm run lint        # ESLint
 npm run typecheck   # tsc --noEmit
+npm test            # Jest unit tests (--coverage)
+npm run test:e2e    # Playwright (tests/e2e; see playwright.config.ts)
+npm run test:all    # npm test && npm run test:e2e
 ```
+
+---
+
+## More documentation
+
+- [`docs/CLIENT_TECHNICAL_DOCUMENTATION.md`](docs/CLIENT_TECHNICAL_DOCUMENTATION.md) — architecture, API routes, state, ops, and troubleshooting
+- [`docs/HOW_TO_DEPLOY.md`](docs/HOW_TO_DEPLOY.md) — env keys, PM2 on Linux, and `/api/warmup` + `CRON_SECRET`
 
 ---
 
@@ -185,7 +198,7 @@ npm run typecheck   # tsc --noEmit
 - ✅ Skeleton loaders for every async chart; first-load shell < 90 kB shared JS, < 180 kB page JS.
 - ✅ Chart modules lazy-loaded via `next/dynamic` with per-chart loaders.
 - ✅ Each chart is wrapped in an `ErrorBoundary` with a graceful retry fallback.
-- ✅ Chatbot context reflects exactly what's rendered (each chart calls `updateChartContext` on data load).
+- ✅ Chatbot context reflects exactly what's rendered (each chart calls `updateChartContext` on data load; panel posts to `/api/analyst`).
 - ✅ Mobile-responsive: grid collapses to a single column below 768 px; sidebar hidden.
 - ✅ Strict TypeScript — `any` only where pmxtjs SDK types are incomplete.
 - ✅ `.env.local.example` documents every key with its source URL.

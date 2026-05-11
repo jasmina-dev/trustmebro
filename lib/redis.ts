@@ -255,7 +255,7 @@ export async function invalidate(key: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Rate-limit helper (used by /api/chat) — keyed by IP.
+// Rate-limit helper (used by POST /api/analyst) — keyed by IP.
 // ---------------------------------------------------------------------------
 
 function checkRateLimitInMemory(
