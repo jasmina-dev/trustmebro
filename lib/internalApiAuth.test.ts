@@ -67,6 +67,20 @@ describe("requireCronAuthorized", () => {
     );
   });
 
+  test("treats VERCEL_ENV=production as production even when NODE_ENV is test", async () => {
+    await withEnv(
+      {
+        CRON_SECRET: undefined,
+        NODE_ENV: "test",
+        VERCEL_ENV: "production",
+      },
+      async () => {
+        const res = requireCronAuthorized(req());
+        expect(res?.status).toBe(401);
+      },
+    );
+  });
+
   test("rejects when bearer token is missing or mismatched", async () => {
     await withEnv(
       { CRON_SECRET: "shh", NODE_ENV: "test", VERCEL_ENV: undefined },
@@ -86,6 +100,16 @@ describe("requireCronAuthorized", () => {
         expect(requireCronAuthorized(req("Bearer shh"))).toBeNull();
         // also allow extra whitespace
         expect(requireCronAuthorized(req("Bearer   shh  "))).toBeNull();
+      },
+    );
+  });
+
+  test("rejects when token length differs from secret (timing-safe path)", () => {
+    return withEnv(
+      { CRON_SECRET: "short", NODE_ENV: "test", VERCEL_ENV: undefined },
+      () => {
+        const res = requireCronAuthorized(req("Bearer much-longer-token"));
+        expect(res?.status).toBe(401);
       },
     );
   });

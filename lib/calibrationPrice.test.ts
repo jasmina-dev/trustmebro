@@ -75,9 +75,66 @@ describe("impliedYesStrictNoTerminal", () => {
     });
     expect(impliedYesStrictNoTerminal(m)).toBeNull();
   });
+
+  test("returns null when pinned probability is outside (0,1)", () => {
+    const m = market({
+      marketId: "1",
+      preResolutionYesPrice: 1.01,
+      outcomes: [
+        { outcomeId: "y", marketId: "1", label: "Yes", price: 0.5 },
+        { outcomeId: "n", marketId: "1", label: "No", price: 0.5 },
+      ],
+    });
+    expect(impliedYesStrictNoTerminal(m)).toBeNull();
+  });
+
+  test("returns mid-range YES when pinned absent and price is tradeable", () => {
+    const m = market({
+      marketId: "1",
+      outcomes: [
+        { outcomeId: "y", marketId: "1", label: "Yes", price: 0.42 },
+        { outcomeId: "n", marketId: "1", label: "No", price: 0.58 },
+      ],
+    });
+    expect(impliedYesStrictNoTerminal(m)).toBeCloseTo(0.42);
+  });
 });
 
 describe("impliedYesForAnalytics", () => {
+  test("returns null when pinned is outside the open unit interval", () => {
+    const m = market({
+      marketId: "1",
+      preResolutionYesPrice: -0.1,
+      outcomes: [
+        { outcomeId: "y", marketId: "1", label: "Yes", price: 0.5 },
+        { outcomeId: "n", marketId: "1", label: "No", price: 0.5 },
+      ],
+    });
+    expect(impliedYesForAnalytics(m)).toEqual({ price: null, basis: null });
+  });
+
+  test("returns null when YES price is non-finite", () => {
+    const m = market({
+      marketId: "1",
+      outcomes: [
+        { outcomeId: "y", marketId: "1", label: "Yes", price: Number.NaN },
+        { outcomeId: "n", marketId: "1", label: "No", price: 0.5 },
+      ],
+    });
+    expect(impliedYesForAnalytics(m)).toEqual({ price: null, basis: null });
+  });
+
+  test("tags mid basis for non-terminal YES prices", () => {
+    const m = market({
+      marketId: "1",
+      outcomes: [
+        { outcomeId: "y", marketId: "1", label: "Yes", price: 0.41 },
+        { outcomeId: "n", marketId: "1", label: "No", price: 0.59 },
+      ],
+    });
+    expect(impliedYesForAnalytics(m)).toEqual({ price: 0.41, basis: "mid" });
+  });
+
   test("tags settlement basis for terminal prices", () => {
     const m = market({
       marketId: "1",

@@ -88,4 +88,81 @@ describe("EfficiencyTimeline", () => {
     render(<EfficiencyTimeline />);
     expect(screen.getByText(/Sparse coverage/i)).toBeInTheDocument();
   });
+
+  test("empty chart explains missing resolution dates when coverage reports gaps", () => {
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/efficiency-timeline": {
+            data: {
+              data: [],
+              meta: {
+                coverage: {
+                  closedMarketsConsidered: 40,
+                  missingResolutionDate: 12,
+                  monthsBelowFloor: 0,
+                  minMarketsPerMonth: 2,
+                },
+              },
+            },
+            isLoading: false,
+          },
+        },
+      }),
+    );
+    render(<EfficiencyTimeline />);
+    expect(
+      screen.getByText(/No months met the per-venue floor/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/had no resolution date/i)).toBeInTheDocument();
+  });
+
+  test("renders chart and trend pills when three or more months are present", () => {
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/efficiency-timeline": {
+            data: {
+              data: [
+                {
+                  month: "2026-01",
+                  polymarket: 8,
+                  kalshi: 7,
+                  polymarketVolume: 1_000_000,
+                  kalshiVolume: 900_000,
+                },
+                {
+                  month: "2026-02",
+                  polymarket: 6,
+                  kalshi: 8,
+                  polymarketVolume: 1_100_000,
+                  kalshiVolume: 950_000,
+                },
+                {
+                  month: "2026-03",
+                  polymarket: 4,
+                  kalshi: 9,
+                  polymarketVolume: 1_200_000,
+                  kalshiVolume: 1_000_000,
+                },
+              ],
+              meta: {
+                coverage: {
+                  closedMarketsConsidered: 500,
+                  missingResolutionDate: 0,
+                  monthsBelowFloor: 0,
+                  minMarketsPerMonth: 2,
+                },
+              },
+            },
+            isLoading: false,
+          },
+        },
+      }),
+    );
+    render(<EfficiencyTimeline />);
+    expect(screen.getByTestId("subtitle").textContent).toContain("3 months");
+    expect(screen.getByText(/polymarket/i)).toBeInTheDocument();
+    expect(screen.getByText(/kalshi/i)).toBeInTheDocument();
+  });
 });

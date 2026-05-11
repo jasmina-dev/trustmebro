@@ -19,26 +19,17 @@ import "@testing-library/jest-dom";
 import { TextDecoder, TextEncoder } from "util";
 import { ReadableStream, TransformStream, WritableStream } from "stream/web";
 
-// @ts-expect-error global polyfill for tests
 globalThis.TextEncoder = globalThis.TextEncoder ?? TextEncoder;
-// @ts-expect-error global polyfill for tests
 globalThis.TextDecoder = globalThis.TextDecoder ?? TextDecoder;
 
-// @ts-expect-error global polyfill for tests
 globalThis.ReadableStream = globalThis.ReadableStream ?? ReadableStream;
-// @ts-expect-error global polyfill for tests
 globalThis.WritableStream = globalThis.WritableStream ?? WritableStream;
-// @ts-expect-error global polyfill for tests
 globalThis.TransformStream = globalThis.TransformStream ?? TransformStream;
 
 // Use undici's WHATWG fetch primitives.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { Headers, Request, Response } = require("undici");
-// @ts-expect-error global polyfill for tests
 globalThis.Headers = globalThis.Headers ?? Headers;
-// @ts-expect-error global polyfill for tests
 globalThis.Request = globalThis.Request ?? Request;
-// @ts-expect-error global polyfill for tests
 globalThis.Response = globalThis.Response ?? Response;
 
 jest.mock("next/navigation", () => ({

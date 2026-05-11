@@ -25,6 +25,8 @@ export function mockRecharts() {
 
     Area: () => null,
     Line: () => null,
+    Bar: () => null,
+    Cell: () => null,
 
     Scatter: ({ name, data }: any) => (
       <div data-testid={`scatter-${String(name).toLowerCase()}`}>

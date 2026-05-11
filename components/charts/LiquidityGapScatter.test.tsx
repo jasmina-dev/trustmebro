@@ -124,4 +124,50 @@ describe("LiquidityGapScatter venue toggle", () => {
     expect(screen.getByTestId("scatter-polymarket").textContent).toBe("2");
     expect(screen.getByTestId("scatter-kalshi").textContent).toBe("0");
   });
+
+  test("shows skeleton until markets payload resolves", () => {
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: { data: [] }, isLoading: false },
+        },
+        startsWith: [
+          {
+            prefix: "/api/markets?",
+            value: { data: undefined, isLoading: true },
+          },
+        ],
+        fallback: { data: { data: [] }, isLoading: false },
+      }),
+    );
+
+    render(<LiquidityGapScatter />);
+    expect(screen.getByText("loading")).toBeInTheDocument();
+  });
+
+  test("adds category query to markets URL when dashboard category is not All", () => {
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: { data: [] }, isLoading: false },
+        },
+        startsWith: [
+          {
+            prefix: "/api/markets?",
+            value: { data: { data: [] }, isLoading: false },
+          },
+        ],
+        fallback: { data: { data: [] }, isLoading: false },
+      }),
+    );
+
+    render(<LiquidityGapScatter />);
+    act(() => {
+      useDashboard.getState().setCategory("Crypto");
+    });
+    const keys = (useSWR as jest.Mock).mock.calls.map((c: unknown[]) => c[0]);
+    expect(
+      keys.some((k) => typeof k === "string" && k.includes("category=Crypto")),
+    ).toBe(true);
+  });
 });

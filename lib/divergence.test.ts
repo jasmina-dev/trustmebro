@@ -1,4 +1,5 @@
-import { pairMarkets } from "./divergence";
+import { divergentPairsForCategory, pairMarkets } from "./divergence";
+import { fetchAllMarkets, timed } from "./fetchAll";
 import type { UnifiedMarket } from "./types";
 
 /**
@@ -33,6 +34,27 @@ function market(
 }
 
 describe("lib/divergence", () => {
+  beforeEach(() => {
+    (timed as jest.Mock).mockImplementation(
+      async (_l: string, fn: () => Promise<unknown>) => fn(),
+    );
+    (fetchAllMarkets as jest.Mock).mockReset();
+  });
+
+  test("divergentPairsForCategory stitches both venues via fetchAllMarkets", async () => {
+    (fetchAllMarkets as jest.Mock)
+      .mockResolvedValueOnce({
+        markets: [market("p1", "Will GDP exceed 2.5% in Q3?", 0.72)],
+      })
+      .mockResolvedValueOnce({
+        markets: [market("k1", "Will GDP exceed 2.5% in Q3", 0.55)],
+      });
+
+    const pairs = await divergentPairsForCategory("Finance");
+    expect(pairs).toHaveLength(1);
+    expect(fetchAllMarkets).toHaveBeenCalledTimes(2);
+  });
+
   test("pairMarkets returns divergent matches above spread threshold", () => {
     const poly = [market("poly-1", "Will BTC close above 100k in 2026?", 0.7)];
     const kalshi = [market("kal-1", "Will BTC close above 100k in 2026", 0.62)];
@@ -71,5 +93,24 @@ describe("lib/divergence", () => {
     const kalshi = [market("kal-ok", "Will event happen", 0.4)];
 
     expect(pairMarkets(poly, kalshi, "Politics")).toEqual([]);
+  });
+
+  test("pairMarkets returns empty when either venue list is empty", () => {
+    expect(pairMarkets([], [market("k", "t", 0.5)], "X")).toEqual([]);
+    expect(pairMarkets([market("p", "t", 0.5)], [], "X")).toEqual([]);
+  });
+
+  test("pairMarkets chooses buy_poly when Kalshi YES is richer", () => {
+    const poly = [market("p1", "Will the Fed cut rates in July 2026?", 0.42)];
+    const kalshi = [market("k1", "Will the Fed cut rates in July 2026", 0.68)];
+    const pairs = pairMarkets(poly, kalshi, "Finance");
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].arbitrageDirection).toBe("buy_poly");
+  });
+
+  test("pairMarkets skips when best title match is below similarity threshold", () => {
+    const poly = [market("p1", "ZZZ unique poly title xyz", 0.7)];
+    const kalshi = [market("k1", "AAA totally different wording", 0.4)];
+    expect(pairMarkets(poly, kalshi, "Other")).toEqual([]);
   });
 });

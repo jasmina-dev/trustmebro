@@ -1,4 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import useSWR from "swr";
 import { useDashboard } from "@/lib/store";
 import { InefficiencyLeaderboard } from "./InefficiencyLeaderboard";
@@ -134,5 +135,142 @@ describe("InefficiencyLeaderboard venue toggle", () => {
     expect(screen.queryByText("Sports row")).toBeNull();
     expect(screen.getByText("Politics row")).toBeInTheDocument();
     expect(screen.getByTestId("subtitle").textContent).toMatch(/^1 flagged/);
+  });
+
+  test("shows loading placeholder while fetching", () => {
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: undefined, isLoading: true },
+        },
+      }),
+    );
+
+    render(<InefficiencyLeaderboard />);
+    expect(screen.getByText("loading")).toBeInTheDocument();
+  });
+
+  test("shows empty state when the type filter excludes all rows", () => {
+    const scoresPayload = {
+      data: [
+        {
+          id: "r1",
+          marketId: "r1",
+          title: "Bias only",
+          exchange: "polymarket",
+          category: "Politics",
+          type: "resolution_bias",
+          score: 50,
+          details: "d",
+          lastUpdated: new Date().toISOString(),
+        },
+      ],
+    };
+
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+      }),
+    );
+
+    render(<InefficiencyLeaderboard />);
+    const select = screen.getByRole("combobox");
+    fireEvent.change(select, { target: { value: "late_breaking_mismatch" } });
+    expect(
+      screen.getByText("No inefficiencies match the current filter."),
+    ).toBeInTheDocument();
+  });
+
+  test("opens detail with liquidity distribution for liquidity_gap rows", async () => {
+    const user = userEvent.setup();
+    const scoresPayload = {
+      data: [
+        {
+          id: "lg1",
+          marketId: "lg1",
+          title: "Thin book",
+          url: "https://example.com/m",
+          exchange: "polymarket",
+          category: "Politics",
+          type: "liquidity_gap",
+          score: 88,
+          details: "Volume overwhelmed liquidity at the close.",
+          spread: 0.05,
+          liquidityRatio: 500_000,
+          liquidityPopulation: {
+            mean: 400_000,
+            sd: 50_000,
+            threshold: 550_000,
+            n: 120,
+          },
+          lastUpdated: new Date().toISOString(),
+        },
+      ],
+    };
+
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+      }),
+    );
+
+    render(<InefficiencyLeaderboard />);
+    const dataRow = screen.getAllByRole("row")[1];
+    await user.click(dataRow);
+
+    expect(screen.getByText("Vol/Liq distribution")).toBeInTheDocument();
+    expect(screen.getByText("5.0pp")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "✕" }));
+    expect(screen.queryByText("Vol/Liq distribution")).toBeNull();
+  });
+
+  test("table header clicks toggle sort direction", async () => {
+    const user = userEvent.setup();
+    const scoresPayload = {
+      data: [
+        {
+          id: "a",
+          marketId: "a",
+          title: "Alpha",
+          exchange: "polymarket",
+          category: "Politics",
+          type: "liquidity_gap",
+          score: 10,
+          details: "d",
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          id: "b",
+          marketId: "b",
+          title: "Beta",
+          exchange: "polymarket",
+          category: "Politics",
+          type: "liquidity_gap",
+          score: 90,
+          details: "d",
+          lastUpdated: new Date().toISOString(),
+        },
+      ],
+    };
+
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        exact: {
+          "/api/inefficiencies": { data: scoresPayload, isLoading: false },
+        },
+      }),
+    );
+
+    render(<InefficiencyLeaderboard />);
+    await user.click(screen.getByText("Type"));
+    await user.click(screen.getByText("Type"));
+
+    const rows = screen.getAllByRole("row");
+    expect(rows.length).toBeGreaterThanOrEqual(3);
   });
 });

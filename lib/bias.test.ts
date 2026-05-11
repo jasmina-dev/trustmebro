@@ -107,4 +107,31 @@ describe("lib/bias", () => {
     expect(bucket.total).toBe(1);
     expect(bucket.ambiguous).toBe(1);
   });
+
+  test("computeBiasBucket handles NO outcome listed before YES in the outcomes array", () => {
+    const markets: UnifiedMarket[] = [
+      marketWithOutcomes("rev-order", [
+        { outcomeId: "n", marketId: "rev-order", label: "No", price: 0.08 },
+        { outcomeId: "y", marketId: "rev-order", label: "Yes", price: 0.92 },
+      ]),
+    ];
+
+    const bucket = computeBiasBucket("Finance", "kalshi", markets);
+    expect(bucket.total).toBe(1);
+    expect(bucket.yesResolved).toBe(1);
+    expect(bucket.ambiguous).toBe(0);
+  });
+
+  test("computeBiasBucket counts markets with two YES-labeled sides as ambiguous", () => {
+    const markets: UnifiedMarket[] = [
+      marketWithOutcomes("dup-yes", [
+        { outcomeId: "a", marketId: "dup-yes", label: "YES", price: 0.6 },
+        { outcomeId: "b", marketId: "dup-yes", label: "Yes", price: 0.4 },
+      ]),
+    ];
+
+    const bucket = computeBiasBucket("Politics", "polymarket", markets);
+    expect(bucket.ambiguous).toBe(1);
+    expect(bucket.total).toBe(0);
+  });
 });

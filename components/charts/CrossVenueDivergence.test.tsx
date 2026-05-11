@@ -31,6 +31,22 @@ jest.mock("recharts", () =>
 describe("CrossVenueDivergence", () => {
   beforeEach(() => resetDashboardState());
 
+  test("shows skeleton while loading with no cached payload", () => {
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        startsWith: [
+          {
+            prefix: "/api/divergence?",
+            value: { data: undefined, isLoading: true },
+          },
+        ],
+      }),
+    );
+
+    render(<CrossVenueDivergence />);
+    expect(screen.getByText("loading")).toBeInTheDocument();
+  });
+
   test("category select updates SWR key", async () => {
     const user = userEvent.setup();
     (useSWR as jest.Mock).mockImplementation(
@@ -121,5 +137,82 @@ describe("CrossVenueDivergence", () => {
     );
     // Ranked list shows the poly title (topPairs)
     expect(screen.getByText("Poly title")).toBeInTheDocument();
+  });
+
+  test("renders buy-poly signal and multiple spread color tiers", () => {
+    (useSWR as jest.Mock).mockImplementation(
+      swrByKey({
+        startsWith: [
+          {
+            prefix: "/api/divergence?",
+            value: {
+              data: {
+                data: [
+                  {
+                    pairId: "p-low",
+                    polyMarketId: "pm-low",
+                    kalshiMarketId: "k-low",
+                    polyTitle: "Low spread pair",
+                    kalshiTitle: "K low",
+                    polyYes: 0.51,
+                    kalshiYes: 0.52,
+                    spread: 0.01,
+                    spreadPP: 1,
+                    similarityScore: 0.95,
+                    category: "Politics",
+                    arbitrageDirection: "buy_poly",
+                    polyVolume24h: 50,
+                    kalshiVolume24h: 50,
+                  },
+                  {
+                    pairId: "p-mid",
+                    polyMarketId: "pm-mid",
+                    kalshiMarketId: "k-mid",
+                    polyTitle:
+                      "Mid spread pair with a very long polymarket title that should truncate cleanly in the ranked list row",
+                    kalshiTitle: "K mid",
+                    polyYes: 0.55,
+                    kalshiYes: 0.5,
+                    spread: 0.035,
+                    spreadPP: 3.5,
+                    similarityScore: 0.9,
+                    category: "Politics",
+                    arbitrageDirection: "buy_kalshi",
+                    polyVolume24h: 80,
+                    kalshiVolume24h: 80,
+                  },
+                  {
+                    pairId: "p-high",
+                    polyMarketId: "pm-high",
+                    kalshiMarketId: "k-high",
+                    polyTitle: "High spread",
+                    kalshiTitle: "K high",
+                    polyYes: 0.7,
+                    kalshiYes: 0.55,
+                    spread: 0.15,
+                    spreadPP: 15,
+                    similarityScore: 0.85,
+                    category: "Politics",
+                    arbitrageDirection: "buy_kalshi",
+                    polyVolume24h: 120,
+                    kalshiVolume24h: 120,
+                  },
+                ],
+                meta: { threshold: 0.02, totalPairs: 3 },
+              },
+              isLoading: false,
+            },
+          },
+        ],
+      }),
+    );
+
+    render(<CrossVenueDivergence />);
+    expect(screen.getByText("buy poly")).toBeInTheDocument();
+    expect(screen.getAllByText("buy kalshi").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("1.0pp")).toBeInTheDocument();
+    expect(screen.getByText("3.5pp")).toBeInTheDocument();
+    expect(screen.getByText("15.0pp")).toBeInTheDocument();
+    expect(screen.getByText(/above diagonal/)).toBeInTheDocument();
   });
 });
