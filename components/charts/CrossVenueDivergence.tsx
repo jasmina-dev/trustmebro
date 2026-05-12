@@ -106,6 +106,7 @@ export function CrossVenueDivergence() {
     | { totalPairs?: number; threshold?: number }
     | undefined;
   const threshold = meta?.threshold ?? 0.02;
+  const thresholdPp = `${(threshold * 100).toFixed(0)} percentage points (pp)`;
 
   return (
     <Card>
@@ -113,8 +114,8 @@ export function CrossVenueDivergence() {
         title="Cross-venue divergence"
         subtitle={
           pairs.length === 0
-            ? `No pairs above ${(threshold * 100).toFixed(0)}pp`
-            : `${pairs.length} matched pairs · top ${topPairs.length} shown · threshold ${(threshold * 100).toFixed(0)}pp`
+            ? `No pairs above ${thresholdPp}`
+            : `${pairs.length} matched pairs · top ${topPairs.length} shown · threshold ${thresholdPp}`
         }
         right={
           <div className="flex items-center gap-2">
@@ -140,8 +141,8 @@ export function CrossVenueDivergence() {
           </div>
         ) : pairs.length === 0 ? (
           <div className="flex h-64 items-center justify-center text-sm text-fg-muted lg:col-span-2">
-            No markets currently exceed the {(threshold * 100).toFixed(0)}pp
-            cross-venue spread threshold.
+            No markets currently exceed the {thresholdPp} cross-venue spread
+            threshold.
           </div>
         ) : (
           <>

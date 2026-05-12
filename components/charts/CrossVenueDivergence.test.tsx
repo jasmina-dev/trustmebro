@@ -92,7 +92,7 @@ describe("CrossVenueDivergence", () => {
 
     render(<CrossVenueDivergence />);
     expect(screen.getByTestId("subtitle").textContent).toContain(
-      "No pairs above 3pp",
+      "No pairs above 3 percentage points (pp)",
     );
   });
 

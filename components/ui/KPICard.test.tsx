@@ -55,6 +55,20 @@ describe("KPICard", () => {
     expect(screen.getByText("Footnote")).toBeInTheDocument();
   });
 
+  test("renders help tooltip trigger when helpContent is set", () => {
+    render(
+      <KPICard
+        label="Metric"
+        value={1}
+        helpContent="Explanation for readers."
+        helpTitle="About this metric"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /show chart explanation/i }),
+    ).toBeInTheDocument();
+  });
+
   test("formats large USD tiers after animation completes", async () => {
     render(<KPICard label="Notional" value={3_300_000_000} format="usd" />);
     await act(async () => {

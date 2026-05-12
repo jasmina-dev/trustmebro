@@ -169,6 +169,8 @@ export function KPIRow() {
               : "—"
         }
         loading={loadingRes}
+        helpTitle="Avg politics NO-rate"
+        helpContent="Share of resolved Politics markets that paid out on NO, from the resolution-bias summary (historical outcomes, not live prices). When every venue is selected, Polymarket and Kalshi are blended; when one exchange is selected, only that venue's Politics bucket is used."
       />
       <KPICard
         label="Top spread today"
@@ -176,6 +178,8 @@ export function KPIRow() {
         format="percent"
         hint="poly vs kalshi"
         loading={loadingScores}
+        helpTitle="Top spread today"
+        helpContent="Largest cross-venue YES-price gap among current inefficiency flags: matched Polymarket vs Kalshi markets where implied probabilities disagree the most. Sports signals are excluded; the venue toggle still decides which exchange's rows are included in the max."
       />
       <KPICard
         label="Inefficiencies flagged"

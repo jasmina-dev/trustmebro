@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { HelpTooltip } from "./HelpTooltip";
 
 interface KPICardProps {
   label: string;
@@ -11,6 +12,9 @@ interface KPICardProps {
   format?: "number" | "percent" | "usd" | "string";
   hint?: string;
   loading?: boolean;
+  /** Optional help icon with explanation (hover/focus). */
+  helpContent?: string;
+  helpTitle?: string;
 }
 
 /**
@@ -28,6 +32,8 @@ export function KPICard({
   format = "number",
   hint,
   loading,
+  helpContent,
+  helpTitle,
 }: KPICardProps) {
   const numericTarget =
     typeof value === "number" && format !== "string" ? value : null;
@@ -50,8 +56,16 @@ export function KPICard({
 
   return (
     <div className="rounded-tmb border border-border bg-bg-card p-tmb5 sm:p-tmb6">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted sm:text-xs">
-        {label}
+      <div className="flex items-start justify-between gap-1.5">
+        <div className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-wider text-fg-muted sm:text-xs">
+          {label}
+        </div>
+        {helpContent ? (
+          <HelpTooltip
+            title={helpTitle ?? "What this shows"}
+            content={helpContent}
+          />
+        ) : null}
       </div>
       <div className="mt-tmb2 flex items-baseline gap-tmb2 sm:mt-tmb3">
         <div className="font-number text-kpi font-bold tracking-tight text-fg tabular-nums">
