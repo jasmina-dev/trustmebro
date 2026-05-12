@@ -14,7 +14,7 @@ describe("Landing page", () => {
     expect(
       screen.getByText(/Prediction markets, decoded/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Don.t trust the vibe/i)).toBeInTheDocument();
+    expect(screen.getByText(/Don.t trust the noise/i)).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
         name: /Open dashboard/i,

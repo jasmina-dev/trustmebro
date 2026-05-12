@@ -22,7 +22,7 @@ export default function LandingPage() {
             Prediction markets, decoded.
           </p>
           <h1 className="text-3xl font-black leading-tight text-fg sm:text-4xl md:text-5xl">
-            Don&apos;t trust the vibe.
+            Don&apos;t trust the noise.
             <br />
             <span className="text-accent">Trust me bro.</span>
           </h1>
