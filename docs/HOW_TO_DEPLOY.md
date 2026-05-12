@@ -1,5 +1,7 @@
 # How to deploy trustmebro
 
+If you are **new to GitHub or code**, or you are **taking over hosting** after student accounts may be deactivated, read **[HANDOFF.md](./HANDOFF.md)** first (plain-language context, who should do what, checklist). Then continue here for keys and server commands.
+
 For architecture and API details, see [CLIENT_TECHNICAL_DOCUMENTATION.md](./CLIENT_TECHNICAL_DOCUMENTATION.md) and the repository [README.md](../README.md).
 
 This guide is for anyone hosting the **trustmebro** Next.js app on a remote Linux server (for example a campus machine) **without** administrator (`sudo`) access. It also explains how to fill in `.env.local` with real API keys and points to short tutorials for Git and npm when you need to deploy or redeploy.
