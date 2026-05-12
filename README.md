@@ -187,6 +187,7 @@ npm run test:all    # npm test && npm run test:e2e
 
 ## More documentation
 
+- [`docs/CLIENT_USER_DOCUMENTATION.md`](docs/CLIENT_USER_DOCUMENTATION.md) — non-technical end-user guide to the dashboard
 - [`docs/CLIENT_TECHNICAL_DOCUMENTATION.md`](docs/CLIENT_TECHNICAL_DOCUMENTATION.md) — architecture, API routes, state, ops, and troubleshooting
 - [`docs/HOW_TO_DEPLOY.md`](docs/HOW_TO_DEPLOY.md) — env keys, PM2 on Linux, and `/api/warmup` + `CRON_SECRET`
 
