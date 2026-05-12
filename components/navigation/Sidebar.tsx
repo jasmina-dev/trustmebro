@@ -68,7 +68,193 @@ const SECTIONS = [
     label: "First-time users",
     description: "How to read and use this dashboard",
   },
-];
+] as const;
+
+/**
+ * Small outline icons for each dashboard section (desktop collapsed rail + optional mobile).
+ */
+function SectionIcon({
+  id,
+  className,
+}: {
+  id: (typeof SECTIONS)[number]["id"];
+  className?: string;
+}) {
+  const svg = cn("h-4 w-4 shrink-0", className);
+  switch (id) {
+    case "overview":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case "resolution-bias-heatmap":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden
+        >
+          <rect x="3" y="3" width="7" height="7" rx="0.5" fillOpacity="0.35" />
+          <rect x="14" y="3" width="7" height="7" rx="0.5" fillOpacity="0.75" />
+          <rect x="3" y="14" width="7" height="7" rx="0.5" fillOpacity="0.55" />
+          <rect x="14" y="14" width="7" height="7" rx="0.5" fillOpacity="0.95" />
+        </svg>
+      );
+    case "cross-venue-divergence":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M8 9l-4 4 4 4M16 15l4-4-4-4M14 8l-4 8" />
+        </svg>
+      );
+    case "market-momentum":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 16l4-4 4 4 8-8" />
+          <path d="M16 8h4v4" />
+        </svg>
+      );
+    case "calibration":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 20V4M4 20h16" />
+          <path d="M7 16c3-6 5-9 10-12" />
+        </svg>
+      );
+    case "efficiency-timeline":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l3 2" />
+        </svg>
+      );
+    case "liquidity-gap":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 18V6M8 18V10M12 18v-8M16 18V8M20 18V4" />
+        </svg>
+      );
+    case "price-vs-resolution":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 3v18M8 7h8M8 17h8" />
+          <circle cx="8" cy="12" r="2" />
+          <circle cx="16" cy="12" r="2" />
+        </svg>
+      );
+    case "leaderboard":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M8 21V11l-4 2v8h4zM16 21V7l-4 2v12h4zM12 21V14l4-2v9h-4z" />
+        </svg>
+      );
+    case "first-time-users":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 16v-1M12 8h.01" />
+        </svg>
+      );
+    default:
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" />
+        </svg>
+      );
+  }
+}
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -130,7 +316,12 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-border px-tmb4 py-tmb4">
+          <div
+            className={cn(
+              "flex items-center border-b border-border px-tmb4 py-tmb4",
+              collapsed ? "justify-center" : "justify-between",
+            )}
+          >
             {!collapsed && (
               <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">
                 Jump to
@@ -225,13 +416,14 @@ export function Sidebar() {
                 onClick={() => handleSectionClick(s.id)}
                 title={s.description}
                 className={cn(
-                  "flex w-full min-w-0 items-center rounded-tmb border px-3 py-2 text-left transition-colors",
+                  "flex w-full min-w-0 items-center gap-2 rounded-tmb border px-3 py-2 text-left transition-colors",
                   active
                     ? "border-accent bg-accent/10 text-fg"
                     : "border-border bg-bg-card text-fg hover:bg-bg-hover",
                 )}
               >
-                <span className="w-full truncate text-sm font-semibold leading-snug">
+                <SectionIcon id={s.id} />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug">
                   {s.label}
                 </span>
               </button>
@@ -330,16 +522,24 @@ function SidebarItem({
         onFocus={showTip}
         onBlur={hideTip}
         className={cn(
-          "flex w-full items-center rounded-tmb border px-tmb4 py-tmb3 text-left transition-colors",
+          "flex w-full items-center rounded-tmb border text-left transition-colors",
+          collapsed
+            ? "justify-center px-tmb2 py-tmb3"
+            : "justify-start gap-tmb2 px-tmb4 py-tmb3",
           active
             ? "border-accent bg-accent/10 text-fg"
             : "border-border bg-bg-card text-fg hover:bg-bg-hover",
         )}
-        aria-label={section.label}
         aria-describedby={open ? `sidebar-tip-${section.id}` : undefined}
       >
-        <span className="truncate text-sm font-semibold leading-snug">
-          {collapsed ? section.label.slice(0, 2) : section.label}
+        <SectionIcon id={section.id} />
+        <span
+          className={cn(
+            "text-sm font-semibold leading-snug",
+            collapsed ? "sr-only" : "min-w-0 flex-1 truncate",
+          )}
+        >
+          {section.label}
         </span>
       </button>
       {open &&

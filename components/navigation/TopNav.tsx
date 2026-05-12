@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useDashboard } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import type { ExchangeFilter } from "@/lib/types";
@@ -69,13 +71,23 @@ export function TopNav() {
             </svg>
           </button>
 
-          <div className="min-w-0 flex-1 md:min-w-56 md:flex-none">
-            <h1 className="m-0 truncate text-lg font-bold leading-tight tracking-tight text-fg sm:text-xl md:text-2xl">
-              TrustMeBro Analytics
-            </h1>
-            <p className="m-0 mt-0.5 hidden text-xs text-fg-muted sm:block sm:text-sm md:mt-1">
-              Prediction markets dashboard &amp; research assistant
-            </p>
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3 md:min-w-56 md:flex-none">
+            <Image
+              src="/trustmebro-mark.png"
+              alt=""
+              width={654}
+              height={555}
+              className="h-9 w-auto shrink-0 sm:h-10 md:h-11"
+              priority
+            />
+            <div className="min-w-0">
+              <h1 className="m-0 truncate text-lg font-bold leading-tight tracking-tight text-fg sm:text-xl md:text-2xl">
+                TrustMeBro Analytics
+              </h1>
+              <p className="m-0 mt-0.5 hidden text-xs text-fg-muted sm:block sm:text-sm md:mt-1">
+                Prediction markets dashboard &amp; research assistant
+              </p>
+            </div>
           </div>
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
