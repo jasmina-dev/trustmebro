@@ -92,28 +92,31 @@ npm start
 
 ## Inefficiency signals
 
-| Signal                     | Source                                  | Flag                             |
-| -------------------------- | --------------------------------------- | -------------------------------- |
-| **Resolution bias**        | `/v0/markets?closed=true&category=…`    | NO-rate > 65 % (with z-score)    |
-| **Cross-venue divergence** | `/v0/markets` fanned across both venues | \|YES_poly − YES_kalshi\| > 3 pp |
-| **Liquidity gap**          | `/v0/markets` — volume24h / liquidity   | ratio > mean + 2 σ               |
-| **Late-breaking mismatch** | `/api/:exchange/fetchOHLCV` last hour   | \|close − resolution\| > 15 pp   |
 
-See [`app/api/inefficiencies/route.ts`](app/api/inefficiencies/route.ts) for
-the full computation, and [`app/api/resolution-bias/route.ts`](app/api/resolution-bias/route.ts)
+| Signal                     | Source                                  | Flag                           |
+| -------------------------- | --------------------------------------- | ------------------------------ |
+| **Resolution bias**        | `/v0/markets?closed=true&category=…`    | NO-rate > 65 % (with z-score)  |
+| **Cross-venue divergence** | `/v0/markets` fanned across both venues | |YES_poly − YES_kalshi| > 3 pp |
+| **Liquidity gap**          | `/v0/markets` — volume24h / liquidity   | ratio > mean + 2 σ             |
+| **Late-breaking mismatch** | `/api/:exchange/fetchOHLCV` last hour   | |close − resolution| > 15 pp   |
+
+
+See `[app/api/inefficiencies/route.ts](app/api/inefficiencies/route.ts)` for
+the full computation, and `[app/api/resolution-bias/route.ts](app/api/resolution-bias/route.ts)`
 for the standalone category × venue NO-rate table used by the heatmap.
 
 ---
 
 ## Cache strategy
 
-Every `/api/*` route goes through `lib/redis.ts::cached()` which:
+Every `/api/`* route goes through `lib/redis.ts::cached()` which:
 
 1. checks Upstash (or in-memory fallback) first,
 2. calls upstream only on MISS,
 3. writes the result back with the TTL below,
 4. returns an `{ data, cache, source, fetchedAt }` envelope,
 5. stamps the response with `X-Cache: HIT | MISS | BYPASS`.
+
 
 | Route                  | TTL    | Why                                        |
 | ---------------------- | ------ | ------------------------------------------ |
@@ -123,6 +126,7 @@ Every `/api/*` route goes through `lib/redis.ts::cached()` which:
 | `/api/inefficiencies`  | 5 min  | Recomputes four signals; cap PMXT calls    |
 | `/api/ohlcv`           | 5 min  | Hourly candles move once per hour anyway   |
 | `/api/archive`         | 24 h   | Historical data is append-only             |
+
 
 Client-side SWR intervals (`lib/api.ts` → `REFRESH`) are aligned with this
 cadence (live 60 s, inefficiencies/OHLCV 5 m; resolution-bias polling is
@@ -155,7 +159,8 @@ otherwise. You can tune it with `CHAT_RATE_LIMIT_MAX` and
 
 ## PMXT API surface used
 
-> Docs: <https://pmxt.dev/docs>
+> Docs: [https://pmxt.dev/docs](https://pmxt.dev/docs)
+
 
 | Method                                 | Where                                              |
 | -------------------------------------- | -------------------------------------------------- |
@@ -163,7 +168,8 @@ otherwise. You can tune it with `CHAT_RATE_LIMIT_MAX` and
 | `GET /v0/markets?closed=true`          | same, for resolution bias / price-vs-resolution    |
 | `GET /api/polymarket/fetchOHLCV` (SDK) | `lib/pmxt.ts::fetchOhlcv` via `pmxtjs`             |
 | `GET /api/kalshi/fetchOHLCV` (SDK)     | same                                               |
-| Archive (`archive.pmxt.dev/*`)         | `lib/pmxt.ts::fetchArchive` (sniffs JSON / NDJSON) |
+| Archive (`archive.pmxt.dev/`*)         | `lib/pmxt.ts::fetchArchive` (sniffs JSON / NDJSON) |
+
 
 The [unified schema](https://pmxt.dev/docs/concepts/unified-schema) guarantees
 the same `UnifiedMarket { marketId, title, outcomes[{outcomeId, label, price}], volume24h, liquidity, category, status, … }` shape across both venues, which is what makes cross-venue divergence detection a one-line compare instead of a normalization nightmare.
@@ -187,9 +193,9 @@ npm run test:all    # npm test && npm run test:e2e
 
 ## More documentation
 
-- [`docs/CLIENT_USER_DOCUMENTATION.md`](docs/CLIENT_USER_DOCUMENTATION.md) — non-technical end-user guide to the dashboard
-- [`docs/CLIENT_TECHNICAL_DOCUMENTATION.md`](docs/CLIENT_TECHNICAL_DOCUMENTATION.md) — architecture, API routes, state, ops, and troubleshooting
-- [`docs/HOW_TO_DEPLOY.md`](docs/HOW_TO_DEPLOY.md) — env keys, PM2 on Linux, and `/api/warmup` + `CRON_SECRET`
+- `[docs/CLIENT_USER_DOCUMENTATION.md](docs/CLIENT_USER_DOCUMENTATION.md)` — non-technical end-user guide to the dashboard
+- `[docs/CLIENT_TECHNICAL_DOCUMENTATION.md](docs/CLIENT_TECHNICAL_DOCUMENTATION.md)` — architecture, API routes, state, ops, and troubleshooting
+- `[docs/HOW_TO_DEPLOY.md](docs/HOW_TO_DEPLOY.md)` — env keys, PM2 on Linux, and `/api/warmup` + `CRON_SECRET`
 
 ---
 
@@ -204,3 +210,11 @@ npm run test:all    # npm test && npm run test:e2e
 - ✅ Strict TypeScript — `any` only where pmxtjs SDK types are incomplete.
 - ✅ `.env.local.example` documents every key with its source URL.
 - ✅ Graceful degradation: missing `PMXT_API_KEY` / `UPSTASH_*` / `ANTHROPIC_API_KEY` all have clean fallbacks.
+
+---
+
+### Artificial Intelligence (AI) Disclosure
+
+- This project code was created with assistance from GitHub Copilot and Cursor.
+- The logo was created with ChatGPT Plus.
+
