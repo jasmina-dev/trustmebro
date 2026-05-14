@@ -22,7 +22,10 @@ const ResolutionBiasHeatmap = dynamic(
     import("@/components/charts/ResolutionBiasHeatmap").then(
       (m) => m.ResolutionBiasHeatmap,
     ),
-  { loading: () => <ChartSkeleton label="Resolution bias heatmap" />, ssr: false },
+  {
+    loading: () => <ChartSkeleton label="Resolution bias heatmap" />,
+    ssr: false,
+  },
 );
 
 const CrossVenueDivergence = dynamic(
@@ -30,7 +33,10 @@ const CrossVenueDivergence = dynamic(
     import("@/components/charts/CrossVenueDivergence").then(
       (m) => m.CrossVenueDivergence,
     ),
-  { loading: () => <ChartSkeleton label="Cross-venue divergence" />, ssr: false },
+  {
+    loading: () => <ChartSkeleton label="Cross-venue divergence" />,
+    ssr: false,
+  },
 );
 
 const ResolutionBiasDistribution = dynamic(
@@ -49,7 +55,10 @@ const InefficiencyLeaderboard = dynamic(
     import("@/components/charts/InefficiencyLeaderboard").then(
       (m) => m.InefficiencyLeaderboard,
     ),
-  { loading: () => <ChartSkeleton label="Inefficiency leaderboard" />, ssr: false },
+  {
+    loading: () => <ChartSkeleton label="Inefficiency leaderboard" />,
+    ssr: false,
+  },
 );
 
 const LiquidityGapScatter = dynamic(
@@ -57,7 +66,10 @@ const LiquidityGapScatter = dynamic(
     import("@/components/charts/LiquidityGapScatter").then(
       (m) => m.LiquidityGapScatter,
     ),
-  { loading: () => <ChartSkeleton label="Liquidity gap scatter" />, ssr: false },
+  {
+    loading: () => <ChartSkeleton label="Liquidity gap scatter" />,
+    ssr: false,
+  },
 );
 
 const PriceVsResolution = dynamic(
@@ -103,15 +115,18 @@ export default function DashboardPage() {
       <div className="flex">
         <Sidebar />
 
-        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-[1600px] space-y-6">
-            <section id="overview" className="space-y-4">
+        <main className="min-w-0 flex-1 px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-6">
+            <section id="overview" className="space-y-3 sm:space-y-4">
               <ErrorBoundary fallbackLabel="KPIs unavailable">
                 <KPIRow />
               </ErrorBoundary>
             </section>
 
-            <section id="resolution-bias-heatmap" className="grid gap-4 lg:grid-cols-2">
+            <section
+              id="resolution-bias-heatmap"
+              className="grid gap-3 sm:gap-4 lg:grid-cols-2"
+            >
               <ErrorBoundary fallbackLabel="Resolution bias heatmap">
                 <DeferChartMount
                   staggerMs={CHART_STAGGER_MS * 0}
@@ -130,7 +145,10 @@ export default function DashboardPage() {
               </ErrorBoundary>
             </section>
 
-            <section id="cross-venue-divergence" className="grid gap-4">
+            <section
+              id="cross-venue-divergence"
+              className="grid gap-3 sm:gap-4"
+            >
               <ErrorBoundary fallbackLabel="Cross-venue divergence">
                 <DeferChartMount
                   staggerMs={CHART_STAGGER_MS * 2}
@@ -141,7 +159,7 @@ export default function DashboardPage() {
               </ErrorBoundary>
             </section>
 
-            <section id="market-momentum" className="grid gap-4">
+            <section id="market-momentum" className="grid gap-3 sm:gap-4">
               <ErrorBoundary fallbackLabel="Market momentum">
                 <DeferChartMount
                   staggerMs={CHART_STAGGER_MS * 3}
@@ -152,7 +170,10 @@ export default function DashboardPage() {
               </ErrorBoundary>
             </section>
 
-            <section id="calibration" className="grid gap-4 xl:grid-cols-2">
+            <section
+              id="calibration"
+              className="grid gap-3 sm:gap-4 xl:grid-cols-2"
+            >
               <ErrorBoundary fallbackLabel="Calibration curve">
                 <DeferChartMount
                   staggerMs={CHART_STAGGER_MS * 4}
@@ -166,14 +187,17 @@ export default function DashboardPage() {
                   staggerMs={CHART_STAGGER_MS * 5}
                   fallback={<ChartSkeleton label="Efficiency timeline" />}
                 >
-                  <div id="efficiency-timeline">
+                  <div id="efficiency-timeline" className="h-full min-h-0">
                     <EfficiencyTimeline />
                   </div>
                 </DeferChartMount>
               </ErrorBoundary>
             </section>
 
-            <section id="liquidity-gap" className="grid gap-4 xl:grid-cols-2">
+            <section
+              id="liquidity-gap"
+              className="grid gap-3 sm:gap-4 xl:grid-cols-2"
+            >
               <ErrorBoundary fallbackLabel="Liquidity gap scatter">
                 <DeferChartMount
                   staggerMs={CHART_STAGGER_MS * 6}
@@ -187,7 +211,7 @@ export default function DashboardPage() {
                   staggerMs={CHART_STAGGER_MS * 7}
                   fallback={<ChartSkeleton label="Price vs resolution" />}
                 >
-                  <div id="price-vs-resolution">
+                  <div id="price-vs-resolution" className="h-full min-h-0">
                     <PriceVsResolution />
                   </div>
                 </DeferChartMount>
@@ -212,8 +236,14 @@ export default function DashboardPage() {
             </section>
 
             <footer className="pb-8 pt-4 text-center text-[10px] text-fg-subtle">
-              Data via <a href="https://pmxt.dev" className="underline hover:text-fg-muted">pmxt.dev</a> ·
-              Upstash-cached · Responses tag X-Cache: HIT/MISS for debugging
+              Data via{" "}
+              <a
+                href="https://pmxt.dev"
+                className="underline hover:text-fg-muted"
+              >
+                pmxt.dev
+              </a>{" "}
+              · Upstash-cached · Responses tag X-Cache: HIT/MISS for debugging
             </footer>
           </div>
         </main>

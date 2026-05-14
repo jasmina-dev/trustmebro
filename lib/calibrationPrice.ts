@@ -15,6 +15,11 @@ import type { UnifiedMarket } from "./types";
 
 export type ImpliedYesBasis = "pinned" | "mid" | "settlement";
 
+/**
+ * Extract an implied YES probability for calibration charts.
+ *
+ * @returns Probability in \([0, 1]\) or `null` when unavailable/invalid.
+ */
 export function impliedYesForCalibration(m: UnifiedMarket): number | null {
   return impliedYesForAnalytics(m).price;
 }
@@ -29,9 +34,7 @@ export function impliedYesStrictNoTerminal(m: UnifiedMarket): number | null {
     return pinned;
   }
 
-  const yesOut = m.outcomes.find(
-    (o) => classifyWinnerLabel(o.label) === "yes",
-  );
+  const yesOut = m.outcomes.find((o) => classifyWinnerLabel(o.label) === "yes");
   if (!yesOut) return null;
 
   const p = yesOut.price;
@@ -40,6 +43,15 @@ export function impliedYesStrictNoTerminal(m: UnifiedMarket): number | null {
   return p;
 }
 
+/**
+ * Extract an implied YES probability for analytics along with its basis.
+ *
+ * @remarks
+ * - `"pinned"`: preferred pre-resolution snapshot (`preResolutionYesPrice`)
+ * - `"mid"`: a non-terminal YES outcome price (roughly \((0.08, 0.92)\))
+ * - `"settlement"`: terminal-ish price (near 0/1); useful for coverage but
+ *   can artificially force calibration toward the diagonal.
+ */
 export function impliedYesForAnalytics(m: UnifiedMarket): {
   price: number | null;
   basis: ImpliedYesBasis | null;
@@ -50,13 +62,12 @@ export function impliedYesForAnalytics(m: UnifiedMarket): {
     return { price: pinned, basis: "pinned" };
   }
 
-  const yesOut = m.outcomes.find(
-    (o) => classifyWinnerLabel(o.label) === "yes",
-  );
+  const yesOut = m.outcomes.find((o) => classifyWinnerLabel(o.label) === "yes");
   if (!yesOut) return { price: null, basis: null };
 
   const p = yesOut.price;
-  if (!Number.isFinite(p) || p < 0 || p > 1) return { price: null, basis: null };
+  if (!Number.isFinite(p) || p < 0 || p > 1)
+    return { price: null, basis: null };
 
   if (p > 0.08 && p < 0.92) return { price: p, basis: "mid" };
 

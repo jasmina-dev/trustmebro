@@ -1,9 +1,12 @@
 import type { UnifiedMarket } from "./types";
 import {
   clamp,
+  compactInt,
   histogram,
   marketExchange,
+  noOutcome,
   pct,
+  proportionZ,
   resolvedLabel,
   usd,
   normalizeCategory,
@@ -13,6 +16,13 @@ import {
   yesOutcome,
 } from "./utils";
 
+/**
+ * Unit tests for `lib/utils.ts`.
+ *
+ * @remarks
+ * These are the small, shared helpers used across charts/routes. Tests focus on
+ * corner cases and stable behavior (formatting, bucketing, and URL inference).
+ */
 function buildMarket(overrides: Partial<UnifiedMarket> = {}): UnifiedMarket {
   return {
     marketId: "MKT-1",
@@ -55,7 +65,11 @@ describe("lib/utils", () => {
   });
 
   test("histogram bins values and ignores non-finite inputs", () => {
-    const buckets = histogram([0.1, 0.15, 0.9, Number.NaN], { bins: 2, min: 0, max: 1 });
+    const buckets = histogram([0.1, 0.15, 0.9, Number.NaN], {
+      bins: 2,
+      min: 0,
+      max: 1,
+    });
     expect(buckets.map((b) => b.count)).toEqual([2, 1]);
   });
 
@@ -131,7 +145,9 @@ describe("lib/utils", () => {
       url: "https://kalshi.com/markets/ABC",
       title: "Will X happen?",
     });
-    expect(url).toBe("https://polymarket.com/search?search=Will%20X%20happen%3F");
+    expect(url).toBe(
+      "https://polymarket.com/search?search=Will%20X%20happen%3F",
+    );
   });
 
   test("resolvedLabel returns null for unresolved or weak winners", () => {
@@ -151,8 +167,72 @@ describe("lib/utils", () => {
 
   test("formatters and helpers handle edge values", () => {
     expect(pct(Number.NaN)).toBe("—");
+    expect(pct(0.5, 2)).toBe("50.00%");
     expect(usd(1_250_000)).toBe("$1.25M");
+    expect(usd(Number.NaN)).toBe("—");
+    expect(usd(2_200_000_000)).toMatch(/\$2\.20B/);
+    expect(compactInt(Number.NaN)).toBe("—");
+    expect(compactInt(1_500)).toBe("1.5K");
+    expect(compactInt(3_300_000)).toBe("3.3M");
     expect(clamp(20, 0, 10)).toBe(10);
     expect(marketExchange({ exchange: "kalshi" })).toBe("kalshi");
+    expect(
+      marketExchange({ sourceExchange: "Polymarket", exchange: undefined }),
+    ).toBe("polymarket");
+  });
+
+  test("noOutcome finds explicit NO label", () => {
+    const m = buildMarket({
+      outcomes: [
+        { outcomeId: "1", marketId: "MKT-1", label: "Yes", price: 0.7 },
+        { outcomeId: "2", marketId: "MKT-1", label: "No", price: 0.3 },
+      ],
+    });
+    expect(noOutcome(m)?.label).toBe("No");
+  });
+
+  test("proportionZ returns 0 for empty sample or degenerate standard error", () => {
+    expect(proportionZ(0.5, 0)).toBe(0);
+    expect(proportionZ(0.5, 10, 0)).toBe(0);
+    expect(proportionZ(0.5, 10, 1)).toBe(0);
+  });
+
+  test("resolvedLabel returns winner label when terminal and decisive", () => {
+    const m = buildMarket({
+      status: "resolved",
+      outcomes: [
+        { outcomeId: "1", marketId: "MKT-1", label: "Yes", price: 0.97 },
+        { outcomeId: "2", marketId: "MKT-1", label: "No", price: 0.03 },
+      ],
+    });
+    expect(resolvedLabel(m)).toBe("Yes");
+  });
+
+  test("venueMarketUrl returns trusted polymarket permalink when URL matches venue", () => {
+    const url = venueMarketUrl({
+      exchange: "polymarket",
+      marketId: "m1",
+      url: "https://polymarket.com/event/foo",
+      slug: "ignored",
+    });
+    expect(url).toBe("https://polymarket.com/event/foo");
+  });
+
+  test("venueMarketUrl uses kalshi raw URL when hostname matches", () => {
+    const url = venueMarketUrl({
+      exchange: "kalshi",
+      marketId: "ANY",
+      url: "https://kalshi.com/markets/TICK-123",
+    });
+    expect(url).toBe("https://kalshi.com/markets/TICK-123");
+  });
+
+  test("venueMarketUrl returns null for unknown exchange without usable URL", () => {
+    expect(
+      venueMarketUrl({
+        marketId: "x",
+        title: "   ",
+      }),
+    ).toBeNull();
   });
 });

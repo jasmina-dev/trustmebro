@@ -2,24 +2,19 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TopNav } from "./TopNav";
 import { useDashboard } from "@/lib/store";
+import { resetDashboardState } from "@/test-utils/dashboardState";
 
+/**
+ * Component tests for `TopNav`.
+ *
+ * @remarks
+ * TopNav is mostly a thin UI over dashboard state (Zustand). These tests verify
+ * that user interactions correctly update the store (chat open, venue/category
+ * filters) rather than asserting on styling or layout.
+ */
 describe("TopNav", () => {
   beforeEach(() => {
-    useDashboard.setState({
-      activeVenue: "all",
-      activeCategory: "All",
-      activeChart: "overview",
-      dateRange: {
-        start: "2026-01-01T00:00:00.000Z",
-        end: "2026-01-31T00:00:00.000Z",
-      },
-      chatOpen: false,
-      chatMessages: [],
-      chatStreaming: false,
-      visibleMarkets: [],
-      inefficiencyScores: [],
-      resolutionStats: [],
-    });
+    resetDashboardState();
   });
 
   test("toggles chat open state from Ask AI button", async () => {
@@ -42,5 +37,19 @@ describe("TopNav", () => {
 
     await user.selectOptions(screen.getByRole("combobox"), "Crypto");
     expect(useDashboard.getState().activeCategory).toBe("Crypto");
+  });
+
+  test("renders the theme toggle immediately after the Ask AI button", () => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    render(<TopNav />);
+
+    const askAi = screen.getByRole("button", { name: "Ask AI" });
+    const themeToggle = screen.getByRole("button", {
+      name: /switch to light mode/i,
+    });
+
+    expect(themeToggle).toBeInTheDocument();
+    // The toggle is the immediate next sibling of the Ask AI button.
+    expect(askAi.nextElementSibling).toBe(themeToggle);
   });
 });

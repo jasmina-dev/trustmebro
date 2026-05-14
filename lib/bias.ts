@@ -18,6 +18,13 @@ import type { Exchange, ResolutionBiasBucket, UnifiedMarket } from "./types";
 export const LOW_SAMPLE = 30;
 export const FLAG_NO_RATE = 0.65;
 
+/**
+ * Map an outcome label into a YES/NO/ambiguous bucket.
+ *
+ * @remarks
+ * Used by resolution-bias computation to decide which side "wins" for binary
+ * markets across venues (explicit Yes/No or "Not X" patterns).
+ */
 export function classifyWinnerLabel(label: string): "yes" | "no" | "ambiguous" {
   const l = label.trim().toLowerCase();
   // Exact match
@@ -26,7 +33,8 @@ export function classifyWinnerLabel(label: string): "yes" | "no" | "ambiguous" {
   // "Yes"-prefixed variants (e.g. "Yes, before 12/31", "Yes (conditional)")
   if (l.startsWith("yes ") || l.startsWith("yes,")) return "yes";
   // "No"-prefixed or "Not"-prefixed (e.g. "No, or after", "Not April 30")
-  if (l.startsWith("no ") || l.startsWith("no,") || l.startsWith("not ")) return "no";
+  if (l.startsWith("no ") || l.startsWith("no,") || l.startsWith("not "))
+    return "no";
   // " no " as a standalone word anywhere in the label
   if (/ no /.test(` ${l} `)) return "no";
   return "ambiguous";
@@ -47,7 +55,10 @@ export function classifyWinnerLabel(label: string): "yes" | "no" | "ambiguous" {
  */
 function resolveBinarySides(
   outcomes: UnifiedMarket["outcomes"],
-): { yesOut: UnifiedMarket["outcomes"][0]; noOut: UnifiedMarket["outcomes"][0] } | null {
+): {
+  yesOut: UnifiedMarket["outcomes"][0];
+  noOut: UnifiedMarket["outcomes"][0];
+} | null {
   if (outcomes.length !== 2) return null;
   const [a, b] = outcomes;
   const aClass = classifyWinnerLabel(a.label);

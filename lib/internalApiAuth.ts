@@ -23,6 +23,9 @@ function secretMatches(expected: string, provided: string | null): boolean {
  * Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` when CRON_SECRET is set.
  * In development, requests are allowed if CRON_SECRET is unset (local convenience).
  * In production, CRON_SECRET must be set and must match.
+ *
+ * @param request - Incoming request (expects an `Authorization: Bearer …` header).
+ * @returns A `NextResponse` 401 when unauthorized, otherwise `null`.
  */
 export function requireCronAuthorized(request: Request): NextResponse | null {
   const secret = process.env.CRON_SECRET?.trim();

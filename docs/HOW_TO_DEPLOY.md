@@ -1,12 +1,16 @@
 # How to deploy trustmebro
 
+If you are **new to GitHub or code**, or you are **taking over hosting** after student accounts may be deactivated, read **[HANDOFF.md](./HANDOFF.md)** first (plain-language context, who should do what, checklist). Then continue here for keys and server commands.
+
+For architecture and API details, see [CLIENT_TECHNICAL_DOCUMENTATION.md](./CLIENT_TECHNICAL_DOCUMENTATION.md) and the repository [README.md](../README.md).
+
 This guide is for anyone hosting the **trustmebro** Next.js app on a remote Linux server (for example a campus machine) **without** administrator (`sudo`) access. It also explains how to fill in `.env.local` with real API keys and points to short tutorials for Git and npm when you need to deploy or redeploy.
 
 ---
 
 ## Getting API keys for `.env.local`
 
-Environment variables are **NEVER** committed to Git. On your laptop you create `.env.local` in the project root; on the server you do the same after cloning. The full list of variables, with comments, lives in [`.env.local.example`](./.env.local.example). Copy that file as a starting point:
+Environment variables are **NEVER** committed to Git. On your laptop you create `.env.local` in the project root; on the server you do the same after cloning. The full list of variables, with comments, lives in [`.env.local.example`](../.env.local.example). Copy that file as a starting point:
 
 ```bash
 cp .env.local.example .env.local
@@ -50,7 +54,7 @@ Then edit `.env.local` with `nano .env.local` (or any text editor) and replace t
 
 ### Optional variables
 
-See [`.env.local.example`](./.env.local.example) for optional settings such as `ANTHROPIC_MODEL`, chat rate limits, `PMXT_ARCHIVE_URL`, and `CRON_SECRET` (if you use scheduled warmup routes in production).
+See [`.env.local.example`](../.env.local.example) for optional settings such as `ANTHROPIC_MODEL`, chat rate limits, `PMXT_ARCHIVE_URL`, and `CRON_SECRET` (if you use scheduled warmup routes in production).
 
 **Security tips:** Do not paste keys into chat, email, or public repos. If a key leaks, revoke it in the provider’s dashboard and create a new one.
 

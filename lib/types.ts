@@ -14,10 +14,29 @@
 // PMXT unified schema
 // ---------------------------------------------------------------------------
 
+/**
+ * Canonical exchange identifiers used throughout the app.
+ *
+ * @remarks
+ * Mirrors the Router's normalized venue names.
+ */
 export type Exchange = "polymarket" | "kalshi";
 
+/**
+ * Venue filter used by the dashboard UI.
+ *
+ * @remarks
+ * `"all"` means cross-venue view (no exchange param on `/api/markets`).
+ */
 export type ExchangeFilter = "all" | Exchange;
 
+/**
+ * A single outcome/contract within a unified market.
+ *
+ * @remarks
+ * For binary markets, outcomes typically include "Yes" and "No", but the Router
+ * schema supports arbitrary labels and multi-outcome markets.
+ */
 export interface UnifiedOutcome {
   outcomeId: string;
   marketId: string;
@@ -27,6 +46,15 @@ export interface UnifiedOutcome {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Unified market shape returned by the PMXT Router.
+ *
+ * @remarks
+ * This is the primary domain object flowing through:
+ * - `/api/markets` (UI lists, charts, and KPIs)
+ * - resolution bias + calibration computations (closed markets)
+ * - cross-venue divergence matching
+ */
 export interface UnifiedMarket {
   marketId: string;
   eventId?: string | null;
@@ -60,6 +88,9 @@ export interface UnifiedMarket {
   preResolutionYesPrice?: number;
 }
 
+/**
+ * OHLCV candle used by price charts and late-breaking mismatch detection.
+ */
 export interface PriceCandle {
   timestamp: number;
   open: number;
@@ -69,6 +100,9 @@ export interface PriceCandle {
   volume?: number;
 }
 
+/**
+ * Raw PMXT Router response envelope for list endpoints.
+ */
 export interface RouterResponse<T> {
   data: T[];
   meta: { count: number; limit: number; offset: number };
@@ -84,6 +118,13 @@ export type InefficiencyType =
   | "liquidity_gap"
   | "late_breaking_mismatch";
 
+/**
+ * A single flagged inefficiency row shown in the leaderboard.
+ *
+ * @remarks
+ * This is a UI-first payload: it includes pre-formatted details and optional
+ * fields that depend on `type` (e.g. counterparty exchange for divergence).
+ */
 export interface InefficiencyScore {
   id: string;
   marketId: string;
@@ -112,6 +153,9 @@ export interface InefficiencyScore {
   lastUpdated: string;
 }
 
+/**
+ * Aggregated resolution-bias statistics for one category × exchange bucket.
+ */
 export interface ResolutionBiasBucket {
   category: string;
   exchange: Exchange;
@@ -131,6 +175,9 @@ export interface ResolutionBiasBucket {
   lowSample?: boolean;
 }
 
+/**
+ * Single calibration bucket (decile) used by the calibration curve chart.
+ */
 export interface CalibrationBucket {
   bucketIndex: number;
   /** Bucket lower bound in [0,1] (e.g. 0.0, 0.1, 0.2…). */
@@ -143,6 +190,9 @@ export interface CalibrationBucket {
   count: number;
 }
 
+/**
+ * Monthly efficiency aggregate used by the efficiency timeline chart.
+ */
 export interface EfficiencyMonth {
   /** `YYYY-MM` — sortable. */
   month: string;
@@ -154,6 +204,9 @@ export interface EfficiencyMonth {
   kalshiVolume?: number;
 }
 
+/**
+ * Calibration curve series for one exchange and category.
+ */
 export interface CalibrationSeries {
   exchange: Exchange;
   category: string;
@@ -161,6 +214,9 @@ export interface CalibrationSeries {
   totalMarkets: number;
 }
 
+/**
+ * A matched Polymarket ↔ Kalshi market pair with spread metadata.
+ */
 export interface DivergentPair {
   pairId: string;
   polyMarketId: string;
@@ -181,6 +237,9 @@ export interface DivergentPair {
   kalshiVolume24h: number;
 }
 
+/**
+ * Generic histogram bucket used by multiple distribution charts.
+ */
 export interface DistributionBucket {
   bucketStart: number;
   bucketEnd: number;
@@ -188,6 +247,9 @@ export interface DistributionBucket {
   label: string;
 }
 
+/**
+ * Simplified market pair used by older pairing utilities.
+ */
 export interface MarketPair {
   pairId: string;
   title: string;
@@ -202,6 +264,9 @@ export interface MarketPair {
 // Chat
 // ---------------------------------------------------------------------------
 
+/**
+ * Chat message stored in the dashboard store.
+ */
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -209,6 +274,13 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+/**
+ * Minimal, serializable snapshot of the dashboard state for LLM prompts.
+ *
+ * @remarks
+ * Kept intentionally small to limit token usage and avoid leaking unnecessary
+ * data into the chat system prompt.
+ */
 export interface DashboardContextSnapshot {
   filters: {
     venue: ExchangeFilter;
@@ -216,7 +288,12 @@ export interface DashboardContextSnapshot {
     dateRange: { start: string; end: string };
   };
   activeChart: string;
-  visibleMarkets: Array<Pick<UnifiedMarket, "marketId" | "title" | "exchange" | "category" | "volume24h" | "liquidity">>;
+  visibleMarkets: Array<
+    Pick<
+      UnifiedMarket,
+      "marketId" | "title" | "exchange" | "category" | "volume24h" | "liquidity"
+    >
+  >;
   inefficiencyScores: InefficiencyScore[];
   resolutionStats: ResolutionBiasBucket[];
 }
@@ -226,6 +303,13 @@ export interface DashboardContextSnapshot {
 // uniformly render cache state + errors.
 // ---------------------------------------------------------------------------
 
+/**
+ * Standard response envelope returned by every JSON API route.
+ *
+ * @remarks
+ * This allows the UI to display cache state and data provenance consistently,
+ * regardless of which endpoint is being queried.
+ */
 export interface ApiEnvelope<T> {
   data: T;
   cache: "HIT" | "MISS" | "BYPASS";

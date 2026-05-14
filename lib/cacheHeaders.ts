@@ -5,6 +5,19 @@
 
 export type ApiCacheState = "HIT" | "MISS" | "BYPASS";
 
+/**
+ * Build response headers describing cache state for JSON API routes.
+ *
+ * @remarks
+ * All API routes return an envelope and also send `X-Cache` to simplify
+ * debugging (and to make CDN/browser caching behavior observable).
+ *
+ * When `state` is `"BYPASS"`, we force `Cache-Control: no-store` even if the
+ * route passed a cacheable directive.
+ *
+ * @param state - Cache state (HIT/MISS/BYPASS).
+ * @param cacheControl - Cache-Control value to use for HIT/MISS responses.
+ */
 export function jsonCacheHeaders(
   state: ApiCacheState,
   cacheControl: string,
@@ -15,30 +28,28 @@ export function jsonCacheHeaders(
   };
 }
 
-/** Align with Redis live TTL (~120s default); browsers reuse JSON without re-hit. */
+/** Cache-Control for `/api/markets` live aggregates. */
 export const CC_MARKETS_LIVE =
   "private, max-age=90, stale-while-revalidate=240";
 
-/** Redis TTL 3600s for closed slices */
+/** Cache-Control for `/api/markets?closed=true` aggregates. */
 export const CC_MARKETS_CLOSED =
   "private, max-age=900, stale-while-revalidate=2400";
 
-/** divergence:* TTL 600s */
-export const CC_DIVERGENCE =
-  "private, max-age=300, stale-while-revalidate=600";
+/** Cache-Control for `/api/divergence` results. */
+export const CC_DIVERGENCE = "private, max-age=300, stale-while-revalidate=600";
 
-/** inefficiencies:v3 TTL 300s */
+/** Cache-Control for `/api/inefficiencies` results. */
 export const CC_INEFFICIENCIES =
   "private, max-age=180, stale-while-revalidate=420";
 
-/** Venue aggregates TTL 3600s */
+/** Cache-Control for `/api/resolution-bias` aggregates. */
 export const CC_RESOLUTION_BIAS =
   "private, max-age=900, stale-while-revalidate=2700";
 
-/** calibration:v2 / efficiency-timeline TTL 3600s */
+/** Cache-Control for hourly aggregates (calibration + efficiency timeline). */
 export const CC_HOURLY_AGG =
   "private, max-age=900, stale-while-revalidate=2400";
 
-/** ohlcv:* TTL 300s */
-export const CC_OHLCV =
-  "private, max-age=180, stale-while-revalidate=420";
+/** Cache-Control for `/api/ohlcv` slices. */
+export const CC_OHLCV = "private, max-age=180, stale-while-revalidate=420";

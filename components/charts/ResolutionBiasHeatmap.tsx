@@ -9,6 +9,13 @@ import { useEffect, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import type { ResolutionBiasBucket } from "@/lib/types";
 
+/**
+ * Resolution-bias heatmap (category × venue).
+ *
+ * @remarks
+ * Renders aggregated NO-rate bias buckets from `/api/resolution-bias` and
+ * supports filtering interactions that update the shared dashboard store.
+ */
 /** Heatmap columns only — API still aggregates Other for KPI / filters. */
 const CATEGORIES = ["Politics", "Crypto", "Finance"];
 const EXCHANGES = ["polymarket", "kalshi"] as const;
@@ -66,7 +73,7 @@ export function ResolutionBiasHeatmap() {
 
   if (isLoading && !data) {
     return (
-      <Card>
+      <Card className="flex h-full min-h-0 flex-col">
         <CardHeader title="Resolution bias heatmap" />
         <ChartSkeleton hint="Aggregating closed markets across venues — first paint can take ~30–60s on a cold cache while Redis fills." />
       </Card>
@@ -75,13 +82,13 @@ export function ResolutionBiasHeatmap() {
 
   if (error && !data) {
     return (
-      <Card>
+      <Card className="flex h-full min-h-0 flex-col">
         <CardHeader title="Resolution bias heatmap" />
         <CardBody className="py-8 text-center text-sm text-fg-muted">
-          Couldn&apos;t load resolution bias yet (server still aggregating closed
-          markets, or request timed out). If you deploy on a short serverless
-          limit, rely on <code className="text-fg">/api/warmup</code> cron or
-          retry in a minute once Redis fills.
+          Couldn&apos;t load resolution bias yet (server still aggregating
+          closed markets, or request timed out). If you deploy on a short
+          serverless limit, rely on <code className="text-fg">/api/warmup</code>{" "}
+          cron or retry in a minute once Redis fills.
         </CardBody>
       </Card>
     );
@@ -114,7 +121,7 @@ export function ResolutionBiasHeatmap() {
   const flaggedCount = buckets.filter((b) => b.flagged).length;
 
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader
         title="Resolution bias heatmap"
         subtitle={`NO-resolution rate per category × venue · ${flaggedCount} flagged`}
@@ -122,12 +129,13 @@ export function ResolutionBiasHeatmap() {
           <HelpTooltip content="Each cell shows how often resolved markets ended NO for a category and venue. Warmer colors mean stronger NO skew; low-sample cells should be treated cautiously." />
         }
       />
-      <CardBody>
-        <div className="flex flex-col gap-2">
+      <CardBody className="flex min-h-0 flex-1 flex-col px-3 sm:px-tmb6">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
           <div
-            className="grid gap-1.5"
+            className="grid min-h-0 flex-1 gap-1 sm:gap-1.5"
             style={{
-              gridTemplateColumns: `90px repeat(${CATEGORIES.length}, minmax(0, 1fr))`,
+              gridTemplateColumns: `minmax(64px, 90px) repeat(${CATEGORIES.length}, minmax(0, 1fr))`,
+              gridTemplateRows: `auto repeat(${EXCHANGES.length}, minmax(5rem, 1fr))`,
             }}
           >
             <div />
@@ -151,13 +159,13 @@ export function ResolutionBiasHeatmap() {
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px] text-fg-muted">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] text-fg-muted">
             <span className="font-medium uppercase tracking-wider">Scale</span>
             <LegendSwatch color="#10b981" label="< 55%" />
             <LegendSwatch color="#f59e0b" label="55–65%" />
             <LegendSwatch color="#f97316" label="65–75%" />
             <LegendSwatch color="#ef4444" label="≥ 75%" />
-            <div className="ml-auto max-w-[min(100%,360px)] text-right leading-snug">
+            <div className="w-full max-w-[min(100%,360px)] leading-snug sm:ml-auto sm:w-auto sm:text-right">
               <div>
                 Binary sample: {totalN.toLocaleString()}
                 {closedSum != null && closedSum > 0 && (
@@ -208,7 +216,7 @@ function HeatmapRow({
 }) {
   return (
     <>
-      <div className="flex items-center text-[11px] font-medium capitalize text-fg-muted">
+      <div className="flex h-full min-h-0 items-center text-[11px] font-medium capitalize text-fg-muted">
         {exchange}
       </div>
       {categories.map((c) => {
@@ -223,7 +231,7 @@ function HeatmapRow({
             key={`${c}-${exchange}`}
             onMouseEnter={() => b && onHover(b)}
             onMouseLeave={() => onHover(null)}
-            className="group relative flex h-16 cursor-pointer flex-col items-center justify-center rounded-md border border-border transition-transform hover:scale-[1.03]"
+            className="group relative flex h-full min-h-0 cursor-pointer flex-col items-center justify-center rounded-md border border-border transition-transform hover:scale-[1.03]"
             style={{ background: bg }}
           >
             {!hasData ? (
@@ -233,7 +241,7 @@ function HeatmapRow({
             ) : (
               <>
                 <span
-                  className="font-mono text-sm font-semibold leading-none"
+                  className="text-sm font-semibold leading-none tabular-nums"
                   style={{ color: fg }}
                 >
                   {(rate * 100).toFixed(0)}% NO
@@ -243,9 +251,7 @@ function HeatmapRow({
                   style={{ color: fg }}
                 >
                   N={b!.total}
-                  {b!.total >= LOW_SAMPLE
-                    ? ` · z=${b!.zScore.toFixed(1)}`
-                    : ""}
+                  {b!.total >= LOW_SAMPLE ? ` · z=${b!.zScore.toFixed(1)}` : ""}
                 </span>
                 {b!.total > 0 && b!.total < LOW_SAMPLE && (
                   <span

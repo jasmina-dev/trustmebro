@@ -18,9 +18,18 @@ import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { useDashboard } from "@/lib/store";
+import { chartAxisLabelBase, chartAxisTick } from "@/lib/chartTypography";
 import { cn } from "@/lib/cn";
 import type { DivergentPair } from "@/lib/types";
 
+/**
+ * Cross-venue divergence scatter plot.
+ *
+ * @remarks
+ * Compares matched markets across venues (Polymarket vs Kalshi) and surfaces
+ * spread magnitude over time/category. Uses `/api/divergence` and responds to
+ * dashboard filters (venue/category) via derived SWR keys.
+ */
 const CATEGORY_OPTIONS = [
   "All",
   "Politics",
@@ -56,12 +65,16 @@ export function CrossVenueDivergence() {
     return `/api/divergence?${qs.toString()}`;
   }, [category]);
 
-  const { data, isLoading } = useSWR<ApiPayload<DivergentPair[]>>(url, fetcher, {
-    refreshInterval: REFRESH.inefficiencies,
-    dedupingInterval: 60_000,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading } = useSWR<ApiPayload<DivergentPair[]>>(
+    url,
+    fetcher,
+    {
+      refreshInterval: REFRESH.inefficiencies,
+      dedupingInterval: 60_000,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
 
   const pairs = useMemo(() => data?.data ?? [], [data?.data]);
   const topPairs = useMemo(() => pairs.slice(0, 15), [pairs]);
@@ -93,6 +106,7 @@ export function CrossVenueDivergence() {
     | { totalPairs?: number; threshold?: number }
     | undefined;
   const threshold = meta?.threshold ?? 0.02;
+  const thresholdPp = `${(threshold * 100).toFixed(0)} percentage points (pp)`;
 
   return (
     <Card>
@@ -100,8 +114,8 @@ export function CrossVenueDivergence() {
         title="Cross-venue divergence"
         subtitle={
           pairs.length === 0
-            ? `No pairs above ${(threshold * 100).toFixed(0)}pp`
-            : `${pairs.length} matched pairs · top ${topPairs.length} shown · threshold ${(threshold * 100).toFixed(0)}pp`
+            ? `No pairs above ${thresholdPp}`
+            : `${pairs.length} matched pairs · top ${topPairs.length} shown · threshold ${thresholdPp}`
         }
         right={
           <div className="flex items-center gap-2">
@@ -127,8 +141,8 @@ export function CrossVenueDivergence() {
           </div>
         ) : pairs.length === 0 ? (
           <div className="flex h-64 items-center justify-center text-sm text-fg-muted lg:col-span-2">
-            No markets currently exceed the {(threshold * 100).toFixed(0)}pp
-            cross-venue spread threshold.
+            No markets currently exceed the {thresholdPp} cross-venue spread
+            threshold.
           </div>
         ) : (
           <>
@@ -181,9 +195,12 @@ function PairRow({
           >
             {truncate(pair.polyTitle, 56)}
           </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[10px] text-fg-muted">
+          <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] tabular-nums text-fg-muted">
             <span>
-              Poly <span className="text-fg">{(pair.polyYes * 100).toFixed(0)}%</span>
+              Poly{" "}
+              <span className="text-fg">
+                {(pair.polyYes * 100).toFixed(0)}%
+              </span>
             </span>
             <span>
               Kalshi{" "}
@@ -196,8 +213,8 @@ function PairRow({
               className={cn(
                 "uppercase tracking-wide",
                 pair.arbitrageDirection === "buy_kalshi"
-                  ? "text-info"
-                  : "text-accent",
+                  ? "text-kalshi"
+                  : "text-polymarket",
               )}
             >
               {pair.arbitrageDirection === "buy_kalshi"
@@ -207,7 +224,7 @@ function PairRow({
           </div>
         </div>
         <div
-          className="shrink-0 rounded-sm px-1.5 py-0.5 font-mono text-xs font-semibold"
+          className="shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-semibold tabular-nums"
           style={{ color, background: `${color}22` }}
         >
           {pair.spreadPP.toFixed(1)}pp
@@ -255,14 +272,13 @@ function AgreementScatter({ pairs }: { pairs: DivergentPair[] }) {
               dataKey="x"
               domain={[0, 100]}
               name="Polymarket YES"
-              tick={{ fill: "#8b91a1", fontSize: 10 }}
+              tick={chartAxisTick}
               tickFormatter={(v) => `${v}%`}
               axisLine={{ stroke: "#2a2f3d" }}
               tickLine={false}
               label={{
+                ...chartAxisLabelBase,
                 value: "Polymarket YES",
-                fill: "#8b91a1",
-                fontSize: 11,
                 position: "insideBottom",
                 offset: -8,
               }}
@@ -272,14 +288,13 @@ function AgreementScatter({ pairs }: { pairs: DivergentPair[] }) {
               dataKey="y"
               domain={[0, 100]}
               name="Kalshi YES"
-              tick={{ fill: "#8b91a1", fontSize: 10 }}
+              tick={chartAxisTick}
               tickFormatter={(v) => `${v}%`}
               axisLine={{ stroke: "#2a2f3d" }}
               tickLine={false}
               label={{
+                ...chartAxisLabelBase,
                 value: "Kalshi YES",
-                fill: "#8b91a1",
-                fontSize: 11,
                 angle: -90,
                 position: "insideLeft",
                 offset: 12,
@@ -306,7 +321,7 @@ function AgreementScatter({ pairs }: { pairs: DivergentPair[] }) {
                     <div className="mb-1 font-semibold text-fg">
                       {truncate(p.pair.polyTitle, 56)}
                     </div>
-                    <div className="space-y-0.5 font-mono text-fg-muted">
+                    <div className="space-y-0.5 tabular-nums text-fg-muted">
                       <div>
                         Poly YES{" "}
                         <span className="text-fg">

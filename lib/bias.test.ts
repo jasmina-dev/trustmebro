@@ -1,6 +1,13 @@
 import { classifyWinnerLabel, computeBiasBucket } from "./bias";
 import type { UnifiedMarket } from "./types";
 
+/**
+ * Unit tests for `lib/bias.ts`.
+ *
+ * @remarks
+ * Focuses on deterministic label classification and bucket computation so the
+ * resolution-bias pipeline remains stable across minor upstream label changes.
+ */
 function marketWithOutcomes(
   marketId: string,
   outcomes: UnifiedMarket["outcomes"],
@@ -56,8 +63,18 @@ describe("lib/bias", () => {
   test("computeBiasBucket flags large no-heavy samples", () => {
     const markets: UnifiedMarket[] = Array.from({ length: 35 }, (_, i) =>
       marketWithOutcomes(String(i), [
-        { outcomeId: `${i}y`, marketId: String(i), label: "Yes", price: i < 5 ? 0.9 : 0.1 },
-        { outcomeId: `${i}n`, marketId: String(i), label: "No", price: i < 5 ? 0.1 : 0.9 },
+        {
+          outcomeId: `${i}y`,
+          marketId: String(i),
+          label: "Yes",
+          price: i < 5 ? 0.9 : 0.1,
+        },
+        {
+          outcomeId: `${i}n`,
+          marketId: String(i),
+          label: "No",
+          price: i < 5 ? 0.1 : 0.9,
+        },
       ]),
     );
 
@@ -89,5 +106,32 @@ describe("lib/bias", () => {
     const bucket = computeBiasBucket("Crypto", "kalshi", markets);
     expect(bucket.total).toBe(1);
     expect(bucket.ambiguous).toBe(1);
+  });
+
+  test("computeBiasBucket handles NO outcome listed before YES in the outcomes array", () => {
+    const markets: UnifiedMarket[] = [
+      marketWithOutcomes("rev-order", [
+        { outcomeId: "n", marketId: "rev-order", label: "No", price: 0.08 },
+        { outcomeId: "y", marketId: "rev-order", label: "Yes", price: 0.92 },
+      ]),
+    ];
+
+    const bucket = computeBiasBucket("Finance", "kalshi", markets);
+    expect(bucket.total).toBe(1);
+    expect(bucket.yesResolved).toBe(1);
+    expect(bucket.ambiguous).toBe(0);
+  });
+
+  test("computeBiasBucket counts markets with two YES-labeled sides as ambiguous", () => {
+    const markets: UnifiedMarket[] = [
+      marketWithOutcomes("dup-yes", [
+        { outcomeId: "a", marketId: "dup-yes", label: "YES", price: 0.6 },
+        { outcomeId: "b", marketId: "dup-yes", label: "Yes", price: 0.4 },
+      ]),
+    ];
+
+    const bucket = computeBiasBucket("Politics", "polymarket", markets);
+    expect(bucket.ambiguous).toBe(1);
+    expect(bucket.total).toBe(0);
   });
 });

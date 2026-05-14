@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { Card, CardBody, CardHeader } from "./ui/Card";
 
+/**
+ * First-time user guide card shown on the dashboard.
+ *
+ * @remarks
+ * Provides lightweight onboarding and links to the key chart sections without
+ * requiring any data fetches.
+ */
 export function FirstTimeUserGuide() {
   return (
     <Card>
@@ -12,14 +19,14 @@ export function FirstTimeUserGuide() {
       />
       <CardBody className="space-y-3 text-sm text-fg-muted">
         <p>
-          Welcome! If this is your first visit, the easiest way to get started is
-          to move through the dashboard from top to bottom. You do not need to
-          know the technical details to get useful insights.
+          Welcome! If this is your first visit, the easiest way to get started
+          is to move through the dashboard from top to bottom. You do not need
+          to know the technical details to get useful insights.
         </p>
         <p>
-          Begin in <span className="font-semibold text-fg">Overview</span> to see
-          the big picture, then use the left sidebar to open each section one at
-          a time.
+          Begin in <span className="font-semibold text-fg">Overview</span> to
+          see the big picture, then use the left sidebar to open each section
+          one at a time.
         </p>
         <ol className="list-decimal space-y-1 pl-5">
           <li>
@@ -43,9 +50,8 @@ export function FirstTimeUserGuide() {
           </li>
         </ol>
         <p>
-          Tip: start broad, then narrow down. A good flow is: all sources -
-          pick one category - inspect top signals - ask AI follow-up
-          questions.
+          Tip: start broad, then narrow down. A good flow is: all sources - pick
+          one category - inspect top signals - ask AI follow-up questions.
         </p>
         <p className="text-xs">
           Want to start over? Return to the landing page at{" "}

@@ -12,6 +12,15 @@ export interface ApiPayload<T> {
   meta?: Record<string, unknown>;
 }
 
+/**
+ * Default SWR fetcher for this app's API routes.
+ *
+ * @remarks
+ * Routes return a standard `ApiPayload<T>` envelope. We only throw on 5xx to
+ * keep 4xx responses (e.g. validation) available to the UI.
+ *
+ * @param url - Absolute or relative URL.
+ */
 export async function fetcher<T>(url: string): Promise<ApiPayload<T>> {
   /** Respect Cache-Control from our API routes (private max-age + SWR). */
   const res = await fetch(url);

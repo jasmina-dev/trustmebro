@@ -13,11 +13,23 @@ import type {
 // Formatting
 // ---------------------------------------------------------------------------
 
+/**
+ * Format a fraction in \([0, 1]\) as a percentage string.
+ *
+ * @param v - Fractional value (e.g. 0.42).
+ * @param digits - Decimal places.
+ */
 export function pct(v: number, digits = 1): string {
   if (!Number.isFinite(v)) return "—";
   return `${(v * 100).toFixed(digits)}%`;
 }
 
+/**
+ * Format a number as a compact USD string.
+ *
+ * @remarks
+ * Uses K/M/B suffixes for large magnitudes.
+ */
 export function usd(v: number, digits = 0): string {
   if (!Number.isFinite(v)) return "—";
   const abs = Math.abs(v);
@@ -27,6 +39,12 @@ export function usd(v: number, digits = 0): string {
   return `$${v.toFixed(digits)}`;
 }
 
+/**
+ * Format an integer-ish value with K/M suffixes.
+ *
+ * @remarks
+ * Intended for counts (rows, markets, observations).
+ */
 export function compactInt(v: number): string {
   if (!Number.isFinite(v)) return "—";
   const abs = Math.abs(v);
@@ -35,6 +53,9 @@ export function compactInt(v: number): string {
   return String(Math.round(v));
 }
 
+/**
+ * Clamp a value into \([min, max]\).
+ */
 export function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
@@ -50,6 +71,12 @@ export function mean(values: number[]): number {
   return s / values.length;
 }
 
+/**
+ * Sample standard deviation (Bessel corrected).
+ *
+ * @remarks
+ * Returns 0 for \(n < 2\).
+ */
 export function stddev(values: number[]): number {
   if (values.length < 2) return 0;
   const m = mean(values);
@@ -72,7 +99,11 @@ export function proportionZ(p: number, n: number, p0 = 0.5): number {
 
 export function histogram(
   values: number[],
-  { bins = 20, min = 0, max = 1 }: { bins?: number; min?: number; max?: number } = {},
+  {
+    bins = 20,
+    min = 0,
+    max = 1,
+  }: { bins?: number; min?: number; max?: number } = {},
 ): DistributionBucket[] {
   const buckets: DistributionBucket[] = [];
   const width = (max - min) / bins;
@@ -122,19 +153,38 @@ export function yesOutcome(m: UnifiedMarket): UnifiedOutcome | undefined {
   return [...m.outcomes].sort((a, b) => b.price - a.price)[0];
 }
 
+/**
+ * Return the NO outcome if the market is explicitly Yes/No.
+ */
 export function noOutcome(m: UnifiedMarket): UnifiedOutcome | undefined {
   return m.outcomes.find((o) => /^no$/i.test(o.label));
 }
 
+/**
+ * Best-effort "is terminal" predicate for a unified market.
+ *
+ * @remarks
+ * Venue status strings vary; we treat a few common terminal values as resolved.
+ */
 export function isResolved(m: UnifiedMarket): boolean {
   const s = (m.status ?? "").toLowerCase();
   return s === "resolved" || s === "closed" || s === "settled";
 }
 
+/**
+ * Determine a market's canonical exchange from Router fields.
+ *
+ * @remarks
+ * The Router uses `sourceExchange` as the canonical venue; `exchange` can be
+ * missing or inconsistent on some payloads.
+ */
 export function marketExchange(
   market: Pick<UnifiedMarket, "exchange" | "sourceExchange">,
 ): Exchange | undefined {
-  return normalizeExchange(market.sourceExchange) ?? normalizeExchange(market.exchange);
+  return (
+    normalizeExchange(market.sourceExchange) ??
+    normalizeExchange(market.exchange)
+  );
 }
 
 function normalizeExchange(value: unknown): Exchange | undefined {
@@ -145,16 +195,14 @@ function normalizeExchange(value: unknown): Exchange | undefined {
   return undefined;
 }
 
-export function venueMarketUrl(
-  market: {
-    exchange?: Exchange;
-    sourceExchange?: string;
-    marketId: string;
-    title?: string;
-    slug?: string | null;
-    url?: string | null;
-  },
-): string | null {
+export function venueMarketUrl(market: {
+  exchange?: Exchange;
+  sourceExchange?: string;
+  marketId: string;
+  title?: string;
+  slug?: string | null;
+  url?: string | null;
+}): string | null {
   const exchange = marketExchange(market);
   const raw = market.url?.trim() || null;
 
@@ -177,14 +225,21 @@ export function venueMarketUrl(
 }
 
 function isKalshiTicker(value: string): boolean {
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+  if (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  ) {
     return false;
   }
 
   return /^[A-Z][A-Z0-9]+(?:[.-][A-Z0-9]+)+$/.test(value);
 }
 
-function venueSearchUrl(exchange: Exchange, title: string | undefined): string | null {
+function venueSearchUrl(
+  exchange: Exchange,
+  title: string | undefined,
+): string | null {
   if (!title?.trim()) return null;
   const q = encodeURIComponent(title.trim());
   return exchange === "polymarket"

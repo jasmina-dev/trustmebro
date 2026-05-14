@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDashboard } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import type { ChatMessage } from "@/lib/types";
+import { downloadChatTranscript } from "@/lib/chat-export";
 import { ChatMarkdown } from "./ChatMarkdown";
 
 /** `randomUUID` is only available in secure contexts; LAN http dev URLs often are not. */
@@ -22,6 +23,13 @@ const SUGGESTED = [
   "What's the most inefficient market today?",
 ];
 
+/**
+ * Dashboard chat side panel ("Ask AI").
+ *
+ * @remarks
+ * Chat state is stored in the dashboard Zustand store so it can be toggled from
+ * the top nav and persisted across chart section changes.
+ */
 export function ChatPanel() {
   const {
     chatOpen,
@@ -129,18 +137,33 @@ export function ChatPanel() {
       {/* Panel */}
       <aside
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-border bg-bg-elev/95 shadow-2xl backdrop-blur-lg transition-transform duration-300 md:w-[420px]",
+          "fixed right-0 top-0 z-50 flex h-full max-h-[100dvh] w-full flex-col border-l border-border bg-bg-elev/95 shadow-2xl backdrop-blur-lg transition-transform duration-300 md:w-[420px]",
           chatOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <div className="text-sm font-semibold tracking-tight">AI Analyst</div>
+            <div className="text-sm font-semibold tracking-tight">
+              AI Analyst
+            </div>
             <div className="text-[10px] text-fg-muted">
               claude-sonnet · reads your dashboard context
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => downloadChatTranscript(chatMessages)}
+              disabled={chatMessages.length === 0}
+              title={
+                chatMessages.length === 0
+                  ? "Nothing to export yet"
+                  : "Download conversation as .txt"
+              }
+              className="rounded-md border border-border bg-bg-card px-2 py-1 text-[10px] text-fg-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-fg-muted"
+            >
+              Export
+            </button>
             <button
               type="button"
               onClick={clearChat}
@@ -194,19 +217,20 @@ export function ChatPanel() {
             e.preventDefault();
             send(input);
           }}
-          className="flex gap-2 border-t border-border bg-bg-card/60 p-3"
+          className="flex gap-2 border-t border-border bg-bg-card/60 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about the dashboard…"
             disabled={chatStreaming}
-            className="flex-1 rounded-md border border-border bg-bg-elev px-3 py-2 text-xs focus:border-accent disabled:opacity-60"
+            // 16px+ font on mobile keeps iOS Safari from auto-zooming on focus.
+            className="min-w-0 flex-1 rounded-md border border-border bg-bg-elev px-3 py-2 text-base focus:border-accent disabled:opacity-60 sm:text-xs"
           />
           <button
             type="submit"
             disabled={chatStreaming || !input.trim()}
-            className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {chatStreaming ? "…" : "Send"}
           </button>
@@ -224,8 +248,7 @@ function MessageBubble({
   streaming: boolean;
 }) {
   const isUser = msg.role === "user";
-  const isEmptyAssistant =
-    !isUser && msg.content.length === 0 && streaming;
+  const isEmptyAssistant = !isUser && msg.content.length === 0 && streaming;
 
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>

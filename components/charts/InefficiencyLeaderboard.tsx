@@ -9,8 +9,18 @@ import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
 import { cn } from "@/lib/cn";
 import { useDashboard } from "@/lib/store";
+import { normalizeCategory } from "@/lib/utils";
 import type { InefficiencyScore, InefficiencyType } from "@/lib/types";
 
+/**
+ * Inefficiency leaderboard table.
+ *
+ * @remarks
+ * The leaderboard is driven by `/api/inefficiencies` and filtered by the active
+ * dashboard venue/category. Sports-tagged rows are excluded (same as the API
+ * universe for live data). Divergence entries span two venues and should be
+ * visible under either exchange toggle.
+ */
 const TYPE_LABEL: Record<InefficiencyType, string> = {
   resolution_bias: "Bias",
   cross_venue_divergence: "Divergence",
@@ -26,6 +36,18 @@ const TYPE_COLOR: Record<InefficiencyType, string> = {
 };
 
 type SortKey = "score" | "type" | "exchange" | "category" | "lastUpdated";
+
+function matchesVenue(
+  score: InefficiencyScore,
+  venue: "all" | string,
+): boolean {
+  if (venue === "all") return true;
+  // Divergence rows span two venues; include them under either toggle.
+  if (score.type === "cross_venue_divergence") {
+    return score.exchange === venue || score.counterpartyExchange === venue;
+  }
+  return score.exchange === venue;
+}
 
 export function InefficiencyLeaderboard() {
   const { data, isLoading } = useSWR<ApiPayload<InefficiencyScore[]>>(
@@ -44,19 +66,26 @@ export function InefficiencyLeaderboard() {
   const [detail, setDetail] = useState<InefficiencyScore | null>(null);
 
   const { activeVenue, updateChartContext } = useDashboard();
+
+  const scoresNoSports = useMemo(
+    () =>
+      (data?.data ?? []).filter(
+        (r) => normalizeCategory(r.category) !== "Sports",
+      ),
+    [data?.data],
+  );
+
   useEffect(() => {
-    if (data?.data) {
-      updateChartContext("inefficiency-leaderboard", {
-        inefficiencyScores: data.data,
-      });
-    }
-  }, [data?.data, updateChartContext]);
+    if (data === undefined) return;
+    updateChartContext("inefficiency-leaderboard", {
+      inefficiencyScores: scoresNoSports,
+    });
+  }, [data, scoresNoSports, updateChartContext]);
 
   const rows = useMemo(() => {
-    const list = (data?.data ?? []).filter((r) => {
+    const list = scoresNoSports.filter((r) => {
       if (filter !== "all" && r.type !== filter) return false;
-      // cross_venue_divergence spans both exchanges — always include it
-      if (activeVenue !== "all" && r.type !== "cross_venue_divergence" && r.exchange !== activeVenue) return false;
+      if (!matchesVenue(r, activeVenue)) return false;
       return true;
     });
     return [...list].sort((a, b) => {
@@ -67,7 +96,7 @@ export function InefficiencyLeaderboard() {
         return (av - bv) * dir;
       return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
     });
-  }, [data?.data, filter, sortKey, sortDir]);
+  }, [scoresNoSports, filter, sortKey, sortDir, activeVenue]);
 
   if (isLoading && !data) {
     return (
@@ -92,17 +121,21 @@ export function InefficiencyLeaderboard() {
             >
               <option value="all">All types</option>
               <option value="resolution_bias">Resolution bias</option>
-              <option value="cross_venue_divergence">Cross-venue divergence</option>
+              <option value="cross_venue_divergence">
+                Cross-venue divergence
+              </option>
               <option value="liquidity_gap">Liquidity gap</option>
-              <option value="late_breaking_mismatch">Late-breaking mismatch</option>
+              <option value="late_breaking_mismatch">
+                Late-breaking mismatch
+              </option>
             </select>
             <HelpTooltip content="Ranks detected inefficiencies by score. Click a row to open details with signal-specific metrics such as spread, z-score, or liquidity ratio." />
           </div>
         }
       />
-      <CardBody className="px-0 py-0">
+      <CardBody className="px-0 py-0 max-sm:px-0 max-sm:py-0">
         <div className="max-h-[520px] overflow-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[640px] text-left text-xs">
             <thead className="sticky top-0 z-10 bg-bg-card/95 backdrop-blur">
               <tr className="text-[10px] uppercase tracking-wider text-fg-muted">
                 <Th
@@ -150,7 +183,7 @@ export function InefficiencyLeaderboard() {
                   onClick={() => setDetail(r)}
                   className="cursor-pointer border-t border-border-subtle hover:bg-bg-hover"
                 >
-                  <td className="px-4 py-2 font-mono font-semibold text-fg">
+                  <td className="px-4 py-2 font-semibold tabular-nums text-fg">
                     {r.score.toFixed(0)}
                   </td>
                   <td className="px-4 py-2">
@@ -211,12 +244,15 @@ export function InefficiencyLeaderboard() {
   );
 }
 
-function Th({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) {
+function Th({
+  onClick,
+  children,
+}: {
+  onClick?: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <th
-      className="cursor-pointer px-4 py-2 hover:text-fg"
-      onClick={onClick}
-    >
+    <th className="cursor-pointer px-4 py-2 hover:text-fg" onClick={onClick}>
       {children}
     </th>
   );
@@ -232,11 +268,11 @@ function DetailModal({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-xl rounded-xl border border-border bg-bg-card p-6 shadow-2xl"
+        className="my-3 w-full max-w-xl rounded-xl border border-border bg-bg-card p-4 shadow-2xl sm:p-6"
       >
         <div className="flex items-start justify-between">
           <div>
@@ -292,18 +328,14 @@ function DetailModal({
             <Stat label="Z-score" value={detail.zScore.toFixed(2)} />
           )}
           {detail.liquidityRatio !== undefined && (
-            <Stat
-              label="Vol/Liq"
-              value={formatRatio(detail.liquidityRatio)}
-            />
+            <Stat label="Vol/Liq" value={formatRatio(detail.liquidityRatio)} />
           )}
           {detail.liquidityRatio !== undefined &&
             detail.liquidityPopulation && (
               <Stat
                 label="σ above mean"
                 value={`${(
-                  (detail.liquidityRatio -
-                    detail.liquidityPopulation.mean) /
+                  (detail.liquidityRatio - detail.liquidityPopulation.mean) /
                   detail.liquidityPopulation.sd
                 ).toFixed(1)}σ`}
               />
@@ -324,7 +356,10 @@ function DetailModal({
         </div>
 
         <div className="mt-4 text-[10px] text-fg-subtle">
-          Last updated {formatDistanceToNow(new Date(detail.lastUpdated), { addSuffix: true })}
+          Last updated{" "}
+          {formatDistanceToNow(new Date(detail.lastUpdated), {
+            addSuffix: true,
+          })}
         </div>
       </div>
     </div>
@@ -337,7 +372,7 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] uppercase tracking-wider text-fg-muted">
         {label}
       </div>
-      <div className="mt-0.5 font-mono text-base font-semibold">{value}</div>
+      <div className="mt-0.5 text-base font-semibold tabular-nums">{value}</div>
     </div>
   );
 }
@@ -413,7 +448,7 @@ function LiquidityDistributionViz({
           style={{ left: `${sToPct(sigmas)}%` }}
           title={`this market · ${formatRatio(ratio)}`}
         />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between font-mono text-[9px] text-fg-subtle">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between text-[9px] tabular-nums text-fg-subtle">
           <span>−3σ</span>
           <span>0</span>
           <span>+{axisMax.toFixed(0)}σ</span>
@@ -442,7 +477,7 @@ function LiquidityDistributionViz({
         />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-3 font-mono text-[10px]">
+      <div className="mt-3 grid grid-cols-3 gap-3 text-[10px] tabular-nums">
         <div className="flex items-center gap-1.5 text-fg-muted">
           <span className="inline-block h-2 w-2 rounded-full bg-success" />
           mean {formatRatio(stats.mean)}

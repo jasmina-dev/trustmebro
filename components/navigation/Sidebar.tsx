@@ -1,9 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { useDashboard } from "@/lib/store";
 
+/**
+ * Sidebar section navigation for the dashboard.
+ *
+ * @remarks
+ * Keeps the active chart section in the shared store and scrolls to the
+ * corresponding anchor for a "single-page report" style flow.
+ *
+ * Two modes:
+ *   - desktop (md+): a sticky, optionally collapsible rail
+ *   - mobile (< md): an off-canvas drawer driven by `sidebarOpen` in the
+ *     dashboard store (toggled from the hamburger button in `TopNav`)
+ */
 const SECTIONS = [
   {
     id: "overview",
@@ -55,91 +68,494 @@ const SECTIONS = [
     label: "First-time users",
     description: "How to read and use this dashboard",
   },
-];
+] as const;
+
+/**
+ * Small outline icons for each dashboard section (desktop collapsed rail + optional mobile).
+ */
+function SectionIcon({
+  id,
+  className,
+}: {
+  id: (typeof SECTIONS)[number]["id"];
+  className?: string;
+}) {
+  const svg = cn("h-4 w-4 shrink-0", className);
+  switch (id) {
+    case "overview":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case "resolution-bias-heatmap":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden
+        >
+          <rect x="3" y="3" width="7" height="7" rx="0.5" fillOpacity="0.35" />
+          <rect x="14" y="3" width="7" height="7" rx="0.5" fillOpacity="0.75" />
+          <rect x="3" y="14" width="7" height="7" rx="0.5" fillOpacity="0.55" />
+          <rect x="14" y="14" width="7" height="7" rx="0.5" fillOpacity="0.95" />
+        </svg>
+      );
+    case "cross-venue-divergence":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M8 9l-4 4 4 4M16 15l4-4-4-4M14 8l-4 8" />
+        </svg>
+      );
+    case "market-momentum":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 16l4-4 4 4 8-8" />
+          <path d="M16 8h4v4" />
+        </svg>
+      );
+    case "calibration":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 20V4M4 20h16" />
+          <path d="M7 16c3-6 5-9 10-12" />
+        </svg>
+      );
+    case "efficiency-timeline":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l3 2" />
+        </svg>
+      );
+    case "liquidity-gap":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 18V6M8 18V10M12 18v-8M16 18V8M20 18V4" />
+        </svg>
+      );
+    case "price-vs-resolution":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 3v18M8 7h8M8 17h8" />
+          <circle cx="8" cy="12" r="2" />
+          <circle cx="16" cy="12" r="2" />
+        </svg>
+      );
+    case "leaderboard":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M8 21V11l-4 2v8h4zM16 21V7l-4 2v12h4zM12 21V14l4-2v9h-4z" />
+        </svg>
+      );
+    case "first-time-users":
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 16v-1M12 8h.01" />
+        </svg>
+      );
+    default:
+      return (
+        <svg
+          className={svg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" />
+        </svg>
+      );
+  }
+}
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const activeChart = useDashboard((s) => s.activeChart);
   const setActiveChart = useDashboard((s) => s.setActiveChart);
+  const sidebarOpen = useDashboard((s) => s.sidebarOpen);
+  const setSidebarOpen = useDashboard((s) => s.setSidebarOpen);
+
+  // Lock body scroll while the mobile drawer is open so the page underneath
+  // doesn't drift when the user swipes inside the drawer.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!sidebarOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [sidebarOpen]);
+
+  // Auto-dismiss the drawer if the viewport grows past the md breakpoint
+  // (e.g. user rotates a tablet) so the desktop rail isn't shadowed by a
+  // stale open state and body-scroll-lock can release.
+  useEffect(() => {
+    if (typeof window === "undefined" || !sidebarOpen) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const handle = (e: MediaQueryListEvent) => {
+      if (e.matches) setSidebarOpen(false);
+    };
+    if (mq.matches) setSidebarOpen(false);
+    mq.addEventListener("change", handle);
+    return () => mq.removeEventListener("change", handle);
+  }, [sidebarOpen, setSidebarOpen]);
+
+  const handleSectionClick = (id: string) => {
+    setActiveChart(id);
+    setSidebarOpen(false);
+    const target = document.getElementById(id);
+    if (!target) return;
+    // The dashboard's `<TopNav>` is `position: sticky` at the top of the
+    // viewport. Without an offset, `scrollIntoView({ block: "start" })`
+    // aligns the section's top to the viewport top, so the heading lands
+    // hidden underneath the header. Set `scroll-margin-top` equal to the
+    // header's actual rendered height so we land just below it.
+    const headerHeight =
+      document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+    target.style.scrollMarginTop = `${headerHeight + 8}px`;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
-    <aside
-      className={cn(
-        "sticky top-tmb-nav hidden h-tmb-sidebar shrink-0 border-r border-border bg-bg transition-all duration-200 md:block",
-        collapsed ? "w-tmb-sidebar-collapsed" : "w-tmb-sidebar",
-      )}
-    >
-      <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-border px-tmb4 py-tmb4">
-          {!collapsed && (
-            <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">
-              Jump to
-            </span>
-          )}
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            className="rounded-tmb border border-border bg-bg-card p-tmb2 text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+    <>
+      {/* ----- Desktop rail ----- */}
+      <aside
+        aria-label="Dashboard sections"
+        className={cn(
+          "sticky top-tmb-nav hidden h-tmb-sidebar shrink-0 border-r border-border bg-bg transition-all duration-200 md:block",
+          collapsed ? "w-tmb-sidebar-collapsed" : "w-tmb-sidebar",
+        )}
+      >
+        <div className="flex h-full flex-col">
+          <div
+            className={cn(
+              "flex items-center border-b border-border px-tmb4 py-tmb4",
+              collapsed ? "justify-center" : "justify-between",
+            )}
           >
-            <svg
-              viewBox="0 0 24 24"
-              width="12"
-              height="12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className={cn("transition-transform", collapsed && "rotate-180")}
+            {!collapsed && (
+              <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+                Jump to
+              </span>
+            )}
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              className="rounded-tmb border border-border bg-bg-card p-tmb2 text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
+              <svg
+                viewBox="0 0 24 24"
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className={cn(
+                  "transition-transform",
+                  collapsed && "rotate-180",
+                )}
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          </div>
+
+          <nav className="flex-1 space-y-tmb1 overflow-y-auto px-tmb2 py-tmb4">
+            {SECTIONS.map((s) => (
+              <SidebarItem
+                key={s.id}
+                section={s}
+                active={activeChart === s.id}
+                collapsed={collapsed}
+                onClick={() => handleSectionClick(s.id)}
+              />
+            ))}
+          </nav>
+
+          {!collapsed && (
+            <div className="border-t border-border p-tmb4 text-xs leading-relaxed text-fg-muted">
+              <div className="mb-tmb1 font-bold uppercase tracking-wider text-fg-muted">
+                Cache
+              </div>
+              <div className="font-number tabular-nums">Live · 60s</div>
+              <div className="font-number tabular-nums">Resolved · 1h</div>
+              <div className="font-number tabular-nums">
+                Inefficiencies · 5m
+              </div>
+              <div className="font-number tabular-nums">Archive · 24h</div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* ----- Mobile drawer ----- */}
+      <div
+        onClick={() => setSidebarOpen(false)}
+        className={cn(
+          "fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] transition-opacity md:hidden",
+          sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden={!sidebarOpen}
+      />
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-full w-[82vw] max-w-xs flex-col border-r border-border bg-bg-elev shadow-2xl transition-transform duration-300 md:hidden",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+        aria-label="Section navigation"
+        aria-hidden={!sidebarOpen}
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+            Jump to
+          </span>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="rounded-md p-1 text-fg-muted hover:bg-bg-hover hover:text-fg"
+            aria-label="Close section menu"
+          >
+            ✕
           </button>
         </div>
-
-        <nav className="flex-1 space-y-tmb1 overflow-y-auto px-tmb2 py-tmb4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
           {SECTIONS.map((s) => {
             const active = activeChart === s.id;
             return (
               <button
                 key={s.id}
-                onClick={() => {
-                  setActiveChart(s.id);
-                  document
-                    .getElementById(s.id)
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                onClick={() => handleSectionClick(s.id)}
+                title={s.description}
                 className={cn(
-                  "group flex w-full flex-col items-start rounded-tmb border px-tmb4 py-tmb3 text-left transition-colors",
+                  "flex w-full min-w-0 items-center gap-2 rounded-tmb border px-3 py-2 text-left transition-colors",
                   active
                     ? "border-accent bg-accent/10 text-fg"
                     : "border-border bg-bg-card text-fg hover:bg-bg-hover",
                 )}
-                title={collapsed ? s.label : undefined}
               >
-                <span className="truncate text-sm font-semibold leading-snug">
-                  {collapsed ? s.label.slice(0, 2) : s.label}
+                <SectionIcon id={s.id} />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug">
+                  {s.label}
                 </span>
-                {!collapsed && (
-                  <span className="mt-1 truncate text-xs leading-snug text-fg-muted">
-                    {s.description}
-                  </span>
-                )}
               </button>
             );
           })}
         </nav>
-
-        {!collapsed && (
-          <div className="border-t border-border p-tmb4 text-xs leading-relaxed text-fg-muted">
-            <div className="mb-tmb1 font-bold uppercase tracking-wider text-fg-muted">
-              Cache
-            </div>
-            <div className="font-number tabular-nums">Live · 60s</div>
-            <div className="font-number tabular-nums">Resolved · 1h</div>
-            <div className="font-number tabular-nums">Inefficiencies · 5m</div>
-            <div className="font-number tabular-nums">Archive · 24h</div>
+        <div className="border-t border-border px-4 py-3 text-[11px] leading-relaxed text-fg-muted">
+          <div className="mb-1 font-bold uppercase tracking-wider text-fg-muted">
+            Cache
           </div>
+          <div className="font-number tabular-nums">
+            Live · 60s · Resolved · 1h · Ineff · 5m · Archive · 24h
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+type Section = (typeof SECTIONS)[number];
+
+/**
+ * A single desktop-rail nav item with a portal-rendered hover tooltip
+ * showing the section's description.
+ *
+ * @remarks
+ * The tooltip is rendered into `document.body` via a portal so it can escape
+ * the sidebar's scroll container (which would otherwise clip it horizontally).
+ * Position is computed from the trigger button's bounding rect on each open.
+ */
+function SidebarItem({
+  section,
+  active,
+  collapsed,
+  onClick,
+}: {
+  section: Section;
+  active: boolean;
+  collapsed: boolean;
+  onClick: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const recomputeCoords = useCallback(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setCoords({
+      top: rect.top + rect.height / 2,
+      left: rect.right + 8,
+    });
+  }, []);
+
+  const showTip = () => {
+    recomputeCoords();
+    setOpen(true);
+  };
+
+  const hideTip = () => setOpen(false);
+
+  // Keep the portal-rendered tooltip stuck to the trigger while it's open.
+  // The sidebar `<nav>` is `overflow-y-auto`, so its inner scroll moves the
+  // button without firing mouseenter/leave when the user is keyboard-focused
+  // (or when the cursor stays within the same button mid-scroll). Window
+  // resize has the same staleness problem. We listen on `window` with
+  // `capture: true` so we observe scroll events from any ancestor (DOM
+  // scroll events don't bubble to window otherwise).
+  useEffect(() => {
+    if (!open) return;
+    const opts: AddEventListenerOptions = { capture: true, passive: true };
+    window.addEventListener("scroll", recomputeCoords, opts);
+    window.addEventListener("resize", recomputeCoords);
+    return () => {
+      window.removeEventListener("scroll", recomputeCoords, opts);
+      window.removeEventListener("resize", recomputeCoords);
+    };
+  }, [open, recomputeCoords]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        onClick={onClick}
+        onMouseEnter={showTip}
+        onMouseLeave={hideTip}
+        onFocus={showTip}
+        onBlur={hideTip}
+        className={cn(
+          "flex w-full items-center rounded-tmb border text-left transition-colors",
+          collapsed
+            ? "justify-center px-tmb2 py-tmb3"
+            : "justify-start gap-tmb2 px-tmb4 py-tmb3",
+          active
+            ? "border-accent bg-accent/10 text-fg"
+            : "border-border bg-bg-card text-fg hover:bg-bg-hover",
         )}
-      </div>
-    </aside>
+        aria-describedby={open ? `sidebar-tip-${section.id}` : undefined}
+      >
+        <SectionIcon id={section.id} />
+        <span
+          className={cn(
+            "text-sm font-semibold leading-snug",
+            collapsed ? "sr-only" : "min-w-0 flex-1 truncate",
+          )}
+        >
+          {section.label}
+        </span>
+      </button>
+      {open &&
+        mounted &&
+        createPortal(
+          <div
+            id={`sidebar-tip-${section.id}`}
+            role="tooltip"
+            className="pointer-events-none fixed z-50 w-56 -translate-y-1/2 rounded-md border border-border bg-bg-card px-3 py-2 text-xs leading-snug shadow-xl"
+            style={{ top: coords.top, left: coords.left }}
+          >
+            <div className="mb-0.5 font-semibold text-fg">{section.label}</div>
+            <div className="text-fg-muted">{section.description}</div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

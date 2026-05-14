@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { HelpTooltip } from "./HelpTooltip";
 
 interface KPICardProps {
   label: string;
@@ -11,8 +12,18 @@ interface KPICardProps {
   format?: "number" | "percent" | "usd" | "string";
   hint?: string;
   loading?: boolean;
+  /** Optional help icon with explanation (hover/focus). */
+  helpContent?: string;
+  helpTitle?: string;
 }
 
+/**
+ * Display card for a single KPI (label + value + optional delta).
+ *
+ * @remarks
+ * Handles animated numeric transitions and optional contextual hint text while
+ * keeping markup simple for accessibility and testing.
+ */
 export function KPICard({
   label,
   value,
@@ -21,36 +32,48 @@ export function KPICard({
   format = "number",
   hint,
   loading,
+  helpContent,
+  helpTitle,
 }: KPICardProps) {
   const numericTarget =
     typeof value === "number" && format !== "string" ? value : null;
   const display = useCountUp(numericTarget);
 
-  const formatted =
-    loading
-      ? "—"
-      : format === "string" || typeof value === "string"
-        ? String(value)
-        : formatValue(numericTarget === null ? 0 : display, format);
+  const formatted = loading
+    ? "—"
+    : format === "string" || typeof value === "string"
+      ? String(value)
+      : formatValue(numericTarget === null ? 0 : display, format);
 
-  const deltaColor = delta === undefined
-    ? ""
-    : delta > 0
-      ? "text-success"
-      : delta < 0
-        ? "text-danger"
-        : "text-fg-muted";
+  const deltaColor =
+    delta === undefined
+      ? ""
+      : delta > 0
+        ? "text-success"
+        : delta < 0
+          ? "text-danger"
+          : "text-fg-muted";
 
   return (
-    <div className="rounded-tmb border border-border bg-bg-card p-tmb6">
-      <div className="text-xs font-semibold uppercase tracking-wider text-fg-muted">
-        {label}
+    <div className="rounded-tmb border border-border bg-bg-card p-tmb5 sm:p-tmb6">
+      <div className="flex items-start justify-between gap-1.5">
+        <div className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-wider text-fg-muted sm:text-xs">
+          {label}
+        </div>
+        {helpContent ? (
+          <HelpTooltip
+            title={helpTitle ?? "What this shows"}
+            content={helpContent}
+          />
+        ) : null}
       </div>
-      <div className="mt-tmb3 flex items-baseline gap-tmb2">
+      <div className="mt-tmb2 flex items-baseline gap-tmb2 sm:mt-tmb3">
         <div className="font-number text-kpi font-bold tracking-tight text-fg tabular-nums">
           {formatted}
           {suffix && (
-            <span className="ml-tmb1 text-base text-fg-muted">{suffix}</span>
+            <span className="ml-tmb1 text-sm text-fg-muted sm:text-base">
+              {suffix}
+            </span>
           )}
         </div>
         {delta !== undefined && !loading && (
@@ -60,7 +83,11 @@ export function KPICard({
           </div>
         )}
       </div>
-      {hint && <div className="mt-tmb1 text-xs text-fg-muted">{hint}</div>}
+      {hint && (
+        <div className="mt-tmb1 text-[11px] text-fg-muted sm:text-xs">
+          {hint}
+        </div>
+      )}
     </div>
   );
 }

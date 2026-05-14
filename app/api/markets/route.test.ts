@@ -6,6 +6,15 @@ import { cached } from "@/lib/redis";
 import { hasPmxtKey, router } from "@/lib/pmxt";
 import { mockMarkets } from "@/lib/mock";
 
+/**
+ * Route tests for `GET /api/markets`.
+ *
+ * @remarks
+ * Runs in the Node test environment and mocks Redis + PMXT to validate:
+ * - query parsing (exchange/category/closed/limit)
+ * - response envelope shape + cache headers
+ * - behavior differences between real mode (PMXT key) and mock mode
+ */
 jest.mock("@/lib/redis", () => ({
   cached: jest.fn(async (_key, _ttl, loader) => ({
     value: await loader(),
@@ -100,6 +109,24 @@ describe("/api/markets GET", () => {
     expect(body.source).toBe("pmxt");
     expect(body.data).toHaveLength(1);
     expect(body.data[0].marketId).toBe("k1");
+  });
+
+  test("passes closed and query params into the cache layer", async () => {
+    (hasPmxtKey as jest.Mock).mockReturnValue(true);
+    (router.markets as jest.Mock).mockResolvedValue({ data: [] });
+
+    const req = new NextRequest(
+      "http://localhost:3000/api/markets?closed=true&query=election&limit=100",
+    );
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.source).toBe("pmxt");
+    expect(cached).toHaveBeenCalled();
+    const keyArg = (cached as jest.Mock).mock.calls[0][0] as string;
+    expect(keyArg).toContain(":closed:");
+    expect(keyArg).toContain("election");
   });
 
   test("returns BYPASS 500 payload when cache layer throws", async () => {

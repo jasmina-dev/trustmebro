@@ -17,6 +17,12 @@ import { resolutionBiasFetcher, REFRESH, type ApiPayload } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { ChartSkeleton } from "../ui/Skeleton";
 import { HelpTooltip } from "../ui/HelpTooltip";
+import {
+  chartAxisLabelBase,
+  chartAxisTick,
+  chartLegendWrapperStyle,
+  chartTooltipContentStyle,
+} from "@/lib/chartTypography";
 import type { CalibrationSeries } from "@/lib/types";
 
 const CATEGORIES = ["All", "Politics", "Crypto", "Finance", "Other"];
@@ -119,13 +125,13 @@ export function CalibrationCurve() {
     0,
   );
 
-  const basis = (data?.meta?.impliedYesBasis ?? null) as
-    | Record<"pinned" | "mid" | "settlement", number>
-    | null;
-  const basisTotal = basis
-    ? basis.pinned + basis.mid + basis.settlement
-    : 0;
-  const settlementShare = basis && basisTotal > 0 ? basis.settlement / basisTotal : 0;
+  const basis = (data?.meta?.impliedYesBasis ?? null) as Record<
+    "pinned" | "mid" | "settlement",
+    number
+  > | null;
+  const basisTotal = basis ? basis.pinned + basis.mid + basis.settlement : 0;
+  const settlementShare =
+    basis && basisTotal > 0 ? basis.settlement / basisTotal : 0;
   /**
    * When ≥80% of observations come from terminal/settlement YES prices the
    * curve is mathematically forced onto the diagonal (priceAtClose ≈
@@ -136,7 +142,7 @@ export function CalibrationCurve() {
   const showSettlementWarning = basisTotal > 0 && settlementShare >= 0.8;
 
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader
         title="Calibration curve"
         subtitle={
@@ -162,141 +168,150 @@ export function CalibrationCurve() {
         }
       />
       {showSettlementWarning && (
-        <div className="mx-5 mb-2 mt-1 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning">
+        <div className="mx-5 mb-2 mt-1 shrink-0 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning">
           <span className="font-semibold">Limited price source:</span>{" "}
           {Math.round(settlementShare * 100)}% of observations use the YES
-          outcome&apos;s last (settlement) trade — the Router doesn&apos;t expose
-          a true pre-resolution snapshot. The curve will hug the diagonal until
-          per-market OHLCV sampling is enabled.
+          outcome&apos;s last (settlement) trade — the Router doesn&apos;t
+          expose a true pre-resolution snapshot. The curve will hug the diagonal
+          until per-market OHLCV sampling is enabled.
         </div>
       )}
-      <CardBody className="h-[380px] pl-1 pr-3">
+      <CardBody className="flex min-h-0 flex-1 flex-col pl-1 pr-3">
         {isLoading && !data ? (
-          <ChartSkeleton />
+          <div className="flex min-h-[380px] flex-1 flex-col">
+            <ChartSkeleton />
+          </div>
         ) : chartData.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-fg-muted">
+          <div className="flex min-h-[380px] flex-1 items-center justify-center px-6 text-center text-xs text-fg-muted">
             {totalObservations === 0
               ? "No closed markets matched this slice. Try the All category, or wait for /api/warmup to backfill closed-market history."
               : `${totalObservations.toLocaleString()} resolved markets in this slice, but every observation collapsed into a single decile bucket — usually because terminal YES prices dominate. Pick a different category to compare.`}
           </div>
         ) : chartData.length === 1 ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-fg-muted">
-            Only one decile bucket has observations for this slice
-            ({totalObservations.toLocaleString()} markets, all settling at the
+          <div className="flex min-h-[380px] flex-1 items-center justify-center px-6 text-center text-xs text-fg-muted">
+            Only one decile bucket has observations for this slice (
+            {totalObservations.toLocaleString()} markets, all settling at the
             same end). Switch categories or wait for OHLCV-based pre-resolution
             sampling to populate intermediate buckets.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={chartData}
-              margin={{ top: 16, right: 16, bottom: 36, left: 24 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2330" />
-              <XAxis
-                type="number"
-                dataKey="meanPrice"
-                domain={[0, 100]}
-                ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                tick={{ fill: "#8b91a1", fontSize: 10 }}
-                tickFormatter={(v) => `${v}%`}
-                axisLine={{ stroke: "#2a2f3d" }}
-                tickLine={false}
-                label={{
-                  value: "Final YES price (decile mean)",
-                  fill: "#8b91a1",
-                  fontSize: 11,
-                  position: "insideBottom",
-                  offset: -12,
-                }}
-              />
-              <YAxis
-                type="number"
-                domain={[0, 100]}
-                ticks={[0, 25, 50, 75, 100]}
-                tick={{ fill: "#8b91a1", fontSize: 10 }}
-                tickFormatter={(v) => `${v}%`}
-                axisLine={{ stroke: "#2a2f3d" }}
-                tickLine={false}
-                label={{
-                  value: "Actual YES resolution rate",
-                  fill: "#8b91a1",
-                  fontSize: 11,
-                  angle: -90,
-                  position: "insideLeft",
-                  offset: -2,
-                }}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#111318",
-                  border: "1px solid #2a2f3d",
-                  borderRadius: 8,
-                }}
-                formatter={(value: number, key: string) => {
-                  if (key === "polymarket" || key === "kalshi") {
-                    return [`${value}%`, key];
-                  }
-                  return [value, key];
-                }}
-                labelFormatter={(label) => `Price ≈ ${label}%`}
-              />
-              <Legend
-                wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
-                payload={[
-                  {
-                    value: "Perfect calibration",
-                    type: "line",
-                    color: "#6366f1",
-                  },
-                  {
-                    value: "Polymarket",
-                    type: "line",
-                    color: VENUE_COLOR.polymarket,
-                  },
-                  { value: "Kalshi", type: "line", color: VENUE_COLOR.kalshi },
-                ]}
-              />
-              <ReferenceLine
-                segment={[
-                  { x: 0, y: 0 },
-                  { x: 100, y: 100 },
-                ]}
-                stroke="#6366f1"
-                strokeDasharray="4 4"
-                strokeWidth={1.5}
-                ifOverflow="extendDomain"
-              />
-              <Line
-                type="monotone"
-                dataKey="polymarket"
-                stroke={VENUE_COLOR.polymarket}
-                strokeWidth={2}
-                connectNulls
-                dot={{ r: 4, stroke: VENUE_COLOR.polymarket, fill: "#0b0d12" }}
-                activeDot={{ r: 6 }}
-                name="Polymarket"
-              />
-              <Line
-                type="monotone"
-                dataKey="kalshi"
-                stroke={VENUE_COLOR.kalshi}
-                strokeWidth={2}
-                connectNulls
-                dot={{ r: 4, stroke: VENUE_COLOR.kalshi, fill: "#0b0d12" }}
-                activeDot={{ r: 6 }}
-                name="Kalshi"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+          <div className="flex min-h-[380px] flex-1 flex-col">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={chartData}
+                margin={{ top: 16, right: 16, bottom: 56, left: 24 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2330" />
+                <XAxis
+                  type="number"
+                  dataKey="meanPrice"
+                  domain={[0, 100]}
+                  ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                  tick={chartAxisTick}
+                  tickFormatter={(v) => `${v}%`}
+                  axisLine={{ stroke: "#2a2f3d" }}
+                  tickLine={false}
+                  label={{
+                    ...chartAxisLabelBase,
+                    value: "Final YES price (decile mean)",
+                    position: "insideBottom",
+                    offset: -12,
+                  }}
+                />
+                <YAxis
+                  type="number"
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
+                  tick={chartAxisTick}
+                  tickFormatter={(v) => `${v}%`}
+                  axisLine={{ stroke: "#2a2f3d" }}
+                  tickLine={false}
+                  label={{
+                    ...chartAxisLabelBase,
+                    value: "Actual YES resolution rate",
+                    angle: -90,
+                    position: "insideLeft",
+                    offset: -2,
+                  }}
+                />
+                <Tooltip
+                  contentStyle={chartTooltipContentStyle}
+                  formatter={(value: number, key: string) => {
+                    if (key === "polymarket" || key === "kalshi") {
+                      return [`${value}%`, key];
+                    }
+                    return [value, key];
+                  }}
+                  labelFormatter={(label) => `Price ≈ ${label}%`}
+                />
+                <Legend
+                  wrapperStyle={{
+                    ...chartLegendWrapperStyle,
+                    paddingTop: 18,
+                  }}
+                  payload={[
+                    {
+                      value: "Perfect calibration",
+                      type: "line",
+                      color: "#6366f1",
+                    },
+                    {
+                      value: "Polymarket",
+                      type: "line",
+                      color: VENUE_COLOR.polymarket,
+                    },
+                    {
+                      value: "Kalshi",
+                      type: "line",
+                      color: VENUE_COLOR.kalshi,
+                    },
+                  ]}
+                />
+                <ReferenceLine
+                  segment={[
+                    { x: 0, y: 0 },
+                    { x: 100, y: 100 },
+                  ]}
+                  stroke="#6366f1"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  ifOverflow="extendDomain"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="polymarket"
+                  stroke={VENUE_COLOR.polymarket}
+                  strokeWidth={2}
+                  connectNulls
+                  dot={{
+                    r: 4,
+                    stroke: VENUE_COLOR.polymarket,
+                    fill: "#0b0d12",
+                  }}
+                  activeDot={{ r: 6 }}
+                  name="Polymarket"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="kalshi"
+                  stroke={VENUE_COLOR.kalshi}
+                  strokeWidth={2}
+                  connectNulls
+                  dot={{ r: 4, stroke: VENUE_COLOR.kalshi, fill: "#0b0d12" }}
+                  activeDot={{ r: 6 }}
+                  name="Kalshi"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </CardBody>
-      <div className="border-t border-border-subtle px-5 pb-3 pt-2 text-[10px] leading-relaxed text-fg-subtle">
+      <div className="shrink-0 border-t border-border-subtle px-5 pb-3 pt-2 text-[10px] leading-relaxed text-fg-subtle">
         <span className="font-semibold text-fg-muted">Reading this chart:</span>{" "}
         points <em>above</em> the diagonal indicate the market underpriced YES
         in that bucket (actual rate &gt; implied probability); points{" "}
-        <em>below</em> indicate YES was overpriced. A venue hugging the
-        diagonal is well-calibrated.
+        <em>below</em> indicate YES was overpriced. A venue hugging the diagonal
+        is well-calibrated.
       </div>
     </Card>
   );

@@ -4,6 +4,13 @@ import { fetchArchive, resolveArchiveRequestUrl } from "./pmxt";
 
 const originalEnv = { ...process.env };
 
+/**
+ * Unit tests for the archive helpers in `lib/pmxt.ts`.
+ *
+ * @remarks
+ * The archive is an external host, so these helpers enforce URL constraints to
+ * prevent SSRF and to keep parsing behavior deterministic.
+ */
 describe("resolveArchiveRequestUrl", () => {
   afterEach(() => {
     process.env = { ...originalEnv };
@@ -24,7 +31,9 @@ describe("resolveArchiveRequestUrl", () => {
 
   test("rejects absolute http(s) URLs (SSRF)", () => {
     delete process.env.PMXT_ARCHIVE_URL;
-    expect(resolveArchiveRequestUrl("https://attacker.example/leak")).toBeNull();
+    expect(
+      resolveArchiveRequestUrl("https://attacker.example/leak"),
+    ).toBeNull();
     expect(resolveArchiveRequestUrl("http://attacker.example/x")).toBeNull();
   });
 
@@ -35,7 +44,9 @@ describe("resolveArchiveRequestUrl", () => {
 
   test("rejects resolved URLs that include userinfo", () => {
     delete process.env.PMXT_ARCHIVE_URL;
-    expect(resolveArchiveRequestUrl("//user:pass@archive.pmxt.dev/x")).toBeNull();
+    expect(
+      resolveArchiveRequestUrl("//user:pass@archive.pmxt.dev/x"),
+    ).toBeNull();
     process.env.PMXT_ARCHIVE_URL = "https://archive.pmxt.dev/";
     expect(resolveArchiveRequestUrl("/x")).not.toBeNull();
   });
@@ -75,7 +86,9 @@ describe("fetchArchive SSRF guard", () => {
   test("calls fetch for same-origin path", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      headers: { get: (h: string) => (h === "content-type" ? "application/json" : "") },
+      headers: {
+        get: (h: string) => (h === "content-type" ? "application/json" : ""),
+      },
       text: async () => "[]",
     });
 

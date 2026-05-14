@@ -1,6 +1,16 @@
 import { cn } from "@/lib/cn";
 
-export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+/**
+ * Shared skeleton/loading UI primitives.
+ *
+ * @remarks
+ * Used by charts and KPIs to provide consistent shimmer states while SWR is
+ * loading or revalidating.
+ */
+export function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn("shimmer rounded-tmb", className)}

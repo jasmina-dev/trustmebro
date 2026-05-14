@@ -2,6 +2,14 @@ import { act, renderHook } from "@testing-library/react";
 import { useDashboard } from "./store";
 import type { UnifiedMarket } from "./types";
 
+/**
+ * Unit tests for `lib/store.ts` (Zustand dashboard state).
+ *
+ * @remarks
+ * The dashboard store is a central dependency for filter toggles and derived UI
+ * behavior. These tests validate that core actions update state deterministically
+ * so component tests can rely on `resetDashboardState()` + store mutations.
+ */
 function sampleMarket(id: string): UnifiedMarket {
   return {
     marketId: id,

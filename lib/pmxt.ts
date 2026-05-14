@@ -65,7 +65,10 @@ async function acquireRouterBudget(): Promise<void> {
     const now = Date.now();
     const elapsed = Math.max(0, now - routerBucketAt);
     routerBucketAt = now;
-    routerTokens = Math.min(cap, routerTokens + (elapsed * cap) / ROUTER_LIMIT_WINDOW_MS);
+    routerTokens = Math.min(
+      cap,
+      routerTokens + (elapsed * cap) / ROUTER_LIMIT_WINDOW_MS,
+    );
     if (routerTokens >= 1) {
       routerTokens -= 1;
       return;
@@ -98,7 +101,11 @@ async function routerFetchMarkets(url: URL): Promise<Response> {
     last = res;
     if (res.ok) return res;
 
-    const retryable = res.status === 429 || res.status === 502 || res.status === 503 || res.status === 504;
+    const retryable =
+      res.status === 429 ||
+      res.status === 502 ||
+      res.status === 503 ||
+      res.status === 504;
     if (attempt < 3 && retryable) {
       const ra = parseInt(res.headers.get("retry-after") ?? "0", 10);
       const backoffMs =
@@ -115,6 +122,9 @@ async function routerFetchMarkets(url: URL): Promise<Response> {
   return last as Response;
 }
 
+/**
+ * Whether the PMXT API key is configured (enables real upstream data).
+ */
 export function hasPmxtKey(): boolean {
   return Boolean(process.env.PMXT_API_KEY?.startsWith("pmxt_"));
 }
@@ -143,6 +153,14 @@ export interface RouterMarketsParams {
   exchange?: "polymarket" | "kalshi";
 }
 
+/**
+ * PMXT Router client (`GET /v0/markets`) for unified cross-venue market lists.
+ *
+ * @remarks
+ * Prefer the Router for listing/searching because it's fast and normalized.
+ * Use the per-venue SDK clients (`poly()` / `kalshi()`) for capabilities the
+ * Router doesn't expose (notably OHLCV).
+ */
 export const router = {
   /**
    * GET /v0/markets — returns the unified Market shape across every venue.
@@ -202,6 +220,9 @@ export const poly = makeClient(
       pmxtApiKey: requireKey(),
     } as unknown as ConstructorParameters<typeof pmxt.Polymarket>[0]),
 );
+/**
+ * Lazily-initialized Kalshi SDK client from `pmxtjs`.
+ */
 export const kalshi = makeClient(
   () => new pmxt.Kalshi({ pmxtApiKey: requireKey() }),
 );
@@ -217,7 +238,10 @@ export const kalshi = makeClient(
 export async function fetchOhlcv(
   exchange: "polymarket" | "kalshi",
   outcomeId: string,
-  { resolution = "1h", limit = 168 }: { resolution?: string; limit?: number } = {},
+  {
+    resolution = "1h",
+    limit = 168,
+  }: { resolution?: string; limit?: number } = {},
 ): Promise<PriceCandle[]> {
   const client = exchange === "polymarket" ? poly() : kalshi();
   const candles = await client.fetchOHLCV(outcomeId, { resolution, limit });
@@ -273,8 +297,14 @@ export function resolveOhlcvId(
 
   // Kalshi — require ticker shape; fall back through metadata and marketId.
   const candidates: Array<string | undefined> = [
-    KALSHI_TICKER_RE.test(outcome.outcomeId ?? "") ? outcome.outcomeId : undefined,
-    pickMetadataString(outcome.metadata, ["ticker", "kalshi_ticker", "kalshiTicker"]),
+    KALSHI_TICKER_RE.test(outcome.outcomeId ?? "")
+      ? outcome.outcomeId
+      : undefined,
+    pickMetadataString(outcome.metadata, [
+      "ticker",
+      "kalshi_ticker",
+      "kalshiTicker",
+    ]),
     pickMetadataString(market.metadata as Record<string, unknown> | undefined, [
       "ticker",
       "kalshi_ticker",
@@ -335,6 +365,15 @@ export function resolveArchiveRequestUrl(path: string): URL | null {
   return resolved;
 }
 
+/**
+ * Fetch and parse an archive artifact from `archive.pmxt.dev`.
+ *
+ * @remarks
+ * The archive is not a strict schema: we sniff content-type and parse JSON or
+ * best-effort NDJSON. Returns `null` on non-200 responses or invalid URLs.
+ *
+ * @param path - Path/query segment relative to `PMXT_ARCHIVE_URL`.
+ */
 export async function fetchArchive(
   path = "",
 ): Promise<{ source: string; rows: unknown[] } | null> {
@@ -345,9 +384,7 @@ export async function fetchArchive(
 
   try {
     const res = await fetch(url, {
-      headers: hasPmxtKey()
-        ? { Authorization: `Bearer ${requireKey()}` }
-        : {},
+      headers: hasPmxtKey() ? { Authorization: `Bearer ${requireKey()}` } : {},
       cache: "no-store",
     });
     if (!res.ok) return null;
